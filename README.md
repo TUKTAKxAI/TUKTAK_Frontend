@@ -1,2 +1,2 @@
 # TUKTAK_Frontend
-This repository is for main frontend developing in TUKTAK project.
+This repository is for frontend developing in TUKTAK project.
