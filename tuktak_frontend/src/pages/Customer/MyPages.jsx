@@ -1,13 +1,12 @@
 import { HistoryCard, InfoRows, MenuTile, ReviewCard, SearchBar } from '../../components/customer/Cards'
-import { Avatar, Logo } from '../../components/customer/FormControls'
+import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { Avatar } from '../../components/customer/FormControls'
 import { historyCards, profileRows, reviewCards, screens } from '../../data/customerData'
 
 export function MyPage({ go }) {
   return (
     <section className="subpage-screen mypage-screen">
-      <div className="top-brand-row">
-        <Logo />
-      </div>
+      <CustomerTopBar go={go} />
       <button className="inline-back-arrow" onClick={() => go(screens.home)}>‹</button>
       <div className="mypage-hero">
         <Avatar large tone="blue" />
@@ -63,6 +62,8 @@ export function ProfilePage({ go }) {
 }
 
 export function MatchHistoryPage({ go }) {
+  const pastHistories = historyCards.filter((item) => item.reviewable || item.status.includes('완료'))
+
   return (
     <section className="subpage-screen">
       <div className="subpage-title-row">
@@ -71,8 +72,12 @@ export function MatchHistoryPage({ go }) {
       </div>
       <SearchBar />
       <div className="list-stack">
-        {historyCards.map((item) => (
-          <HistoryCard key={item.id} item={item} onClickReview={() => go(screens.reviewWrite)} />
+        {pastHistories.map((item) => (
+          <HistoryCard
+            key={item.id}
+            item={item}
+            onClickReview={() => go(screens.reviewWrite)}
+          />
         ))}
       </div>
     </section>

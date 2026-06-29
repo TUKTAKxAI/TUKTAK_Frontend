@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
-import { useCustomerFlow } from './context/CustomerFlowProvider'
+import { useCustomerFlow } from './context/CustomerFlowContext'
 import { chatThreads, publicScreens, screens } from './data/customerData'
 import { AuthPages } from './pages/Customer/AuthPages'
 import { ChatListPage, ChatRoomPage } from './pages/Customer/ChatPage'
@@ -81,6 +81,17 @@ function UrgentDialog() {
     <UrgentModal
       close={() => flow.setShowUrgentModal(false)}
       confirm={() => {
+        flow.updateMatchingFlow({
+          isEmergency: true,
+          matchingStatus: '매칭 진행중',
+          schedule: {
+            preferred_date: new Date().toISOString().slice(0, 10),
+            preferred_time_start: null,
+            preferred_time_end: null,
+          },
+          matchingRequestId: `mock-emergency-${Date.now()}`,
+        })
+        // API 연동 지점: POST /api/v1/matching-requests, is_emergency:true
         flow.setShowUrgentModal(false)
         go(screens.matchingProgress)
       }}
