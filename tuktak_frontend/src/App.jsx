@@ -1,103 +1,163 @@
-import { useMemo, useState } from 'react'
-import { AppHeader } from './components/customer/AppHeader'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
-import { chatThreads, initialMessages, publicScreens, screenTitles, screens } from './data/customerData'
+import { useCustomerFlow } from './context/CustomerFlowProvider'
+import { chatThreads, publicScreens, screens } from './data/customerData'
 import { AuthPages } from './pages/Customer/AuthPages'
 import { ChatListPage, ChatRoomPage } from './pages/Customer/ChatPage'
-import { EstimateFormPage, EstimateHomePage, EstimateListPage } from './pages/Customer/EstimatePages'
+import {
+  EstimateDonePage,
+  EstimateHomePage,
+  EstimateLoadingPage,
+  EstimateOutputPage,
+  EstimateStartPage,
+  MyEstimateListPage,
+} from './pages/Customer/EstimatePages'
 import { HomePage } from './pages/Customer/HomePage'
-import { MatchHistoryPage, MatchingPage, PartnerDetailPage, ReviewWritePage } from './pages/Customer/MatchingPages'
-import { MyPage, MyReviewsPage, ProfilePage } from './pages/Customer/MyPages'
-import { RiskDetailPage, RiskListPage } from './pages/Customer/RiskPages'
+import {
+  MatchingAddressListPage,
+  MatchingAddressSelectPage,
+  MatchingAuctionPage,
+  MatchingDonePage,
+  MatchingEstimateSelectPage,
+  MatchingHomePage,
+  MatchingPartnerInfoPage,
+  MatchingPartnerPage,
+  MatchingProgressPage,
+  MatchingSchedulePage,
+  ReviewWritePage,
+  UrgentModal,
+} from './pages/Customer/MatchingPages'
+import { MatchHistoryPage, MyPage, MyReviewsPage, ProfilePage } from './pages/Customer/MyPages'
+import { MyRiskListPage, RiskDonePage, RiskHomePage, RiskLoadingPage, RiskOutputPage, RiskSelectPage } from './pages/Customer/RiskPages'
+import { routeScreens, screenPaths } from './routes/customerRoutes'
 import './App.css'
 
-function App() {
-  const [screen, setScreen] = useState(screens.login)
-  const [history, setHistory] = useState([])
-  const [userType, setUserType] = useState('customer')
-  const [terms, setTerms] = useState([true, true, true, true, false])
-  const [activeThread, setActiveThread] = useState(chatThreads[0].id)
-  const [chatText, setChatText] = useState('')
-  const [messagesByThread, setMessagesByThread] = useState(initialMessages)
+function useScreenNavigator() {
+  const navigate = useNavigate()
+  const go = (screen) => navigate(screenPaths[screen] || screenPaths[screens.home])
+  const back = () => navigate(-1)
+  const setScreen = go
 
-  const go = (next) => {
-    setHistory((items) => [...items, screen])
-    setScreen(next)
-  }
+  return { navigate, go, back, setScreen }
+}
 
-  const back = () => {
-    setHistory((items) => {
-      const next = [...items]
-      setScreen(next.pop() || screens.login)
-      return next
-    })
-  }
-
-  const openThread = (threadId) => {
-    setActiveThread(threadId)
-    go(screens.chatRoom)
-  }
-
-  const sendMessage = () => {
-    const trimmed = chatText.trim()
-    if (!trimmed) return
-    setMessagesByThread((items) => ({
-      ...items,
-      [activeThread]: [...(items[activeThread] || []), { from: 'me', text: trimmed }],
-    }))
-    setChatText('')
-  }
-
-  const title = useMemo(() => screenTitles[screen], [screen])
-  const isPublicScreen = publicScreens.includes(screen)
-  const activeMessages = messagesByThread[activeThread] || []
-  const activePartner = chatThreads.find((thread) => thread.id === activeThread)?.name || '파트너'
+function PublicRoute({ screen }) {
+  const flow = useCustomerFlow()
+  const { go, back, setScreen } = useScreenNavigator()
 
   return (
+    <AuthPages
+      screen={screen}
+      setScreen={setScreen}
+      go={go}
+      back={back}
+      userType={flow.userType}
+      setUserType={flow.setUserType}
+      terms={flow.terms}
+      setTerms={flow.setTerms}
+    />
+  )
+}
+
+function CustomerLayout({ screen, children }) {
+  const { go } = useScreenNavigator()
+
+  return (
+    <>
+      <div className="scroll-area app-flow">{children}</div>
+      <BottomNav current={screen} go={go} />
+      <UrgentDialog />
+    </>
+  )
+}
+
+function UrgentDialog() {
+  const flow = useCustomerFlow()
+  const { go } = useScreenNavigator()
+
+  if (!flow.showUrgentModal) return null
+
+  return (
+    <UrgentModal
+      close={() => flow.setShowUrgentModal(false)}
+      confirm={() => {
+        flow.setShowUrgentModal(false)
+        go(screens.matchingProgress)
+      }}
+    />
+  )
+}
+
+function CustomerRoute({ screen }) {
+  const flow = useCustomerFlow()
+  const { navigate, go, back } = useScreenNavigator()
+
+  const pages = {
+    [screens.home]: <HomePage go={go} />,
+    [screens.estimateHome]: <EstimateHomePage go={go} />,
+    [screens.estimateStart]: <EstimateStartPage go={go} />,
+    [screens.estimateLoading]: <EstimateLoadingPage go={go} />,
+    [screens.estimateDone]: <EstimateDonePage go={go} />,
+    [screens.estimateOutput]: <EstimateOutputPage go={go} />,
+    [screens.myEstimateList]: <MyEstimateListPage go={go} />,
+    [screens.matchingHome]: <MatchingHomePage go={go} />,
+    [screens.matchingEstimateSelect]: <MatchingEstimateSelectPage go={go} />,
+    [screens.matchingAddressList]: <MatchingAddressListPage go={go} />,
+    [screens.matchingAddressSelect]: <MatchingAddressSelectPage go={go} />,
+    [screens.matchingSchedule]: <MatchingSchedulePage go={go} openUrgent={() => flow.setShowUrgentModal(true)} />,
+    [screens.matchingProgress]: <MatchingProgressPage go={go} />,
+    [screens.matchingAuction]: <MatchingAuctionPage go={go} />,
+    [screens.matchingPartner]: <MatchingPartnerPage go={go} />,
+    [screens.matchingPartnerInfo]: <MatchingPartnerInfoPage go={go} />,
+    [screens.matchingDone]: <MatchingDonePage go={go} />,
+    [screens.riskHome]: <RiskHomePage go={go} />,
+    [screens.riskSelect]: <RiskSelectPage go={go} />,
+    [screens.riskLoading]: <RiskLoadingPage go={go} />,
+    [screens.riskDone]: <RiskDonePage go={go} />,
+    [screens.riskOutput]: <RiskOutputPage go={go} />,
+    [screens.myRiskList]: <MyRiskListPage go={go} />,
+    [screens.chatList]: (
+      <ChatListPage
+        threads={chatThreads}
+        go={go}
+        goToRoom={(threadId) => flow.openThread(threadId, navigate)}
+      />
+    ),
+    [screens.chatRoom]: (
+      <ChatRoomPage
+        partnerName={flow.activePartner}
+        messages={flow.activeMessages}
+        chatText={flow.chatText}
+        setChatText={flow.setChatText}
+        sendMessage={flow.sendMessage}
+        back={back}
+      />
+    ),
+    [screens.mypage]: <MyPage go={go} />,
+    [screens.myReviews]: <MyReviewsPage go={go} />,
+    [screens.profile]: <ProfilePage go={go} />,
+    [screens.matchHistory]: <MatchHistoryPage go={go} />,
+    [screens.reviewWrite]: <ReviewWritePage go={go} />,
+  }
+
+  return <CustomerLayout screen={screen}>{pages[screen] || <Navigate to={screenPaths.home} replace />}</CustomerLayout>
+}
+
+function App() {
+  return (
     <div className="app-shell">
-      <main className="phone" data-screen={screen}>
-        {isPublicScreen ? (
-          <AuthPages
-            screen={screen}
-            setScreen={setScreen}
-            go={go}
-            back={back}
-            userType={userType}
-            setUserType={setUserType}
-            terms={terms}
-            setTerms={setTerms}
-          />
-        ) : (
-          <>
-            <AppHeader title={title} back={back} onSearch={() => go(screens.estimateList)} />
-            <div className="scroll-area">
-              {screen === screens.home && <HomePage go={go} />}
-              {screen === screens.estimate && <EstimateHomePage go={go} />}
-              {screen === screens.estimateForm && <EstimateFormPage go={go} />}
-              {screen === screens.estimateList && <EstimateListPage go={go} />}
-              {screen === screens.matching && <MatchingPage go={go} />}
-              {screen === screens.partner && <PartnerDetailPage go={go} />}
-              {screen === screens.matchHistory && <MatchHistoryPage go={go} />}
-              {screen === screens.reviewWrite && <ReviewWritePage go={go} />}
-              {screen === screens.risk && <RiskListPage go={go} />}
-              {screen === screens.riskDetail && <RiskDetailPage />}
-              {screen === screens.chatList && <ChatListPage threads={chatThreads} goToRoom={openThread} />}
-              {screen === screens.chatRoom && (
-                <ChatRoomPage
-                  partnerName={activePartner}
-                  messages={activeMessages}
-                  chatText={chatText}
-                  setChatText={setChatText}
-                  sendMessage={sendMessage}
-                />
-              )}
-              {screen === screens.mypage && <MyPage go={go} />}
-              {screen === screens.myReviews && <MyReviewsPage />}
-              {screen === screens.profile && <ProfilePage />}
-            </div>
-            <BottomNav current={screen} go={go} />
-          </>
-        )}
+      <main className="phone">
+        <Routes>
+          <Route path="/" element={<Navigate to={screenPaths[screens.login]} replace />} />
+          {routeScreens.map(({ screen, path }) => (
+            <Route
+              key={screen}
+              path={path}
+              element={publicScreens.includes(screen) ? <PublicRoute screen={screen} /> : <CustomerRoute screen={screen} />}
+            />
+          ))}
+          <Route path="*" element={<Navigate to={screenPaths[screens.login]} replace />} />
+        </Routes>
       </main>
     </div>
   )

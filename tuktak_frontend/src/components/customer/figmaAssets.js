@@ -9,6 +9,8 @@ import navRisk from '../../assets/figma/nav-risk.png'
 import navChat from '../../assets/figma/nav-chat.png'
 import back from '../../assets/figma/back.png'
 import search from '../../assets/figma/search.png'
+import notification from '../../assets/figma/notification.png'
+import userProfile from '../../assets/figma/user-profile.png'
 
 export const figmaAssets = {
   logo,
@@ -22,4 +24,6 @@ export const figmaAssets = {
   navChat,
   back,
   search,
+  notification,
+  userProfile,
 }
