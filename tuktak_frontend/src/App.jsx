@@ -80,20 +80,18 @@ function UrgentDialog() {
   return (
     <UrgentModal
       close={() => flow.setShowUrgentModal(false)}
-      confirm={() => {
-        flow.updateMatchingFlow({
-          isEmergency: true,
-          matchingStatus: '매칭 진행중',
-          schedule: {
-            preferred_date: new Date().toISOString().slice(0, 10),
-            preferred_time_start: null,
-            preferred_time_end: null,
-          },
-          matchingRequestId: `mock-emergency-${Date.now()}`,
-        })
-        // API 연동 지점: POST /api/v1/matching-requests, is_emergency:true
-        flow.setShowUrgentModal(false)
-        go(screens.matchingProgress)
+      confirm={async () => {
+        try {
+          await flow.submitMatchingRequest(true)
+          flow.setShowUrgentModal(false)
+          go(screens.matchingProgress)
+        } catch {
+          flow.updateMatchingFlow({
+            matchingStatus: '매칭 요청 실패',
+            matchingError: '긴급 매칭 요청에 실패했습니다. AI 견적서와 주소 정보를 확인해주세요.',
+          })
+          flow.setShowUrgentModal(false)
+        }
       }}
     />
   )
