@@ -13,20 +13,8 @@ import {
   MyEstimateListPage,
 } from './pages/Customer/EstimatePages'
 import { HomePage } from './pages/Customer/HomePage'
-import {
-  MatchingAddressListPage,
-  MatchingAddressSelectPage,
-  MatchingAuctionPage,
-  MatchingDonePage,
-  MatchingEstimateSelectPage,
-  MatchingHomePage,
-  MatchingPartnerInfoPage,
-  MatchingPartnerPage,
-  MatchingProgressPage,
-  MatchingSchedulePage,
-  ReviewWritePage,
-  UrgentModal,
-} from './pages/Customer/MatchingPages'
+import { MatchingUrgentDialog } from './pages/Customer/MatchingUrgentDialog'
+import { getMatchingPageRoutes } from './pages/Customer/matchingPageRoutes'
 import { MatchHistoryPage, MyPage, MyReviewsPage, ProfilePage } from './pages/Customer/MyPages'
 import { MyRiskListPage, RiskDonePage, RiskHomePage, RiskLoadingPage, RiskOutputPage, RiskSelectPage } from './pages/Customer/RiskPages'
 import { routeScreens, screenPaths } from './routes/customerRoutes'
@@ -66,36 +54,11 @@ function CustomerLayout({ screen, children }) {
     <>
       <div className="scroll-area app-flow">{children}</div>
       <BottomNav current={screen} go={go} />
-      <UrgentDialog />
+      <MatchingUrgentDialog go={go} />
     </>
   )
 }
 
-function UrgentDialog() {
-  const flow = useCustomerFlow()
-  const { go } = useScreenNavigator()
-
-  if (!flow.showUrgentModal) return null
-
-  return (
-    <UrgentModal
-      close={() => flow.setShowUrgentModal(false)}
-      confirm={async () => {
-        try {
-          await flow.submitMatchingRequest(true)
-          flow.setShowUrgentModal(false)
-          go(screens.matchingProgress)
-        } catch {
-          flow.updateMatchingFlow({
-            matchingStatus: '매칭 요청 실패',
-            matchingError: '긴급 매칭 요청에 실패했습니다. AI 견적서와 주소 정보를 확인해주세요.',
-          })
-          flow.setShowUrgentModal(false)
-        }
-      }}
-    />
-  )
-}
 
 function CustomerRoute({ screen }) {
   const flow = useCustomerFlow()
@@ -109,16 +72,7 @@ function CustomerRoute({ screen }) {
     [screens.estimateDone]: <EstimateDonePage go={go} />,
     [screens.estimateOutput]: <EstimateOutputPage go={go} />,
     [screens.myEstimateList]: <MyEstimateListPage go={go} />,
-    [screens.matchingHome]: <MatchingHomePage go={go} />,
-    [screens.matchingEstimateSelect]: <MatchingEstimateSelectPage go={go} />,
-    [screens.matchingAddressList]: <MatchingAddressListPage go={go} />,
-    [screens.matchingAddressSelect]: <MatchingAddressSelectPage go={go} />,
-    [screens.matchingSchedule]: <MatchingSchedulePage go={go} openUrgent={() => flow.setShowUrgentModal(true)} />,
-    [screens.matchingProgress]: <MatchingProgressPage go={go} />,
-    [screens.matchingAuction]: <MatchingAuctionPage go={go} />,
-    [screens.matchingPartner]: <MatchingPartnerPage go={go} />,
-    [screens.matchingPartnerInfo]: <MatchingPartnerInfoPage go={go} />,
-    [screens.matchingDone]: <MatchingDonePage go={go} />,
+    ...getMatchingPageRoutes({ go }),
     [screens.riskHome]: <RiskHomePage go={go} />,
     [screens.riskSelect]: <RiskSelectPage go={go} />,
     [screens.riskLoading]: <RiskLoadingPage go={go} />,
@@ -146,7 +100,6 @@ function CustomerRoute({ screen }) {
     [screens.myReviews]: <MyReviewsPage go={go} />,
     [screens.profile]: <ProfilePage go={go} />,
     [screens.matchHistory]: <MatchHistoryPage go={go} />,
-    [screens.reviewWrite]: <ReviewWritePage go={go} />,
   }
 
   return <CustomerLayout screen={screen}>{pages[screen] || <Navigate to={screenPaths.home} replace />}</CustomerLayout>
