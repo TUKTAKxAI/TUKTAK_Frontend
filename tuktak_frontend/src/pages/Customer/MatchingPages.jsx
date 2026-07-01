@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { getMyAiEstimates } from '../../api/estimateApi'
 import { getJusoPopupUrl, hasJusoConfirmKey } from '../../api/jusoApi'
 import { createMatchingRequest, getMatchingQuotes, selectMatchingQuote } from '../../api/matchingApi'
@@ -6,6 +6,15 @@ import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
 import { screens } from '../../data/customerData'
+import { figmaAssets } from '../../components/customer/figmaAssets'
+import preview9 from '../../assets/figma/preview9.webp';
+import preview10 from '../../assets/figma/preview10.webp';
+import preview11 from '../../assets/figma/preview11.webp';
+import preview12 from '../../assets/figma/preview12.webp';
+import loadingSvg from '../../assets/figma/loading.svg?raw';
+import errorSvg from '../../assets/figma/error.svg?raw';
+
+const previewImages = [preview9, preview10, preview11, preview12];
 
 const timeSlots = [
   { start: '09:00', end: '12:00' },
@@ -219,27 +228,111 @@ function ProfileModal({ partner, onClose }) {
   )
 }
 
-export function MatchingHomePage({ go }) {
-  const flow = useCustomerFlow()
+function ServiceHero({ onClick, buttonLabel, go }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
 
-  if (flow.matchingFlow.hasCompletedMatching) {
-    return <MatchingDonePage go={go} />
-  }
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = (activeIndex + 1) % previewImages.length;
+      
+      if (scrollRef.current) {
+        const cardWidth = scrollRef.current.offsetWidth * 0.5;
+        scrollRef.current.scrollTo({
+          left: nextIndex * cardWidth,
+          behavior: 'smooth'
+        });
+        setActiveIndex(nextIndex);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [activeIndex]);
+
+  const goToIndex = (index) => {
+    if (scrollRef.current) {
+      const cardWidth = scrollRef.current.offsetWidth * 0.5;
+      scrollRef.current.scrollTo({ left: index * cardWidth, behavior: 'smooth' });
+      setActiveIndex(index);
+    }
+  };
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const cardWidth = scrollRef.current.offsetWidth * 0.5;
+      const index = Math.round(scrollLeft / cardWidth);
+      setActiveIndex(index);
+    }
+  };
 
   return (
-    <section className="service-hero">
+    <section className="service-hero flex flex-col h-full bg-[#F2F3F5]">
       <CustomerTopBar go={go} />
-      <h1>매칭 서비스</h1>
-      <h2>근처 최고의 시공 업자와 매칭해보세요</h2>
-      <p>AI 견적서, 지역 기반으로 근처 최고의 시공 업자와 매칭해드립니다</p>
-      <div className="service-shot-row">
-        <div className="phone-shot first match" />
-        <div className="phone-shot second match" />
-        <div className="phone-shot fourth match" />
+
+      <div className="flex flex-col items-center flex-1 py-0">
+        <h1 className="text-2xl font-bold text-gray-900 mt-0 text-center">매칭 서비스</h1>
+        
+        <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
+          <h2 className="text-base font-semibold text-gray-700 leading-snug">
+            근처 최고의 시공 업자와<br />매칭해보세요
+          </h2>
+          <p className="text-md font-semibold text-gray-700 mt-8 ml-3 leading-relaxed">
+            AI 견적서, 지역 기반으로 근처 최고의<br />시공 업자와 매칭해드립니다
+          </p>
+        </div>
+
+        <div 
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide py-8 gap-4 px-[25%] cursor-grab active:cursor-grabbing items-center"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {previewImages.map((img, index) => (
+            <div 
+              key={index} 
+              className={`min-w-[85%] ml-5 transition-all duration-500 snap-center flex justify-center items-center
+                ${activeIndex === index ? 'scale-100 opacity-100' : 'scale-70 opacity-40'}
+              `}
+            >
+              <div className="w-full aspect-9/16 bg-white rounded-3xl shadow-lg border border-gray-300 overflow-hidden">
+                 <img 
+                   src={img} 
+                   alt={`미리보기 ${index + 1}`} 
+                   className="w-full h-full object-cover" 
+                   draggable="false" 
+                 />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 페이지네이션 도트 */}
+        <div className="flex justify-center space-x-2 mb-6">
+          {previewImages.map((_, i) => (
+            <button 
+              key={i} 
+              onClick={() => goToIndex(i)}
+              className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-blue-600' : 'w-2 bg-gray-300'}`} 
+            />
+          ))}
+        </div>
+
+        <div className="w-full px-6 mt-auto pb-6">
+          <PrimaryButton onClick={onClick}>{buttonLabel}</PrimaryButton>
+        </div>
       </div>
-      <div className="dot-row"><span className="active dim" /><span /><span /><span className="active dim" /></div>
-      <PrimaryButton narrow onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
     </section>
+  )
+}
+
+export function MatchingHomePage({ go }) {
+  return (
+    <ServiceHero
+      onClick={() => go(screens.matchingEstimateSelect)}
+      buttonLabel="매칭 시작하기"
+      go={go}
+    />
   )
 }
 
@@ -279,27 +372,96 @@ export function MatchingEstimateSelectPage({ go }) {
   }
 
   return (
-    <section className="selection-screen">
+    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5]">
       <CustomerTopBar go={go} />
-      <button className="inline-back-arrow" onClick={() => go(screens.matchingHome)}>‹</button>
-      <h2>AI 견적서를 선택해주세요</h2>
-      {loadStatus === 'loading' ? <p className="muted center">AI 견적서를 불러오는 중입니다.</p> : null}
-      {loadStatus === 'error' ? <p className="muted center">AI 견적서를 불러오지 못했습니다. 로그인 상태와 서버 연결을 확인해주세요.</p> : null}
-      {loadStatus === 'empty' ? <p className="muted center">완료된 AI 견적서가 아직 없어요.</p> : null}
-      <div className="list-stack">
-        {estimates.map((estimate) => (
-          <article className="record-card estimate-card large" key={estimate.estimate_id}>
-            <div className="record-side">
-              <span>{formatDate(estimate.created_at)}</span>
-              <small>{estimate.estimate_status}</small>
+      
+      <div className="flex flex-col flex-1 px-6 pt-4">
+        
+        <div className="flex items-center mb-0">
+          <button 
+            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+            onClick={() => go(screens.matchingHome)}
+          >
+            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">매칭 시작하기</h1>
+        </div>
+
+        <div className="overflow-y-auto pb-6">
+          
+          {loadStatus === 'loading' ? (
+            <div className="flex flex-col items-center justify-center mt-16">
+              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
+                   dangerouslySetInnerHTML={{ __html: loadingSvg }} 
+              />
+              <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서를 불러오는 중입니다 ...</p>
             </div>
-            <div className="record-main">
-              <h3>{estimateTitle(estimate)}</h3>
-              <p>예상 시공 비용 : {estimateCost(estimate)}</p>
-              <button className="wide-action" onClick={() => selectEstimate(estimate)}>매칭 요청하기</button>
+          
+          ) : loadStatus === 'error' || loadStatus === 'empty' ? (
+            <div className="flex flex-col items-center justify-center mt-16">
+              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
+                   dangerouslySetInnerHTML={{ __html: errorSvg }} 
+              />
+              <p className="text-center font-bold text-[20px] text-gray-900 mt-1">
+                {loadStatus === 'error' ? '견적서를 불러오지 못했습니다!' : '생성된 AI 견적서가 없습니다 !'}
+              </p>
+              <p className="text-center font-medium text-[15px] text-gray-900 mt-5">
+                {loadStatus === 'error' ? '서버 연결 상태를 다시 확인해주세요.' : 'AI 견적서를 새로 만들어 볼까요?'}
+              </p>
+              <button 
+                onClick={() => go(screens.estimateStart)}
+                className="w-3/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700 mt-2"
+                style={{ fontSize: '16px', fontWeight: 'bold' }} 
+              >
+                AI 견적서 생성
+              </button>
             </div>
-          </article>
-        ))}
+
+          ) : (
+            <>
+              <h2 
+                className="text-gray-700 text-center mt-4 mb-6 font-bold"
+                style={{ fontSize: '20px' }}
+              >
+                AI 견적서를 선택해주세요
+              </h2>
+              {estimates.map((estimate) => (
+                <article key={estimate.estimate_id} className="bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex flex-col mb-4">
+                  
+                  <div className="flex justify-between items-start mb-4 border-b border-gray-300 pb-3">
+                    <span className="text-[13px] text-gray-500">
+                      {formatDate(estimate.created_at)}
+                    </span>
+                    <small className="text-xs text-blue-500 font-semibold bg-blue-50 px-2 py-1 rounded">
+                      {estimate.estimate_status === 'COMPLETED' ? '완료' : estimate.estimate_status}
+                    </small>
+                  </div>
+                  
+                  <div className="flex flex-col text-left">
+                    <h3 className="text-[22px] font-bold text-gray-900 mb-1.5 tracking-tight">
+                      {estimateTitle(estimate)}
+                    </h3>
+                    <p className="text-[13px] font-bold text-gray-500 mb-4.5">
+                      예상 시공 비용 : {estimateCost(estimate)}
+                    </p>
+                    
+                    <div className="flex justify-center w-full">
+                      <button 
+                        onClick={() => selectEstimate(estimate)}
+                        className="w-4/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700"
+                        style={{ fontSize: '16px', fontWeight: 'bold' }} 
+                      >
+                        매칭 요청하기
+                      </button>
+                    </div>
+                  </div>
+
+                </article>
+              ))}
+            </>
+          )}
+        </div>
+
       </div>
     </section>
   )

@@ -3008,6 +3008,47 @@ button {
   filter: none;
 }
 
+
+
+.home-btn-wrapper {
+  position: relative;
+}
+
+.bottom-nav .home-circle {
+  position: absolute;
+  bottom: 0; 
+  left: 50%;
+  transform: translateX(-50%);
+  
+  width: 100px;
+  height: 100px;
+  
+  z-index: 10;
+  
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; 
+}
+
+.bottom-nav .home-circle img {
+  width: 100% !important;
+  height: auto !important;
+  
+  filter: drop-shadow(0px -3px 6px rgba(0, 0, 0, 0.15)) !important;
+}
+
+.bottom-nav button:nth-child(2) {
+  transform: translateX(-12px); 
+}
+
+.bottom-nav button:nth-child(4) {
+  transform: translateX(12px); 
+}
+
+
+
+
+
 .avatar {
   width: 56px;
   height: 56px;

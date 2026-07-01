@@ -58,10 +58,10 @@ function ServiceHero({ onClick, buttonLabel, go }) {
     <section className="service-hero flex flex-col h-full bg-[#F2F3F5]">
       <CustomerTopBar go={go} />
 
-      <div className="flex flex-col items-center flex-1 py-4">
-        <h1 className="text-2xl font-bold text-gray-900 mt-4 text-center">AI 견적 서비스</h1>
+      <div className="flex flex-col items-center flex-1 py-0">
+        <h1 className="text-2xl font-bold text-gray-900 mt-0 text-center">AI 견적 서비스</h1>
         
-        <div className="w-full max-w-125 mx-auto text-left mt-0 ml-2">
+        <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
           <h2 className="text-base font-semibold text-gray-700 leading-snug">
             AI로 수리 비용 및 시간을<br />미리 예측하세요
           </h2>
@@ -161,13 +161,10 @@ export function EstimateStartPage({ go }) {
     formData.append('description', description);
 
     try {
-      const token = localStorage.getItem('tuktak_access_token');
-      const response = await fetch('/api/v1/ai-estimates', {
+      const response = await fetch('http://localhost:8081/api/v1/ai-estimates', {
         method: 'POST',
         body: formData,
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include',
       });
       
       const data = await response.json();
@@ -262,16 +259,12 @@ useEffect(() => {
       go(screens.estimateHome);
       return;
     }
-
-    const token = localStorage.getItem('tuktak_access_token');
     
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/v1/ai-estimates/${estimateId}`, {
+        const response = await fetch(`http://localhost:8081/api/v1/ai-estimates/${estimateId}`, {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         });
         const data = await response.json();
         
