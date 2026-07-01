@@ -350,67 +350,98 @@ export function EstimateDonePage({ go }) {
 
 export function EstimateOutputPage({ go }) {
   const location = useLocation();
+  // EstimateLoadingPage 또는 다른 곳에서 state로 넘겨받은 AI 견적 데이터
   const resultData = location.state?.resultData;
 
+  // 데이터가 없을 경우에 대한 예외 처리 (RiskOutputPage와 동일한 스타일 적용)
   if (!resultData) {
     return (
-      <section className="document-screen">
-        <p style={{ textAlign: 'center', marginTop: '50px' }}>견적서 데이터를 불러올 수 없습니다.</p>
+      <section className="flex flex-col h-full bg-[#F2F3F5] items-center justify-center">
+        <p className="mb-4 text-gray-600">견적서 데이터를 불러올 수 없습니다.</p>
         <PrimaryButton narrow onClick={() => go(screens.estimateHome)}>홈으로</PrimaryButton>
       </section>
     );
   }
 
   return (
-    <section className="document-screen flex flex-col flex-1 p-6 bg-[#F2F3F5] h-full">
-      <article className="document-card border border-gray-400 rounded-2xl bg-white flex-1 p-6 flex flex-col relative shadow-sm h-full">
-        <div className="document-head flex justify-between items-start border-b pb-4">
-          <div>
-            <span className="text-sm text-gray-400">{resultData.created_at?.split('T')[0]}</span>
-          </div>
-          
-          <div className="text-center flex-1">
-            <h2 className="text-2xl font-bold">{resultData.repair_task_name} 시공 견적서</h2>
-            <p className="text-gray-500 mt-1">예상 비용 : {Number(resultData.min_price).toLocaleString()}원</p>
-          </div>
-          
-          <div 
-            className="flex flex-col items-center text-blue-600 cursor-pointer hover:text-blue-800 transition" 
-            onClick={() => {
-              if (resultData.pdf_url) {
-                window.open(resultData.pdf_url, '_blank');
-              } else {
-                alert('생성된 PDF 파일 경로가 존재하지 않습니다.');
-              }
-            }}
-            title="PDF 새 탭에서 열기"
-          >
-            <div className="w-8 h-8 bg-gray-200 flex items-center justify-center rounded-md font-bold text-xs">PDF</div>
-            <span className="text-[10px] font-bold mt-1">저장</span>
-          </div>
+    <section className="flex flex-col h-full bg-[#F2F3F5]">
+      {/* 1. 상단 고정 헤더 (PDF 버튼 제거 및 Risk 스타일 적용) */}
+      <header className="flex justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
+        <button onClick={() => go(screens.estimateHome)} className="p-2 -ml-2">
+           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div className="text-center">
+            <h1 className="text-[17px] font-bold text-gray-900">AI 시공 견적서</h1>
+            <p className="text-[10px] text-gray-400 mt-0.5">{resultData.created_at?.split('T')[0]}</p>
+        </div>
+        {/* 가운데 정렬을 맞추기 위한 투명한 빈 박스 */}
+        <div className="w-10"></div> 
+      </header>
+
+      <main className="flex-1 overflow-y-auto p-6 space-y-4">
+        
+        {/* 2. 시공명 & 예상 비용 버블 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-left">
+            <h2 className="text-[14px] font-semibold text-gray-500 mb-1">{resultData.repair_task_name || 'AI 시공 견적'}</h2>
+            <p className="text-[22px] text-gray-900 font-bold mt-1 tracking-tight">
+              예상 비용 : {parseInt(resultData.min_price?.toLocaleString()) || 0}원 ~ {parseInt(resultData.max_price?.toLocaleString()) || 0}원
+            </p>
         </div>
 
-        <div className="document-body flex-1 mt-6 flex flex-col overflow-hidden">
-          <h3 className="text-lg font-bold mb-3">견적서 상세 내용</h3>
-          
-          {resultData.pdf_url ? (
-            <div className="flex-1 w-full bg-gray-100 rounded-xl overflow-hidden border border-gray-300">
-              <iframe 
-                src={`${resultData.pdf_url}#toolbar=0`} 
-                className="w-full h-full"
-                title="견적서 PDF 뷰어"
-              />
+        {/* 3. 소요 시간 & 심각도 정보 */}
+        <div className="flex gap-4">
+            <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+                <p className="text-[11px] text-gray-400 mb-1">예상 소요 시간</p>
+                <strong className="text-[18px] font-bold text-gray-900">
+                  {resultData.estimated_minutes_min}~{resultData.estimated_minutes_max}분
+                </strong>
             </div>
-          ) : (
-            <div className="flex-1 w-full bg-yellow-50 p-6 rounded-xl border border-gray-200 overflow-y-auto whitespace-pre-line text-sm text-gray-700">
+            <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+                <p className="text-[11px] text-gray-400 mb-1">문제 심각도</p>
+                <strong className={`text-[18px] font-bold ${resultData.severity === 'HIGH' ? 'text-red-500' : 'text-blue-600'}`}>
+                  {resultData.severity || '보통'}
+                </strong>
+            </div>
+        </div>
+
+        {/* 4. 시공 상세 분석, 요청 내용, AI 요약 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
+          
+          <section className="border-b border-gray-100 pb-6">
+            <h3 className="text-[16px] font-bold text-gray-800 mb-4">시공 분석 정보</h3>
+            <ul className="space-y-3">
+              <li className="flex items-start text-[14px] text-gray-700">
+                <span className="w-16 text-gray-400 font-medium">분류</span> 
+                <span className="flex-1">{resultData.main_category} &gt; {resultData.object_label}</span>
+              </li>
+              <li className="flex items-start text-[14px] text-gray-700">
+                <span className="w-16 text-gray-400 font-medium">증상</span> 
+                <span className="flex-1 text-red-500 font-medium">{resultData.problem_label}</span>
+              </li>
+            </ul>
+          </section>
+
+          <section className="border-b border-gray-100 pb-6">
+            <h3 className="text-[16px] font-bold text-gray-800 mb-2">고객 요청 상세</h3>
+            <p className="text-[14px] text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
+              {resultData.description || '요청 내용이 없습니다.'}
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-[16px] font-bold text-gray-800 mb-2">AI 종합 요약</h3>
+            {/* AI 요약 내용은 시각적으로 눈에 띄도록 옅은 파란색 배경을 적용했습니다 */}
+            <p className="text-[14px] text-gray-600 leading-relaxed bg-blue-50 p-4 rounded-xl">
               {resultData.ai_summary}
-            </div>
-          )}
-        </div>
-      </article>
+            </p>
+          </section>
 
-      <div className="flex space-x-4 mt-6">
-        <PrimaryButton ghost onClick={() => go(screens.estimateHome)}>확인</PrimaryButton>
+        </div>
+      </main>
+
+      {/* 5. 하단 액션 버튼 */}
+      <div className="p-6 bg-F2F3F5 border-t border-gray-200 flex space-x-3">
+        <PrimaryButton ghost onClick={() => go(screens.estimateHome)}>확 인</PrimaryButton>
         <PrimaryButton onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
       </div>
     </section>

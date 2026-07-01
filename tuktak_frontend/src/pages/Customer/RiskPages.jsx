@@ -135,12 +135,9 @@ export function RiskSelectPage({ go }) {
   useEffect(() => {
     const fetchMyEstimates = async () => {
       try {
-        const token = localStorage.getItem('tuktak_access_token');
-        const response = await fetch('/api/v1/ai-estimates', {
+        const response = await fetch('http://localhost:8081/api/v1/users/me/ai-estimates', {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
         });
         const data = await response.json();
         
@@ -160,13 +157,12 @@ export function RiskSelectPage({ go }) {
 
   const requestRiskReport = async (estimateId) => {
     try {
-      const token = localStorage.getItem('tuktak_access_token');
-      const response = await fetch('/api/v1/risk-reports', {
+      const response = await fetch('http://localhost:8081/api/v1/risk-reports', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({ estimate_id: estimateId })
       });
       
@@ -293,13 +289,12 @@ export function RiskLoadingPage({ go }) {
       return;
     }
 
-    const token = localStorage.getItem('tuktak_access_token');
     
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/v1/risk-reports/${riskReportId}`, {
+        const response = await fetch(`http://localhost:8081/api/v1/risk-reports/${riskReportId}`, {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         });
         const data = await response.json();
         
@@ -496,12 +491,9 @@ export function MyRiskListPage({ go }) {
   useEffect(() => {
     const fetchMyRiskReports = async () => {
       try {
-        const token = localStorage.getItem('tuktak_access_token');
-        const response = await fetch('/api/v1/risk-reports', {
+        const response = await fetch('http://localhost:8081/api/v1/risk-reports', {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
         });
         const data = await response.json();
         
