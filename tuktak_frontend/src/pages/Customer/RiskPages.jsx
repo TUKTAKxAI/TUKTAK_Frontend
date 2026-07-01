@@ -6,7 +6,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { RiskCard, SearchBar } from '../../components/customer/Cards'
 import { screenPaths } from '../../routes/customerRoutes'
-import { figmaAssets } from '../../components/customer/figmaAssets'
 import preview5 from '../../assets/figma/preview5.webp';
 import preview6 from '../../assets/figma/preview6.webp';
 import preview7 from '../../assets/figma/preview7.webp';

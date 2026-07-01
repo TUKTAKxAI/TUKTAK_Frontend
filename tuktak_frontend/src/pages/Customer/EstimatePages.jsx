@@ -7,7 +7,6 @@ import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { estimateCards, screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
-import { figmaAssets } from '../../components/customer/figmaAssets'
 import preview1 from '../../assets/figma/preview1.webp';
 import preview2 from '../../assets/figma/preview2.webp';
 import preview3 from '../../assets/figma/preview3.webp';
