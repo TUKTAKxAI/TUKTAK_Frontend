@@ -1,4 +1,5 @@
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { riskCards, screens } from '../../data/customerData'
 import React, { useState, useEffect, useRef } from 'react'
@@ -519,9 +520,10 @@ export function MyRiskListPage({ go }) {
   }, []);
 
   return (
-    <section className="subpage-screen">
+    <section className="subpage-screen history-page risk-list-page">
       <div className="subpage-title-row">
-        <button className="inline-back-arrow" onClick={() => go(screens.mypage)}>‹</button>
+        <button className="inline-back-arrow" onClick={back}>‹</button>
+        <img className="subpage-title-icon risk-title-icon" src={figmaAssets.mypageRiskReportTitle} alt="" />
         <h1>내 리스크리포트</h1>
       </div>
       <SearchBar />
@@ -543,6 +545,7 @@ export function MyRiskListPage({ go }) {
           ))
         )}
       </div>
+      {selectedRisk ? <RiskReportModal item={selectedRisk} onClose={() => setSelectedRisk(null)} /> : null}
     </section>
   )
 }

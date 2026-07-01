@@ -61,10 +61,11 @@ function PublicRoute({ screen }) {
 
 function CustomerLayout({ screen, children }) {
   const { go } = useScreenNavigator()
+  const fixedListScreens = [screens.matchHistory, screens.myEstimateList, screens.myRiskList, screens.myReviews]
 
   return (
     <>
-      <div className="scroll-area app-flow">{children}</div>
+      <div className={`scroll-area app-flow ${fixedListScreens.includes(screen) ? 'history-layout-scroll' : ''}`}>{children}</div>
       <BottomNav current={screen} go={go} />
       <UrgentDialog />
     </>
@@ -108,7 +109,7 @@ function CustomerRoute({ screen }) {
     [screens.estimateLoading]: <EstimateLoadingPage go={go} />,
     [screens.estimateDone]: <EstimateDonePage go={go} />,
     [screens.estimateOutput]: <EstimateOutputPage go={go} />,
-    [screens.myEstimateList]: <MyEstimateListPage go={go} />,
+    [screens.myEstimateList]: <MyEstimateListPage go={go} back={back} />,
     [screens.matchingHome]: <MatchingHomePage go={go} />,
     [screens.matchingEstimateSelect]: <MatchingEstimateSelectPage go={go} />,
     [screens.matchingAddressList]: <MatchingAddressListPage go={go} />,
@@ -124,7 +125,7 @@ function CustomerRoute({ screen }) {
     [screens.riskLoading]: <RiskLoadingPage go={go} />,
     [screens.riskDone]: <RiskDonePage go={go} />,
     [screens.riskOutput]: <RiskOutputPage go={go} />,
-    [screens.myRiskList]: <MyRiskListPage go={go} />,
+    [screens.myRiskList]: <MyRiskListPage go={go} back={back} />,
     [screens.chatList]: (
       <ChatListPage
         threads={chatThreads}
@@ -142,10 +143,10 @@ function CustomerRoute({ screen }) {
         back={back}
       />
     ),
-    [screens.mypage]: <MyPage go={go} />,
-    [screens.myReviews]: <MyReviewsPage go={go} />,
-    [screens.profile]: <ProfilePage go={go} />,
-    [screens.matchHistory]: <MatchHistoryPage go={go} />,
+    [screens.mypage]: <MyPage go={go} back={back} />,
+    [screens.myReviews]: <MyReviewsPage go={go} back={back} />,
+    [screens.profile]: <ProfilePage go={go} back={back} />,
+    [screens.matchHistory]: <MatchHistoryPage go={go} back={back} />,
     [screens.reviewWrite]: <ReviewWritePage go={go} />,
   }
 
