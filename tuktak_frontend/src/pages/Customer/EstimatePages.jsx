@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react'
+import { fetchAiEstimateDetail, fetchMyAiEstimates } from '../../api/mypageApi'
 import { EstimateCard, SearchBar } from '../../components/customer/Cards'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Logo, PrimaryButton } from '../../components/customer/FormControls'
-import { estimateCards, screens } from '../../data/customerData'
+import { screens } from '../../data/customerData'
 
 function ServiceHero({ title, subtitle, body, onClick, buttonLabel }) {
   return (
@@ -100,19 +103,114 @@ export function EstimateOutputPage({ go }) {
   )
 }
 
-export function MyEstimateListPage({ go }) {
+export function MyEstimateListPage({ go, back }) {
+  const [selectedEstimate, setSelectedEstimate] = useState(null)
+  const [estimateList, setEstimateList] = useState([])
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState('latest')
+
+  useEffect(() => {
+    let isMounted = true
+
+    fetchMyAiEstimates().then((data) => {
+      if (isMounted) setEstimateList(data)
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredEstimateCards = estimateList
+    .filter((item) => (
+      `${item.date} ${item.status} ${item.title} ${item.subtitle} ${item.details?.location ?? ''} ${item.details?.request ?? ''}`
+        .toLowerCase()
+        .includes(normalizedQuery)
+    ))
+    .sort((a, b) => {
+      if (sort === 'oldest') return new Date(a.date) - new Date(b.date)
+      if (sort === 'price') return b.price - a.price
+      return new Date(b.date) - new Date(a.date)
+    })
+
   return (
-    <section className="subpage-screen">
+    <section className="subpage-screen history-page estimate-list-page">
       <div className="subpage-title-row">
-        <button className="inline-back-arrow" onClick={() => go(screens.mypage)}>‹</button>
+        <button className="inline-back-arrow" onClick={back}>‹</button>
+        <img className="subpage-title-icon estimate-title-icon" src={figmaAssets.mypageAiEstimateTitle} alt="" />
         <h1>내 AI 견적서</h1>
       </div>
-      <SearchBar />
-      <div className="list-stack">
-        {estimateCards.map((item) => (
-          <EstimateCard key={item.id} item={item} onClick={() => go(screens.estimateOutput)} />
-        ))}
+      <div className="history-search-row estimate-search-row">
+        <SearchBar value={query} onChange={setQuery} />
+        <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="AI 견적서 정렬">
+          <option value="latest">최신순</option>
+          <option value="oldest">오래된순</option>
+          <option value="price">가격순</option>
+        </select>
       </div>
+      <div className="history-scroll-area">
+        <div className="list-stack">
+          {filteredEstimateCards.map((item) => (
+            <EstimateCard
+              key={item.id}
+              item={item}
+              onClick={async () => setSelectedEstimate(await fetchAiEstimateDetail(item.id))}
+            />
+          ))}
+          {filteredEstimateCards.length === 0 ? <p className="empty-list-message">검색 결과가 없습니다.</p> : null}
+        </div>
+      </div>
+      {selectedEstimate ? (
+        <EstimateResultModal
+          item={selectedEstimate}
+          onClose={() => setSelectedEstimate(null)}
+          onStartMatching={() => go(screens.matchingEstimateSelect)}
+        />
+      ) : null}
     </section>
+  )
+}
+
+function EstimateResultModal({ item, onClose, onStartMatching }) {
+  return (
+    <div className="estimate-result-overlay">
+      <article className="estimate-result-modal">
+        <div className="estimate-result-head">
+          <div>
+            <span>{item.date}</span>
+            <small>{item.status}</small>
+          </div>
+          <button onClick={onClose} aria-label="닫기">×</button>
+        </div>
+        <div className="estimate-result-title">
+          <img src={figmaAssets.mypageAiEstimateTitle} alt="" />
+          <div>
+            <h2>{item.title}</h2>
+            <p>{item.subtitle}</p>
+          </div>
+        </div>
+        <div className="estimate-result-body">
+          <section>
+            <span>시공 위치</span>
+            <strong>{item.details?.location}</strong>
+          </section>
+          <section>
+            <span>요청 내용</span>
+            <strong>{item.details?.request}</strong>
+          </section>
+          <section>
+            <span>예상 시간</span>
+            <strong>{item.details?.estimatedTime}</strong>
+          </section>
+          <p>{item.details?.summary}</p>
+          <div className="document-art estimate compact" />
+        </div>
+        <div className="estimate-result-actions">
+          <PrimaryButton ghost onClick={onClose}>확인</PrimaryButton>
+          <PrimaryButton onClick={onStartMatching}>매칭 시작하기</PrimaryButton>
+        </div>
+      </article>
+    </div>
   )
 }
