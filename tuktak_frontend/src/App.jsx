@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
-import { useCustomerFlow } from './context/CustomerFlowProvider'
+import { useCustomerFlow } from './context/CustomerFlowContext'
 import { chatThreads, publicScreens, screens } from './data/customerData'
 import { AuthPages } from './pages/Customer/AuthPages'
 import { ChatListPage, ChatRoomPage } from './pages/Customer/ChatPage'
@@ -80,9 +80,18 @@ function UrgentDialog() {
   return (
     <UrgentModal
       close={() => flow.setShowUrgentModal(false)}
-      confirm={() => {
-        flow.setShowUrgentModal(false)
-        go(screens.matchingProgress)
+      confirm={async () => {
+        try {
+          await flow.submitMatchingRequest(true)
+          flow.setShowUrgentModal(false)
+          go(screens.matchingProgress)
+        } catch {
+          flow.updateMatchingFlow({
+            matchingStatus: '매칭 요청 실패',
+            matchingError: '긴급 매칭 요청에 실패했습니다. AI 견적서와 주소 정보를 확인해주세요.',
+          })
+          flow.setShowUrgentModal(false)
+        }
       }}
     />
   )

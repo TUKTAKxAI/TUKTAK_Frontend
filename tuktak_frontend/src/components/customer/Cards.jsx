@@ -36,7 +36,7 @@ export function EstimateCard({ item, onClick, actionLabel }) {
   )
 }
 
-export function HistoryCard({ item, onClickReview }) {
+export function HistoryCard({ item, onClickReview, onClickDetail }) {
   return (
     <article className="record-card history-card">
       <div className="record-side">
@@ -50,7 +50,7 @@ export function HistoryCard({ item, onClickReview }) {
         <p>{item.schedule}</p>
         <div className="record-footer">
           {item.reviewable ? <button className="mini-primary" onClick={onClickReview}>리뷰 작성</button> : <span />}
-          <small>자세히 보기 ˅</small>
+          {onClickDetail ? <button className="detail-link-button" type="button" onClick={onClickDetail}>자세히 보기 ˅</button> : <small>지난 매칭 기록</small>}
         </div>
       </div>
     </article>
