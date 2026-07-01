@@ -394,7 +394,7 @@ export function MatchingEstimateSelectPage({ go }) {
               <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
                    dangerouslySetInnerHTML={{ __html: loadingSvg }} 
               />
-              <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서를 불러오는 중입니다 ...</p>
+              <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서 불러오는 중 ...</p>
             </div>
           
           ) : loadStatus === 'error' || loadStatus === 'empty' ? (

@@ -1,3 +1,4 @@
+import { api } from '../../api/apiClient'
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { fetchAiEstimateDetail, fetchMyAiEstimates } from '../../api/mypageApi'
@@ -161,13 +162,8 @@ export function EstimateStartPage({ go }) {
     formData.append('description', description);
 
     try {
-      const response = await fetch('http://localhost:8081/api/v1/ai-estimates', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
       
-      const data = await response.json();
+      const data = await api.post('/api/v1/ai-estimates', formData);
       
       if (data.success) {
         const newCount = remainingCount - 1;
@@ -183,7 +179,7 @@ export function EstimateStartPage({ go }) {
       }
     } catch (error) {
       console.error('견적 요청 실패:', error);
-      alert('백엔드 서버와 통신하는 중 오류가 발생했습니다. 서버가 켜져 있는지 확인해 주세요.');
+      alert('백엔드 서버와 통신하는 중 오류가 발생했습니다: ${error.message}');
     }
   };
 
@@ -262,11 +258,7 @@ useEffect(() => {
     
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8081/api/v1/ai-estimates/${estimateId}`, {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const data = await response.json();
+        const data = await api.get(`/api/v1/ai-estimates/${estimateId}`);
         
         if (data.success && (data.estimate.estimate_status === 'COMPLETED' || data.estimate.estimate_status === 'SUCCESS')) {
           clearInterval(interval);
@@ -293,7 +285,7 @@ useEffect(() => {
         className="mb-5 w-full px-4 font-bold text-gray-800 text-center whitespace-nowrap tracking-tighter"
         style={{ fontSize: '24px' }}
       >
-        AI 견적서를 생성중 입니다 ...
+        AI 견적서 생성중 ...
       </h2>
       
       <div className="w-52 h-52 mb-8 flex justify-center items-center pointer-events-none">
@@ -384,7 +376,7 @@ export function EstimateOutputPage({ go }) {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-left">
             <h2 className="text-[14px] font-semibold text-gray-500 mb-1">{resultData.repair_task_name || 'AI 시공 견적'}</h2>
             <p className="text-[22px] text-gray-900 font-bold mt-1 tracking-tight">
-              예상 비용 : {parseInt(resultData.min_price?.toLocaleString()) || 0}원 ~ {parseInt(resultData.max_price?.toLocaleString()) || 0}원
+              예상 비용 : {parseInt(resultData.min_price?.toLocaleString()) || 0} 원 ~ {parseInt(resultData.max_price?.toLocaleString()) || 0} 원
             </p>
         </div>
 
@@ -440,33 +432,64 @@ export function EstimateOutputPage({ go }) {
       </main>
 
       {/* 5. 하단 액션 버튼 */}
-      <div className="p-6 bg-F2F3F5 border-t border-gray-200 flex space-x-3">
-        <PrimaryButton ghost onClick={() => go(screens.estimateHome)}>확 인</PrimaryButton>
-        <PrimaryButton onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
+      <div className="px-2 pt-6 pb-0 bg-F2F3F5 border-t border-gray-200 flex space-x-5">
+        <PrimaryButton ghost onClick={() => go(screens.estimateHome)} style={{ border: '1px solid #ccc', width: '180px', height: '52px', fontSize: '20px', fontWeight: 'bold' }}>확 인</PrimaryButton>
+        <PrimaryButton onClick={() => go(screens.matchingEstimateSelect)} style={{ width: '180px', height: '52px', fontSize: '18px', fontWeight: 'bold' }}>매칭 시작하기</PrimaryButton>
       </div>
     </section>
   )
 }
 
 export function MyEstimateListPage({ go, back }) {
-  const [selectedEstimate, setSelectedEstimate] = useState(null)
-  const [estimateList, setEstimateList] = useState([])
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('latest')
+  const [selectedEstimate, setSelectedEstimate] = useState(null);
+  const [estimateList, setEstimateList] = useState([]);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('latest');
 
+  // ==========================================
+  // 1. 견적서 목록 가져오기 (apiClient 직접 사용)
+  // ==========================================
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
-    fetchMyAiEstimates().then((data) => {
-      if (isMounted) setEstimateList(data)
-    })
+    const fetchEstimates = async () => {
+      try {
+        // 💡 백엔드 엔드포인트에서 데이터 호출
+        const data = await api.get('/users/me/ai-estimates');
+        
+        if (isMounted && data && data.items) {
+          // 💡 화면 컴포넌트(<EstimateCard>)가 에러를 뿜지 않도록 프론트엔드 양식에 맞게 매핑(Mapping)합니다.
+          const mappedList = data.items.map((item) => ({
+            id: item.estimate_id,
+            date: item.created_at ? item.created_at.split('T')[0] : '날짜 없음',
+            status: item.estimate_status === 'COMPLETED' ? '완료' : '진행중',
+            title: item.repair_task_name || 'AI 시공 견적',
+            subtitle: `예상 비용: ${item.min_price?.toLocaleString() || 0}원`,
+            price: item.min_price || 0, // 정렬용
+            details: {
+              location: item.main_category ? `${item.main_category} > ${item.object_label || ''}` : '미정',
+              request: item.description || '요청 내용이 없습니다.',
+              estimatedTime: `${item.estimated_minutes_min || 0}~${item.estimated_minutes_max || 0}분`,
+              summary: item.ai_summary || ''
+            }
+          }));
+          
+          setEstimateList(mappedList);
+        }
+      } catch (error) {
+        console.error('견적서 목록 불러오기 실패:', error);
+      }
+    };
+
+    fetchEstimates();
 
     return () => {
-      isMounted = false
-    }
-  }, [])
+      isMounted = false;
+    };
+  }, []);
 
-  const normalizedQuery = query.trim().toLowerCase()
+  // 검색 및 정렬 로직 (기존과 동일)
+  const normalizedQuery = query.trim().toLowerCase();
   const filteredEstimateCards = estimateList
     .filter((item) => (
       `${item.date} ${item.status} ${item.title} ${item.subtitle} ${item.details?.location ?? ''} ${item.details?.request ?? ''}`
@@ -474,10 +497,43 @@ export function MyEstimateListPage({ go, back }) {
         .includes(normalizedQuery)
     ))
     .sort((a, b) => {
-      if (sort === 'oldest') return new Date(a.date) - new Date(b.date)
-      if (sort === 'price') return b.price - a.price
-      return new Date(b.date) - new Date(a.date)
-    })
+      if (sort === 'oldest') return new Date(a.date) - new Date(b.date);
+      if (sort === 'price') return b.price - a.price;
+      return new Date(b.date) - new Date(a.date);
+    });
+
+  // ==========================================
+  // 2. 견적서 상세 정보 모달 띄우기 (apiClient 직접 사용)
+  // ==========================================
+  const handleCardClick = async (id) => {
+    try {
+      // 💡 특정 id로 상세 데이터 요청
+      const data = await api.get(`/ai-estimates/${id}`);
+      
+      if (data && data.estimate) {
+        const detailItem = data.estimate;
+        
+        // 모달창에 띄우기 위해 똑같이 구조를 맞춰서 상태에 저장합니다.
+        setSelectedEstimate({
+          id: detailItem.estimate_id,
+          date: detailItem.created_at ? detailItem.created_at.split('T')[0] : '날짜 없음',
+          status: detailItem.estimate_status === 'COMPLETED' ? '완료' : '진행중',
+          title: detailItem.repair_task_name || 'AI 시공 견적',
+          subtitle: `예상 비용: ${detailItem.min_price?.toLocaleString() || 0}원`,
+          price: detailItem.min_price || 0,
+          details: {
+            location: detailItem.main_category ? `${detailItem.main_category} > ${detailItem.object_label || ''}` : '미정',
+            request: detailItem.description || '요청 내용이 없습니다.',
+            estimatedTime: `${detailItem.estimated_minutes_min || 0}~${detailItem.estimated_minutes_max || 0}분`,
+            summary: detailItem.ai_summary || ''
+          }
+        });
+      }
+    } catch (error) {
+      console.error('상세 정보 불러오기 실패:', error);
+      alert('상세 정보를 불러오지 못했습니다.');
+    }
+  };
 
   return (
     <section className="subpage-screen history-page estimate-list-page">
@@ -486,6 +542,7 @@ export function MyEstimateListPage({ go, back }) {
         <img className="subpage-title-icon estimate-title-icon" src={figmaAssets.mypageAiEstimateTitle} alt="" />
         <h1>내 AI 견적서</h1>
       </div>
+      
       <div className="history-search-row estimate-search-row">
         <SearchBar value={query} onChange={setQuery} />
         <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="AI 견적서 정렬">
@@ -494,18 +551,20 @@ export function MyEstimateListPage({ go, back }) {
           <option value="price">가격순</option>
         </select>
       </div>
+      
       <div className="history-scroll-area">
         <div className="list-stack">
           {filteredEstimateCards.map((item) => (
             <EstimateCard
               key={item.id}
               item={item}
-              onClick={async () => setSelectedEstimate(await fetchAiEstimateDetail(item.id))}
+              onClick={() => handleCardClick(item.id)} // 💡 여기서 방금 만든 상세 조회 함수를 부릅니다!
             />
           ))}
           {filteredEstimateCards.length === 0 ? <p className="empty-list-message">검색 결과가 없습니다.</p> : null}
         </div>
       </div>
+      
       {selectedEstimate ? (
         <EstimateResultModal
           item={selectedEstimate}
@@ -516,7 +575,6 @@ export function MyEstimateListPage({ go, back }) {
     </section>
   )
 }
-
 function EstimateResultModal({ item, onClose, onStartMatching }) {
   return (
     <div className="estimate-result-overlay">
