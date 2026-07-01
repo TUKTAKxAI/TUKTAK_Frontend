@@ -10,12 +10,13 @@ export function HeaderIcon({ src, label, onClick }) {
   )
 }
 
-export function CustomerTopBar({ go, title, compact = false }) {
+/* hideTitle 추가 */
+export function CustomerTopBar({ go, title, compact = false, hideTitle = false, }) {
   return (
     <header className={`customer-topbar ${compact ? 'compact' : ''}`}>
       <div className="brand-with-title">
         <Logo />
-        {title ? <h1>{title}</h1> : null}
+        {!hideTitle && title ? <h1>{title}</h1> : null}
       </div>
       <div className="top-actions">
         <HeaderIcon src={figmaAssets.notification} label="알림" />
