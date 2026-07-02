@@ -719,7 +719,7 @@ function RiskReportModal({ item, onClose }) {
               <ul className="space-y-2">
                 {checklist.map((c, idx) => (
                   <li key={idx} className="flex items-center text-[13px] text-gray-700">
-                    <span className="flex items-center justify-center w-5 h-5 mr-3 bg-blue-100 text-blue-600 rounded-full text-[10px] font-bold flex-shrink-0">
+                    <span className="flex items-center justify-center w-5 h-5 mr-3 bg-blue-100 text-blue-600 rounded-full text-[10px] font-bold shrink-0">
                       {idx + 1}
                     </span>
                     <span>{c.label || c.task || c.title || (typeof c === 'string' ? c : '')}</span>

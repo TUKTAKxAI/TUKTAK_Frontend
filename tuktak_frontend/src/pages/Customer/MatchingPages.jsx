@@ -480,75 +480,157 @@ export function MatchingAddressListPage({ go }) {
   const flow = useCustomerFlow()
   const { updateMatchingFlow } = flow
   const selectedAddress = flow.matchingFlow.selectedAddress
-  const [error, setError] = useState('')
+  
+  // 🔍 검색 API 연동을 위해 새로 추가된 상태(State) 보관함들
+  const [keyword, setKeyword] = useState('')         // 유저가 입력창에 치는 검색어
+  const [searchResults, setSearchResults] = useState([]) // 서버에서 받아온 주소 결과 리스트
+  const [isSearching, setIsSearching] = useState(false)   // API 호출 로딩 상태
+  const [error, setError] = useState('')             // 에러 메시지 저장
 
-  useEffect(() => {
-    const handleMessage = (event) => {
-      if (event.origin !== window.location.origin) return
-      if (event.data?.type !== 'TUKTAK_JUSO_SELECTED') return
+  // ==========================================
+  // 1. 행안부 서버에 주소 데이터 요청하는 함수
+  // ==========================================
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault() // 엔터 쳤을 때 페이지가 새로고침 되는 현상 방지
+    if (!keyword.trim()) return alert('검색어를 입력해주세요!')
 
-      const payload = event.data.payload || {}
-      const fullAddress = payload.roadFullAddr || [payload.roadAddrPart1, payload.addrDetail].filter(Boolean).join(' ')
-      if (!fullAddress) {
-        setError('주소 정보를 받아오지 못했습니다. 다시 검색해주세요.')
-        return
-      }
-
-      setError('')
-      updateMatchingFlow({
-        selectedAddress: {
-          address_id: payload.bdMgtSn || Date.now(),
-          region_code_id: payload.admCd || null,
-          address: fullAddress,
-          road_addr_part1: payload.roadAddrPart1 || '',
-          address_detail: payload.addrDetail || '',
-          zip_no: payload.zipNo || '',
-          adm_cd: payload.admCd || '',
-          label: fullAddress,
-        },
-      })
-    }
-
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [updateMatchingFlow])
-
-  const openAddressSearch = () => {
-    if (!hasJusoConfirmKey()) {
-      setError('.env에 VITE_JUSO_CONFIRM_KEY를 설정한 뒤 다시 실행해주세요.')
-      return
-    }
-
+    setIsSearching(true)
     setError('')
-    window.open(getJusoPopupUrl(), 'jusoSearch', 'width=430,height=760,scrollbars=yes,resizable=yes')
+    setSearchResults([])
+
+    try {
+      // 💡 jusoApi.js에 구현되어 있던 검색 API 함수를 직접 호출합니다!
+      const data = await searchJusoAddresses({ keyword: keyword.trim() })
+      
+      if (data && data.items) {
+        setSearchResults(data.items)
+        if (data.items.length === 0) {
+          setError('검색 결과가 없습니다. 건물명이나 도로명을 다시 확인해주세요.')
+        }
+      }
+    } catch (err) {
+      console.error('주소 검색 실패:', err)
+      setError(err.message || '주소 검색 중 오류가 발생했습니다.')
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // ==========================================
+  // 2. 검색된 리스트 중 하나를 클릭했을 때 선택하는 함수
+  // ==========================================
+  const handleSelectAddress = (jusoItem) => {
+    // 백엔드 매칭 요청 스키마 양식에 맞게 찰떡같이 구조를 매핑해 줍니다.
+    updateMatchingFlow({
+      selectedAddress: {
+        address_id: jusoItem.bdMgtSn || Date.now(), // 건물관리번호를 고유 ID로 활용
+        region_code_id: jusoItem.admCd || null,     // 행정구역코드(법정동코드 등)
+        address: jusoItem.roadAddr,                 // 전체 도로명 주소
+        road_addr_part1: jusoItem.roadAddrPart1 || '',
+        address_detail: '',                         // 검색 API 시점에는 상세주소창이 비어있으므로 초기화
+        zip_no: jusoItem.zipNo || '',
+        adm_cd: jusoItem.admCd || '',
+        label: jusoItem.roadAddr,
+      },
+    })
+    
+    // 💡 선택이 완료되면 깔끔하게 입력창과 결과 목록을 비워줍니다.
+    setSearchResults([])
+    setKeyword('')
   }
 
   const clearAddress = () => {
-    updateMatchingFlow({
-      selectedAddress: null,
-    })
+    updateMatchingFlow({ selectedAddress: null })
   }
 
   return (
-    <section className="selection-screen">
+    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10 overflow-y-auto">
       <CustomerTopBar go={go} />
-      <button className="inline-back-arrow" onClick={() => go(screens.matchingEstimateSelect)}>‹</button>
-      <p className="small-copy">시공 지역을 알려주세요 !</p>
-      <h1>내 주소목록</h1>
-      <div className="address-list matching-address-list">
-        <article className={`address-row matching-address-card ${selectedAddress ? 'selected' : ''}`}>
-          <div className="address-main-button">
-            <div className="address-icon house" />
-            <span>{selectedAddress?.address || '도로명 주소 검색으로 시공 주소를 선택해주세요.'}</span>
-            {selectedAddress ? <strong>선택됨 ✓</strong> : null}
+      
+      {/* 상단 헤더 영역 */}
+      <div className="flex items-center mb-6">
+        <button 
+          className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+          onClick={() => go(screens.matchingEstimateSelect)}
+        >
+          <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">시공 지역 선택</h1>
+      </div>
+
+      <p className="text-sm font-medium text-gray-700 mb-3">시공을 진행할 도로명 주소 또는 건물명을 검색해 주세요!</p>
+
+      {/* 🛠️ 1. 주소 텍스트 입력 폼 (검색창 디자인) */}
+      <form onSubmit={handleSearch} className="flex gap-2 mb-4 w-full">
+        <input 
+          type="text" 
+          className="flex-1 px-4 py-2.5 border border-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          placeholder="Ex) 테헤란로 123 또는 사ピア타워"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+        />
+        <button 
+          type="submit"
+          disabled={isSearching}
+          className="px-5 bg-[#1C54D4] text-white font-bold rounded-xl text-sm transition-colors hover:bg-blue-700 whitespace-nowrap disabled:bg-gray-400"
+        >
+          {isSearching ? '검색중..' : '검색'}
+        </button>
+      </form>
+
+      {/* 🛠️ 2. 데이터 수신 성공 시 화면에 뿌려지는 '검색 결과 리스트 박스' */}
+      {searchResults.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-300 p-2 max-h-60 overflow-y-auto mb-6 space-y-1 shadow-sm">
+          <small className="text-gray-400 px-2 block mb-1 font-medium">검색 결과 총 {searchResults.length}건</small>
+          {searchResults.map((juso, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className="w-full text-left px-3 py-2.5 hover:bg-blue-50 rounded-lg transition-colors border-b border-gray-100 last:border-0 flex flex-col gap-0.5"
+              onClick={() => handleSelectAddress(juso)}
+            >
+              <span className="text-[14px] font-semibold text-gray-900">{juso.roadAddr}</span>
+              {juso.jibunAddr && <span className="text-[11px] text-gray-400">[지번] {juso.jibunAddr}</span>}
+              <span className="text-[11px] text-blue-500 font-medium">우편번호 : {juso.zipNo}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 안내 및 에러 메시지 창 */}
+      {error && <p className="text-center text-sm font-medium text-red-500 mb-6">{error}</p>}
+
+      {/* 🛠️ 3. 최종 선택 완료된 주소가 박히는 인라인 카드 */}
+      <h2 className="text-base font-bold text-gray-800 mb-3 mt-2">선택된 시공 주소</h2>
+      <div className="address-list matching-address-list mb-auto">
+        <article className={`bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex items-center justify-between transition-all ${selectedAddress ? 'border-blue-500 bg-blue-50/20' : ''}`}>
+          <div className="flex items-center gap-3">
+            <div className="address-icon house w-6 h-6 bg-contain bg-no-repeat" />
+            <span className="text-[14px] text-gray-800 font-medium leading-tight">
+              {selectedAddress?.address || '위 검색창에서 주소를 검색하고 리스트에서 선택해 주세요.'}
+            </span>
           </div>
-          {selectedAddress ? <button className="address-edit-button" type="button" onClick={clearAddress}>삭제</button> : null}
+          {selectedAddress && (
+            <button 
+              className="text-xs text-red-500 font-bold border border-red-200 px-2 py-1 rounded bg-white hover:bg-red-50 transition-colors" 
+              type="button" 
+              onClick={clearAddress}
+            >
+              삭제
+            </button>
+          )}
         </article>
       </div>
-      {selectedAddress?.zip_no ? <p className="muted center">우편번호 {selectedAddress.zip_no}</p> : null}
-      {error ? <p className="muted center">{error}</p> : null}
-      <button className="add-address" type="button" onClick={openAddressSearch}>⊕ 도로명 주소 검색</button>
-      <PrimaryButton narrow onClick={() => go(screens.matchingSchedule)}>다음</PrimaryButton>
+
+      {/* 다음 단계 이동 액션 하단바 */}
+      <div className="pt-6 w-full">
+        <PrimaryButton 
+          narrow 
+          onClick={() => selectedAddress ? go(screens.matchingSchedule) : alert('주소를 검색하여 먼저 선택해 주세요!')}
+        >
+          다음 단계로
+        </PrimaryButton>
+      </div>
     </section>
   )
 }
