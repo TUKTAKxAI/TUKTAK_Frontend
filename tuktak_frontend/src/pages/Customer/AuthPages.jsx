@@ -2,11 +2,14 @@ import { ChoiceCard } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { BackButton, Field, Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { screens, signupTerms } from '../../data/customerData'
+import { contractorScreens } from '../../data/contractorData'
+import { contractorScreenPaths } from '../../routes/contractorRoutes'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
   login,
   signupCustomer,
+  signupPartner,
   checkEmailAvailability,
 } from '../../services/authService'
 import { searchJusoAddresses } from '../../api/jusoApi'
@@ -42,6 +45,13 @@ export function AuthPages({
     detailAddress: '',
   })
 
+  const [partnerSignupData, setPartnerSignupData] = useState({
+    businessName: '',
+    specialty: '',
+    careerYears: '',
+    businessAddress: '',
+  })
+
   const handleLogin = async () => {
     try {
       const result = await login(
@@ -50,6 +60,11 @@ export function AuthPages({
       );
 
       authLogin(result);
+
+      if (selectedRole === "partner") {
+        go(contractorScreenPaths[contractorScreens.home]);
+        return;
+      }
 
       setScreen(screens.home);
 
@@ -193,6 +208,41 @@ export function AuthPages({
 
   }
 
+  const handlePartnerSignup = async () => {
+    if (!partnerSignupData.businessName.trim()) {
+      alert("업체명을 입력해주세요.")
+      return
+    }
+
+    if (!partnerSignupData.specialty.trim()) {
+      alert("전문 분야를 입력해주세요.")
+      return
+    }
+
+    if (!partnerSignupData.businessAddress.trim()) {
+      alert("사업장 주소를 입력해주세요.")
+      return
+    }
+
+    try {
+      await signupPartner({
+        name: signupData.name,
+        nickname: signupData.nickname,
+        email: signupData.email,
+        password: signupData.password,
+        phone: signupData.phone,
+        business_name: partnerSignupData.businessName,
+        specialty: partnerSignupData.specialty,
+        career_years: Number(partnerSignupData.careerYears || 0),
+        business_address: partnerSignupData.businessAddress,
+      })
+
+      go(screens.welcome)
+    } catch (err) {
+      alert(JSON.stringify(err.response?.data, null, 2));
+    }
+  }
+
   const [selectedRole, setSelectedRole] = useState("customer");
 
   // null : 아직 확인 안 함
@@ -225,6 +275,12 @@ export function AuthPages({
       phoneCarrier: 'KT',
       address: '',
       detailAddress: '',
+    });
+    setPartnerSignupData({
+      businessName: '',
+      specialty: '',
+      careerYears: '',
+      businessAddress: '',
     });
 
     setEmailCheckResult(null);
@@ -585,7 +641,73 @@ export function AuthPages({
         <h2 className="hero-copy compact">어떤 사용자신가요?</h2>
         <ChoiceCard active={userType === 'customer'} onClick={() => setUserType('customer')} title="고객" text="파트너에게 수리를 맡겨보세요" />
         <ChoiceCard active={userType === 'partner'} onClick={() => setUserType('partner')} title="파트너" text="시공이 필요한 고객을 만나보세요" />
-        <PrimaryButton narrow onClick={() => go(screens.terms)}>다음</PrimaryButton>
+        <PrimaryButton narrow onClick={() => go(userType === 'partner' ? screens.partnerSignup : screens.terms)}>다음</PrimaryButton>
+      </section>
+    )
+  }
+
+  if (screen === screens.partnerSignup) {
+    return (
+      <section className="auth-screen signup-screen">
+        <BackButton onClick={back} />
+        <Logo />
+        <h2 className="hero-copy compact">파트너 정보를 입력해주세요</h2>
+
+        <label className="field">
+          <input
+            placeholder="업체명"
+            value={partnerSignupData.businessName}
+            onChange={(e) =>
+              setPartnerSignupData({
+                ...partnerSignupData,
+                businessName: e.target.value,
+              })
+            }
+          />
+        </label>
+
+        <label className="field">
+          <input
+            placeholder="전문 분야"
+            value={partnerSignupData.specialty}
+            onChange={(e) =>
+              setPartnerSignupData({
+                ...partnerSignupData,
+                specialty: e.target.value,
+              })
+            }
+          />
+        </label>
+
+        <label className="field">
+          <input
+            type="number"
+            min="0"
+            placeholder="경력 연수"
+            value={partnerSignupData.careerYears}
+            onChange={(e) =>
+              setPartnerSignupData({
+                ...partnerSignupData,
+                careerYears: e.target.value,
+              })
+            }
+          />
+        </label>
+
+        <label className="field">
+          <input
+            placeholder="사업장 주소"
+            value={partnerSignupData.businessAddress}
+            onChange={(e) =>
+              setPartnerSignupData({
+                ...partnerSignupData,
+                businessAddress: e.target.value,
+              })
+            }
+          />
+        </label>
+
+        <PrimaryButton onClick={handlePartnerSignup}>파트너 가입 완료</PrimaryButton>
       </section>
     )
   }

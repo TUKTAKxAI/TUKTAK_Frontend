@@ -1,7 +1,29 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { ContractorBottomNav } from './components/contractor/ContractorBottomNav'
 import { BottomNav } from './components/customer/BottomNav'
 import { useCustomerFlow } from './context/CustomerFlowContext'
+import { contractorScreens } from './data/contractorData'
 import { chatThreads, publicScreens, screens } from './data/customerData'
+import {
+  ContractorActiveWorkPage,
+  ContractorAiEstimatePage,
+  ContractorChatRoomPage,
+  ContractorChatsPage,
+  ContractorHomePage,
+  ContractorMyInfoPage,
+  ContractorMyRegionsPage,
+  ContractorMyServicesPage,
+  ContractorMypagePage,
+  ContractorNotificationsPage,
+  ContractorQuoteDonePage,
+  ContractorQuoteFormPage,
+  ContractorQuotesPage,
+  ContractorRecordDetailPage,
+  ContractorRecordsPage,
+  ContractorRequestDetailPage,
+  ContractorRequestsPage,
+  ContractorReviewsPage,
+} from './pages/contractor'
 import { AuthPages } from './pages/Customer/AuthPages'
 import { ChatListPage, ChatRoomPage } from './pages/Customer/ChatPage'
 import {
@@ -29,6 +51,7 @@ import {
 } from './pages/Customer/MatchingPages'
 import { MatchHistoryPage, MyPage, MyReviewsPage, ProfilePage } from './pages/Customer/MyPages'
 import { MyRiskListPage, RiskDonePage, RiskHomePage, RiskLoadingPage, RiskOutputPage, RiskSelectPage } from './pages/Customer/RiskPages'
+import { contractorRouteScreens, contractorScreenPaths } from './routes/contractorRoutes'
 import { routeScreens, screenPaths } from './routes/customerRoutes'
 import './App.css'
 
@@ -70,6 +93,51 @@ function CustomerLayout({ screen, children }) {
       <UrgentDialog />
     </>
   )
+}
+
+function useContractorNavigator() {
+  const navigate = useNavigate()
+  const go = (screen) => navigate(contractorScreenPaths[screen] || contractorScreenPaths[contractorScreens.home])
+
+  return { go }
+}
+
+function ContractorLayout({ screen, children }) {
+  const { go } = useContractorNavigator()
+
+  return (
+    <>
+      <div className="scroll-area app-flow">{children}</div>
+      <ContractorBottomNav current={screen} go={go} />
+    </>
+  )
+}
+
+function ContractorRoute({ screen }) {
+  const { go } = useContractorNavigator()
+
+  const pages = {
+    [contractorScreens.home]: <ContractorHomePage go={go} />,
+    [contractorScreens.notifications]: <ContractorNotificationsPage go={go} />,
+    [contractorScreens.activeWork]: <ContractorActiveWorkPage go={go} />,
+    [contractorScreens.requests]: <ContractorRequestsPage go={go} />,
+    [contractorScreens.requestDetail]: <ContractorRequestDetailPage go={go} />,
+    [contractorScreens.aiEstimate]: <ContractorAiEstimatePage go={go} />,
+    [contractorScreens.quoteForm]: <ContractorQuoteFormPage go={go} />,
+    [contractorScreens.quoteDone]: <ContractorQuoteDonePage go={go} />,
+    [contractorScreens.quotes]: <ContractorQuotesPage go={go} />,
+    [contractorScreens.records]: <ContractorRecordsPage go={go} />,
+    [contractorScreens.recordDetail]: <ContractorRecordDetailPage go={go} />,
+    [contractorScreens.chats]: <ContractorChatsPage go={go} />,
+    [contractorScreens.chatRoom]: <ContractorChatRoomPage go={go} />,
+    [contractorScreens.reviews]: <ContractorReviewsPage go={go} />,
+    [contractorScreens.mypage]: <ContractorMypagePage go={go} />,
+    [contractorScreens.myInfo]: <ContractorMyInfoPage go={go} />,
+    [contractorScreens.myServices]: <ContractorMyServicesPage go={go} />,
+    [contractorScreens.myRegions]: <ContractorMyRegionsPage go={go} />,
+  }
+
+  return <ContractorLayout screen={screen}>{pages[screen] || <Navigate to={contractorScreenPaths[contractorScreens.home]} replace />}</ContractorLayout>
 }
 
 function UrgentDialog() {
@@ -164,6 +232,13 @@ function App() {
               key={screen}
               path={path}
               element={publicScreens.includes(screen) ? <PublicRoute screen={screen} /> : <CustomerRoute screen={screen} />}
+            />
+          ))}
+          {contractorRouteScreens.map(({ screen, path }) => (
+            <Route
+              key={screen}
+              path={path}
+              element={<ContractorRoute screen={screen} />}
             />
           ))}
           <Route path="*" element={<Navigate to={screenPaths[screens.login]} replace />} />
