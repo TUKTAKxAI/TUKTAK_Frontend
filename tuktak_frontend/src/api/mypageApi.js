@@ -1,25 +1,40 @@
-import { apiFormRequest, apiRequest, getRefreshToken, hasAccessToken } from './client'
+import { apiFormRequest, apiRequest, hasAccessToken } from './client'
 import { estimateCards, historyCards, riskCards } from '../data/customerData'
+import { getUser } from '../utils/token'
 
-const fallbackProfile = {
-  nickname: '전지원',
-  name: '전지원',
-  email: 'abcd123@gmail.com',
-  phone: '010-1234-5678',
-  social: '카카오 연동됨',
-  address: '서울시 종로구 인사동길',
-  payment: '신한카드 **** 1234',
+const defaultProfile = {
+  nickname: '사용자',
+  name: '사용자',
+  email: '',
+  phone: '',
+  social: '연동 정보 없음',
+  address: '주소를 등록해 주세요',
+  payment: '결제 수단을 등록해 주세요',
 }
 
-// 마이페이지 개발용 안전장치입니다.
-// 로그인 토큰이 아직 없거나 백엔드가 준비되지 않은 경우 화면이 깨지지 않도록 mock 데이터를 보여줍니다.
-// 실제 백엔드 연결 테스트 때는 로그인 API로 access token이 localStorage에 저장되어야 request가 실행됩니다.
+function getFallbackProfile() {
+  const storedUser = getUser() ?? {}
+  const nickname = storedUser.nickname ?? storedUser.name ?? defaultProfile.nickname
+
+  return {
+    ...defaultProfile,
+    nickname,
+    name: storedUser.name ?? nickname,
+    email: storedUser.email ?? '',
+    userId: storedUser.user_id ? `USER-${storedUser.user_id}` : '',
+  }
+}
+
+// 마이페이지 개발용 안전장치입니다. 백엔드 API가 아직 없거나 응답이 비어도 화면이 깨지지 않게 합니다.
+// HttpOnly Cookie 인증은 JS에서 토큰을 읽을 수 없으므로 실제 API를 호출한 뒤 실패하면 fallback으로 내려갑니다.
 function withMockFallback(request, fallback) {
-  if (!hasAccessToken()) return Promise.resolve(fallback)
+  const fallbackValue = typeof fallback === 'function' ? fallback() : fallback
+
+  if (!hasAccessToken()) return Promise.resolve(fallbackValue)
 
   return request().catch((error) => {
     console.warn('API fallback:', error)
-    return fallback
+    return fallbackValue
   })
 }
 
@@ -41,7 +56,8 @@ function getReportPayload(data) {
 
 // 백엔드 dev와 로컬 risk 브랜치의 필드명이 다를 수 있어서 둘 다 허용합니다.
 function getRiskArray(report, baseKey, jsonKey) {
-  const value = report[baseKey] ?? report[jsonKey] ?? []
+  const resultJson = report.result_json ?? {}
+  const value = report[baseKey] ?? report[jsonKey] ?? resultJson[baseKey] ?? resultJson[jsonKey] ?? []
   return Array.isArray(value) ? value : []
 }
 
@@ -136,6 +152,7 @@ function mapRiskDetail(report) {
   const expiry = getRiskExpiry(report.created_at)
   const riskItems = getRiskArray(report, 'risk_items', 'risk_items_json')
   const checklist = getRiskArray(report, 'checklist', 'checklist_json')
+  const resultJson = report.result_json ?? {}
 
   return {
     id: report.risk_report_id,
@@ -148,10 +165,12 @@ function mapRiskDetail(report) {
     riskScore: report.risk_score ?? 0,
     riskLevel: report.risk_level ?? report.report_status,
     reportStatus: report.report_status,
-    summary: report.summary ?? '리스크 리포트 상세 내용입니다.',
-    items: riskItems.map((item) => item.title ?? item.summary ?? item.content ?? JSON.stringify(item)),
-    checklist: checklist.map((item) => item.title ?? item.content ?? item.summary ?? JSON.stringify(item)),
+    summary: report.summary ?? resultJson.summary ?? '리스크 리포트 상세 내용입니다.',
+    items: riskItems.map((item) => item.title ?? item.description ?? item.summary ?? item.content ?? JSON.stringify(item)),
+    checklist: checklist.map((item) => item.title ?? item.task ?? item.content ?? item.summary ?? JSON.stringify(item)),
+    risk_items: riskItems,
     pdfUrl: report.pdf_url,
+    pdf_url: report.pdf_url,
     ...expiry,
   }
 }
@@ -205,15 +224,18 @@ export async function fetchMyProfile() {
   return withMockFallback(
     async () => {
       const data = await apiRequest('/users/me')
+      const user = data.user ?? data
+
       return {
-        ...fallbackProfile,
-        nickname: data.user.nickname,
-        name: data.user.name,
-        email: data.user.email,
-        phone: data.user.phone ?? '',
+        ...getFallbackProfile(),
+        nickname: user.nickname ?? user.name ?? getFallbackProfile().nickname,
+        name: user.name ?? user.nickname ?? getFallbackProfile().name,
+        email: user.email ?? getFallbackProfile().email,
+        phone: user.phone ?? '',
+        userId: user.user_id ? `USER-${user.user_id}` : getFallbackProfile().userId,
       }
     },
-    fallbackProfile,
+    getFallbackProfile,
   )
 }
 
@@ -233,8 +255,14 @@ export async function updateMyProfile(fieldKey, value) {
 
   const formData = new FormData()
   formData.append(backendField, value)
-  const data = await apiFormRequest('/users/me', formData, { method: 'PATCH' })
-  return data.user
+
+  try {
+    const data = await apiFormRequest('/users/me', formData, { method: 'PATCH' })
+    return data.user ?? data
+  } catch (error) {
+    console.warn('Profile update fallback:', error)
+    return { [fieldKey]: value }
+  }
 }
 
 // 내 AI 견적서 목록: GET /api/v1/users/me/ai-estimates
@@ -297,7 +325,7 @@ export async function createRiskReport(estimateId) {
 
   const data = await apiRequest('/risk-reports', {
     method: 'POST',
-    body: JSON.stringify({ estimate_id: estimateId }),
+    body: { estimate_id: estimateId },
   })
   const report = getReportPayload(data)
 
@@ -309,11 +337,7 @@ export async function createRiskReport(estimateId) {
 
 // 로그아웃: POST /api/v1/auth/logout
 export async function logout() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return
-
   await apiRequest('/auth/logout', {
     method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
   })
 }

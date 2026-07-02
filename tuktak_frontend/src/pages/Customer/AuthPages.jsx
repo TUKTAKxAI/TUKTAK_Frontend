@@ -48,9 +48,6 @@ export function AuthPages({
         loginData.password
       );
 
-      console.log("로그인 성공");
-      console.log(result);
-
       authLogin(result);
 
       setScreen(screens.home);
