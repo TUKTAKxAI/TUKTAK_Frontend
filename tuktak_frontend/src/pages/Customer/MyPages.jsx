@@ -7,6 +7,28 @@ import { reviewCards, screens } from '../../data/customerData'
 
 // 마이페이지 메인 홈: 각 마이페이지 메뉴로 이동하는 화면
 export function MyPage({ go, back }) {
+  const [profile, setProfile] = useState({
+    nickname: '사용자',
+    name: '사용자',
+    email: '',
+    userId: '',
+  })
+
+  useEffect(() => {
+    let isMounted = true
+
+    fetchMyProfile().then((data) => {
+      if (isMounted) setProfile((current) => ({ ...current, ...data }))
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const displayName = profile.nickname || profile.name || '사용자'
+  const accountLabel = profile.email || profile.userId || '로그인 계정'
+
   return (
     <section className="subpage-screen mypage-screen">
       <div className="top-brand-row">
@@ -16,9 +38,9 @@ export function MyPage({ go, back }) {
       <div className="mypage-hero">
         <img className="profile-photo-icon" src={figmaAssets.mypageProfilePhoto} alt="" />
         <div>
-          <h1>전지원님,</h1>
+          <h1>{displayName}님,</h1>
           <h2>안녕하세요 !</h2>
-          <p>abcd1234</p>
+          <p>{accountLabel}</p>
         </div>
       </div>
       <div className="tile-grid">
@@ -92,15 +114,14 @@ const profileFieldConfig = [
   { key: 'payment', label: '결제 수단 관리', editable: true, type: 'text' },
 ]
 
-// 백엔드 연결 전 기본 표시값
 const initialProfile = {
-  nickname: '전지원',
-  name: '전지원',
-  email: 'abcd123@gmail.com',
-  phone: '010-1234-5678',
-  social: '카카오 연동됨',
-  address: '서울시 종로구 인사동길',
-  payment: '신한카드 **** 1234',
+  nickname: '사용자',
+  name: '사용자',
+  email: '',
+  phone: '',
+  social: '연동 정보 없음',
+  address: '주소를 등록해 주세요',
+  payment: '결제 수단을 등록해 주세요',
 }
 
 // 내 정보: 프로필 조회, 항목 수정, 로그아웃/회원탈퇴 모달을 담당
