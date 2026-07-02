@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { RiskCard, SearchBar } from '../../components/customer/Cards'
 import { screenPaths } from '../../routes/customerRoutes'
+import { apiRequest } from '../../api/client'
 import preview5 from '../../assets/figma/preview5.webp';
 import preview6 from '../../assets/figma/preview6.webp';
 import preview7 from '../../assets/figma/preview7.webp';
@@ -135,14 +136,10 @@ export function RiskSelectPage({ go }) {
   useEffect(() => {
     const fetchMyEstimates = async () => {
       try {
-        const response = await fetch('http://localhost:8081/api/v1/users/me/ai-estimates', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        const data = await response.json();
+        const data = await apiRequest('/users/me/ai-estimates');
         
         // 백엔드 응답 구조에 맞게 데이터 세팅 (보통 data.items 배열로 옴)
-        if (response.ok && data.items) {
+        if (data.items) {
           setEstimates(data.items);
         }
       } catch (error) {
@@ -157,18 +154,12 @@ export function RiskSelectPage({ go }) {
 
   const requestRiskReport = async (estimateId) => {
     try {
-      const response = await fetch('http://localhost:8081/api/v1/risk-reports', {
+      const data = await apiRequest('/risk-reports', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ estimate_id: estimateId })
+        body: { estimate_id: estimateId }
       });
-      
-      const data = await response.json();
 
-      if (response.ok && data.risk_report_id) {
+      if (data.risk_report_id) {
         navigate(screenPaths[screens.riskLoading], { 
           state: { riskReportId: data.risk_report_id } 
         });
@@ -292,11 +283,7 @@ export function RiskLoadingPage({ go }) {
     
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8081/api/v1/risk-reports/${riskReportId}`, {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const data = await response.json();
+        const data = await apiRequest(`/risk-reports/${riskReportId}`);
         
         if (data.success && data.report && (data.report.report_status === 'COMPLETED' || data.report.report_status === 'SUCCESS')) {
           clearInterval(interval);
@@ -587,13 +574,9 @@ export function MyRiskListPage({ go }) {
   useEffect(() => {
     const fetchMyRiskReports = async () => {
       try {
-        const response = await fetch('http://localhost:8081/api/v1/risk-reports', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        const data = await response.json();
+        const data = await apiRequest('/risk-reports');
         
-        if (response.ok && data.items) {
+        if (data.items) {
           setRiskReports(data.items);
         }
       } catch (error) {

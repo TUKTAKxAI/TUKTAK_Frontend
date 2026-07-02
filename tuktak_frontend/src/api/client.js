@@ -32,41 +32,29 @@ function buildUrl(path, query) {
 }
 
 export function getAccessToken() {
-  return (
-    localStorage.getItem('access_token')
-    ?? localStorage.getItem('accessToken')
-    ?? localStorage.getItem('tuktak_access_token')
-  )
+  return null
 }
 
 export function getRefreshToken() {
-  return (
-    localStorage.getItem('refresh_token')
-    ?? localStorage.getItem('refreshToken')
-    ?? localStorage.getItem('tuktak_refresh_token')
-  )
+  return null
 }
 
 export function hasAccessToken() {
-  return Boolean(getAccessToken())
+  return true
 }
 
 export async function apiRequest(path, { method = 'GET', body, query, headers } = {}) {
-  const token = getAccessToken()
   const requestHeaders = new Headers(headers)
 
   if (body && !(body instanceof FormData) && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json')
   }
 
-  if (token) {
-    requestHeaders.set('Authorization', `Bearer ${token}`)
-  }
-
   const response = await fetch(buildUrl(path, query), {
     method,
     headers: requestHeaders,
-    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    credentials: 'include',
+    body: body instanceof FormData ? body : typeof body === 'string' ? body : body ? JSON.stringify(body) : undefined,
   })
 
   const text = await response.text()

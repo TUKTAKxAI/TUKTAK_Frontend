@@ -48,17 +48,12 @@ export function AuthPages({
         loginData.password
       );
 
-      console.log("로그인 성공");
-      console.log(result);
-
       authLogin(result);
 
       setScreen(screens.home);
 
     } catch (err) {
       const detail = err.response?.data?.detail;
-
-      console.log(err.response?.data);
 
       // 이메일 형식이 잘못된 경우(422)
       if (Array.isArray(detail)) {
@@ -192,10 +187,6 @@ export function AuthPages({
       go(screens.welcome)
 
     } catch (err) {
-      console.log(err);
-      console.log(err.response);
-      console.log(err.response?.data);
-
       alert(JSON.stringify(err.response?.data, null, 2));
     }
 

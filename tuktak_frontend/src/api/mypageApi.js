@@ -1,4 +1,4 @@
-import { apiFormRequest, apiRequest, getRefreshToken, hasAccessToken } from './client'
+import { apiFormRequest, apiRequest } from './client'
 import { estimateCards, historyCards, riskCards } from '../data/customerData'
 
 const fallbackProfile = {
@@ -12,11 +12,8 @@ const fallbackProfile = {
 }
 
 // 마이페이지 개발용 안전장치입니다.
-// 로그인 토큰이 아직 없거나 백엔드가 준비되지 않은 경우 화면이 깨지지 않도록 mock 데이터를 보여줍니다.
-// 실제 백엔드 연결 테스트 때는 로그인 API로 access token이 localStorage에 저장되어야 request가 실행됩니다.
+// 쿠키 인증 세션이 없거나 백엔드가 준비되지 않은 경우 화면이 깨지지 않도록 mock 데이터를 보여줍니다.
 function withMockFallback(request, fallback) {
-  if (!hasAccessToken()) return Promise.resolve(fallback)
-
   return request().catch((error) => {
     console.warn('API fallback:', error)
     return fallback
@@ -227,7 +224,7 @@ export async function updateMyProfile(fieldKey, value) {
   }
   const backendField = backendFieldMap[fieldKey]
 
-  if (!backendField || !hasAccessToken()) {
+  if (!backendField) {
     return { [fieldKey]: value }
   }
 
@@ -288,32 +285,29 @@ export async function fetchRiskReportDetail(riskReportId) {
 // 리스크리포트 생성: POST /api/v1/risk-reports
 // AI 견적서가 DB에 저장된 뒤 estimate_id를 넘겨 리스크리포트를 생성합니다.
 export async function createRiskReport(estimateId) {
-  if (!hasAccessToken()) {
-    return {
+  return withMockFallback(
+    async () => {
+      const data = await apiRequest('/risk-reports', {
+        method: 'POST',
+        body: { estimate_id: estimateId },
+      })
+      const report = getReportPayload(data)
+
+      return {
+        riskReportId: data.risk_report_id ?? report.risk_report_id,
+        report: report.risk_report_id ? mapRiskDetail(report) : null,
+      }
+    },
+    {
       riskReportId: riskCards[0].id,
       report: riskCards[0],
-    }
-  }
-
-  const data = await apiRequest('/risk-reports', {
-    method: 'POST',
-    body: JSON.stringify({ estimate_id: estimateId }),
-  })
-  const report = getReportPayload(data)
-
-  return {
-    riskReportId: data.risk_report_id ?? report.risk_report_id,
-    report: report.risk_report_id ? mapRiskDetail(report) : null,
-  }
+    },
+  )
 }
 
 // 로그아웃: POST /api/v1/auth/logout
 export async function logout() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return
-
   await apiRequest('/auth/logout', {
     method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
   })
 }

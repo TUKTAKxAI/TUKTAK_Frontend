@@ -59,12 +59,9 @@ export const checkEmailAvailability = async (email) => {
 /**
  * 로그아웃
  */
-export const logout = async (refreshToken) => {
+export const logout = async () => {
     const response = await api.post(
-        "/auth/logout",
-        {
-            refresh_token: refreshToken,
-        }
+        "/auth/logout"
     );
 
     return response.data;
@@ -73,12 +70,9 @@ export const logout = async (refreshToken) => {
 /**
  * 토큰 재발급
  */
-export const refresh = async (refreshToken) => {
+export const refresh = async () => {
     const response = await api.post(
-        "/auth/refresh",
-        {
-            refresh_token: refreshToken,
-        }
+        "/auth/refresh"
     );
 
     return response.data;
