@@ -1,14 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { getMyAiEstimates } from '../../api/estimateApi'
-import { hasJusoSearchKey, searchJusoAddresses } from '../../api/jusoApi'
+import { getJusoPopupUrl, hasJusoConfirmKey } from '../../api/jusoApi'
 import { createMatchingRequest, getMatchingQuotes, selectMatchingQuote } from '../../api/matchingApi'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
 import { screens } from '../../data/customerData'
-import { mockMatchingAddress, mockMatchingEstimates, mockMatchingQuotes, mockMatchingRequest, useMatchingMocks } from '../../data/matchingMockData'
-import confirmImage from '../../assets/confirm.svg'
-import './MatchingPages.css'
+import { figmaAssets } from '../../components/customer/figmaAssets'
+import preview9 from '../../assets/figma/preview9.webp';
+import preview10 from '../../assets/figma/preview10.webp';
+import preview11 from '../../assets/figma/preview11.webp';
+import preview12 from '../../assets/figma/preview12.webp';
+import loadingSvg from '../../assets/figma/loading.svg?raw';
+import errorSvg from '../../assets/figma/error.svg?raw';
+
+const previewImages = [preview9, preview10, preview11, preview12];
 
 const timeSlots = [
   { start: '09:00', end: '12:00' },
@@ -59,56 +65,6 @@ function buildMatchingRequestBody({ estimate, address, schedule, isEmergency }) 
     request_message: '',
     privacy_settings: {},
     is_emergency: isEmergency,
-  }
-}
-
-function normalizeJusoPayload(payload) {
-  const nestedPayload = payload.juso || payload.results || payload.data
-  const parsedPayload = typeof nestedPayload === 'string' ? JSON.parse(nestedPayload) : nestedPayload
-  const source = Array.isArray(parsedPayload?.juso) ? parsedPayload.juso[0] : parsedPayload || payload
-  const roadAddress = source.roadFullAddr || source.roadAddr || source.roadAddrPart1 || source.address || source.addr || ''
-  const detailAddress = source.addrDetail || source.detailAddress || ''
-  const fullAddress = source.roadFullAddr || [roadAddress, detailAddress].filter(Boolean).join(' ')
-
-  return {
-    ...source,
-    fullAddress,
-    roadAddress,
-    detailAddress,
-  }
-}
-
-function jusoResultToAddress(result) {
-  const fullAddress = result.roadAddr || result.roadAddrPart1 || result.jibunAddr || ''
-
-  return {
-    address_id: result.bdMgtSn || result.rnMgtSn || Date.now(),
-    region_code_id: result.admCd || null,
-    address: fullAddress,
-    base_address: fullAddress,
-    road_addr_part1: result.roadAddrPart1 || result.roadAddr || '',
-    address_detail: '',
-    zip_no: result.zipNo || '',
-    adm_cd: result.admCd || '',
-    label: fullAddress,
-    jibun_addr: result.jibunAddr || '',
-  }
-}
-
-function buildMatchingHistoryRecord(flow, partner, data = {}) {
-  const matchingRequestId = flow.matchingFlow.matchingRequestId || data.matching_request_id || `matching-${Date.now()}`
-
-  return {
-    id: `${matchingRequestId}-${partner.quote_id}-${Date.now()}`,
-    matchingRequestId,
-    selectedQuoteId: data.selected_quote_id || partner.quote_id,
-    workOrderId: data.work_order_id || 'mock-work-order-001',
-    matchingStatus: '시공 예정',
-    estimate: flow.matchingFlow.selectedEstimate,
-    address: flow.matchingFlow.selectedAddress,
-    schedule: flow.matchingFlow.schedule,
-    partner,
-    createdAt: new Date().toISOString(),
   }
 }
 
@@ -233,7 +189,7 @@ function ProposalModal({ partner, onClose, onSelect, isSelecting }) {
   )
 }
 
-function ProfileModal({ partner, onClose, onChat }) {
+function ProfileModal({ partner, onClose }) {
   const [visibleCount, setVisibleCount] = useState(5)
   if (!partner) return null
 
@@ -267,92 +223,116 @@ function ProfileModal({ partner, onClose, onChat }) {
         {reviews.length > visibleCount ? (
           <button className="mini-primary review-more-button" type="button" onClick={() => setVisibleCount((count) => count + 5)}>더보기</button>
         ) : null}
-        {onChat ? <PrimaryButton narrow onClick={onChat}>1:1 채팅 상담</PrimaryButton> : null}
       </div>
     </div>
   )
 }
 
-function AddressSearchResultModal({ results, onClose, onSelect }) {
+function ServiceHero({ onClick, buttonLabel, go }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = (activeIndex + 1) % previewImages.length;
+      
+      if (scrollRef.current) {
+        const cardWidth = scrollRef.current.offsetWidth * 0.5;
+        scrollRef.current.scrollTo({
+          left: nextIndex * cardWidth,
+          behavior: 'smooth'
+        });
+        setActiveIndex(nextIndex);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [activeIndex]);
+
+  const goToIndex = (index) => {
+    if (scrollRef.current) {
+      const cardWidth = scrollRef.current.offsetWidth * 0.5;
+      scrollRef.current.scrollTo({ left: index * cardWidth, behavior: 'smooth' });
+      setActiveIndex(index);
+    }
+  };
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const cardWidth = scrollRef.current.offsetWidth * 0.5;
+      const index = Math.round(scrollLeft / cardWidth);
+      setActiveIndex(index);
+    }
+  };
+
   return (
-    <div className="modal-overlay matching-modal-overlay">
-      <div className="modal-card address-result-modal-card">
-        <button className="modal-close-button" type="button" onClick={onClose}>×</button>
-        <h3>주소 검색 결과</h3>
-        <div className="address-result-list">
-          {results.map((result) => (
-            <button
-              className="address-result-item"
-              key={`${result.bdMgtSn}-${result.zipNo}`}
-              type="button"
-              onClick={() => onSelect(result)}
+    <section className="service-hero flex flex-col h-full bg-[#F2F3F5]">
+      <CustomerTopBar go={go} />
+
+      <div className="flex flex-col items-center flex-1 py-0">
+        <h1 className="text-2xl font-bold text-gray-900 mt-0 text-center">매칭 서비스</h1>
+        
+        <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
+          <h2 className="text-base font-semibold text-gray-700 leading-snug">
+            근처 최고의 시공 업자와<br />매칭해보세요
+          </h2>
+          <p className="text-md font-semibold text-gray-700 mt-8 ml-3 leading-relaxed">
+            AI 견적서, 지역 기반으로 근처 최고의<br />시공 업자와 매칭해드립니다
+          </p>
+        </div>
+
+        <div 
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide py-8 gap-4 px-[25%] cursor-grab active:cursor-grabbing items-center"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {previewImages.map((img, index) => (
+            <div 
+              key={index} 
+              className={`min-w-[85%] ml-5 transition-all duration-500 snap-center flex justify-center items-center
+                ${activeIndex === index ? 'scale-100 opacity-100' : 'scale-70 opacity-40'}
+              `}
             >
-              <strong>{result.roadAddr}</strong>
-              {result.jibunAddr ? <span>{result.jibunAddr}</span> : null}
-              {result.zipNo ? <small>우편번호 {result.zipNo}</small> : null}
-            </button>
+              <div className="w-full aspect-9/16 bg-white rounded-3xl shadow-lg border border-gray-300 overflow-hidden">
+                 <img 
+                   src={img} 
+                   alt={`미리보기 ${index + 1}`} 
+                   className="w-full h-full object-cover" 
+                   draggable="false" 
+                 />
+              </div>
+            </div>
           ))}
         </div>
-      </div>
-    </div>
-  )
-}
 
-function PartnerSelectConfirmModal({ partner, onClose, onConfirm, isSelecting }) {
-  if (!partner) return null
+        {/* 페이지네이션 도트 */}
+        <div className="flex justify-center space-x-2 mb-6">
+          {previewImages.map((_, i) => (
+            <button 
+              key={i} 
+              onClick={() => goToIndex(i)}
+              className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-blue-600' : 'w-2 bg-gray-300'}`} 
+            />
+          ))}
+        </div>
 
-  return (
-    <div className="modal-overlay matching-modal-overlay">
-      <div className="modal-card matching-confirm-modal-card">
-        <button className="modal-close-button" type="button" onClick={onClose}>×</button>
-        <div className="modal-icon">!</div>
-        <h3>{partner.contractor.business_name}를 선택할까요?</h3>
-        <p>선택하면 해당 파트너와 시공이 확정되고 현재 매칭 화면으로 이동합니다.</p>
-        <div className="button-row">
-          <PrimaryButton orange onClick={onClose}>취소</PrimaryButton>
-          <PrimaryButton onClick={onConfirm}>{isSelecting ? '선택중...' : '파트너 선택'}</PrimaryButton>
+        <div className="w-full px-6 mt-auto pb-6">
+          <PrimaryButton onClick={onClick}>{buttonLabel}</PrimaryButton>
         </div>
       </div>
-    </div>
-  )
-}
-
-function MatchingCompleteModal({ partner, onConfirm }) {
-  if (!partner) return null
-
-  return (
-    <div className="modal-overlay matching-modal-overlay">
-      <div className="modal-card matching-confirm-modal-card matching-complete-modal-card">
-        <img className="matching-complete-image" src={confirmImage} alt="" />
-        <h3>매칭이 성사됐어요</h3>
-        <p>{partner.contractor.business_name} 파트너와 시공이 확정되었습니다.</p>
-        <PrimaryButton narrow onClick={onConfirm}>확인</PrimaryButton>
-      </div>
-    </div>
+    </section>
   )
 }
 
 export function MatchingHomePage({ go }) {
-  const flow = useCustomerFlow()
-
-  if (flow.matchingFlow.hasCompletedMatching) {
-    return <MatchingDonePage go={go} />
-  }
-
   return (
-    <section className="service-hero">
-      <CustomerTopBar go={go} />
-      <h1>매칭 서비스</h1>
-      <h2>근처 최고의 시공 업자와 매칭해보세요</h2>
-      <p>AI 견적서, 지역 기반으로 근처 최고의 시공 업자와 매칭해드립니다</p>
-      <div className="service-shot-row">
-        <div className="phone-shot first match" />
-        <div className="phone-shot second match" />
-        <div className="phone-shot fourth match" />
-      </div>
-      <div className="dot-row"><span className="active dim" /><span /><span /><span className="active dim" /></div>
-      <PrimaryButton narrow onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
-    </section>
+    <ServiceHero
+      onClick={() => go(screens.matchingEstimateSelect)}
+      buttonLabel="매칭 시작하기"
+      go={go}
+    />
   )
 }
 
@@ -370,22 +350,14 @@ export function MatchingEstimateSelectPage({ go }) {
         if (data?.items?.length) {
           setEstimates(data.items)
           setLoadStatus('loaded')
-        } else if (useMatchingMocks) {
-          setEstimates(mockMatchingEstimates)
-          setLoadStatus('loaded')
         } else {
           setLoadStatus('empty')
         }
       })
       .catch(() => {
         if (!ignore) {
-          if (useMatchingMocks) {
-            setEstimates(mockMatchingEstimates)
-            setLoadStatus('loaded')
-          } else {
-            setEstimates([])
-            setLoadStatus('error')
-          }
+          setEstimates([])
+          setLoadStatus('error')
         }
       })
 
@@ -400,27 +372,96 @@ export function MatchingEstimateSelectPage({ go }) {
   }
 
   return (
-    <section className="selection-screen">
+    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5]">
       <CustomerTopBar go={go} />
-      <button className="inline-back-arrow" onClick={() => go(screens.matchingHome)}>‹</button>
-      <h2>AI 견적서를 선택해주세요</h2>
-      {loadStatus === 'loading' ? <p className="muted center">AI 견적서를 불러오는 중입니다.</p> : null}
-      {loadStatus === 'error' ? <p className="muted center">AI 견적서를 불러오지 못했습니다. 로그인 상태와 서버 연결을 확인해주세요.</p> : null}
-      {loadStatus === 'empty' ? <p className="muted center">완료된 AI 견적서가 아직 없어요.</p> : null}
-      <div className="list-stack">
-        {estimates.map((estimate) => (
-          <article className="record-card estimate-card large" key={estimate.estimate_id}>
-            <div className="record-side">
-              <span>{formatDate(estimate.created_at)}</span>
-              <small>{estimate.estimate_status}</small>
+      
+      <div className="flex flex-col flex-1 px-6 pt-4">
+        
+        <div className="flex items-center mb-0">
+          <button 
+            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+            onClick={() => go(screens.matchingHome)}
+          >
+            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">매칭 시작하기</h1>
+        </div>
+
+        <div className="overflow-y-auto pb-6">
+          
+          {loadStatus === 'loading' ? (
+            <div className="flex flex-col items-center justify-center mt-16">
+              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
+                   dangerouslySetInnerHTML={{ __html: loadingSvg }} 
+              />
+              <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서 불러오는 중 ...</p>
             </div>
-            <div className="record-main">
-              <h3>{estimateTitle(estimate)}</h3>
-              <p>예상 시공 비용 : {estimateCost(estimate)}</p>
-              <button className="wide-action" onClick={() => selectEstimate(estimate)}>매칭 요청하기</button>
+          
+          ) : loadStatus === 'error' || loadStatus === 'empty' ? (
+            <div className="flex flex-col items-center justify-center mt-16">
+              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
+                   dangerouslySetInnerHTML={{ __html: errorSvg }} 
+              />
+              <p className="text-center font-bold text-[20px] text-gray-900 mt-1">
+                {loadStatus === 'error' ? '견적서를 불러오지 못했습니다!' : '생성된 AI 견적서가 없습니다 !'}
+              </p>
+              <p className="text-center font-medium text-[15px] text-gray-900 mt-5">
+                {loadStatus === 'error' ? '서버 연결 상태를 다시 확인해주세요.' : 'AI 견적서를 새로 만들어 볼까요?'}
+              </p>
+              <button 
+                onClick={() => go(screens.estimateStart)}
+                className="w-3/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700 mt-2"
+                style={{ fontSize: '16px', fontWeight: 'bold' }} 
+              >
+                AI 견적서 생성
+              </button>
             </div>
-          </article>
-        ))}
+
+          ) : (
+            <>
+              <h2 
+                className="text-gray-700 text-center mt-4 mb-6 font-bold"
+                style={{ fontSize: '20px' }}
+              >
+                AI 견적서를 선택해주세요
+              </h2>
+              {estimates.map((estimate) => (
+                <article key={estimate.estimate_id} className="bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex flex-col mb-4">
+                  
+                  <div className="flex justify-between items-start mb-4 border-b border-gray-300 pb-3">
+                    <span className="text-[13px] text-gray-500">
+                      {formatDate(estimate.created_at)}
+                    </span>
+                    <small className="text-xs text-blue-500 font-semibold bg-blue-50 px-2 py-1 rounded">
+                      {estimate.estimate_status === 'COMPLETED' ? '완료' : estimate.estimate_status}
+                    </small>
+                  </div>
+                  
+                  <div className="flex flex-col text-left">
+                    <h3 className="text-[22px] font-bold text-gray-900 mb-1.5 tracking-tight">
+                      {estimateTitle(estimate)}
+                    </h3>
+                    <p className="text-[13px] font-bold text-gray-500 mb-4.5">
+                      예상 시공 비용 : {estimateCost(estimate)}
+                    </p>
+                    
+                    <div className="flex justify-center w-full">
+                      <button 
+                        onClick={() => selectEstimate(estimate)}
+                        className="w-4/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700"
+                        style={{ fontSize: '16px', fontWeight: 'bold' }} 
+                      >
+                        매칭 요청하기
+                      </button>
+                    </div>
+                  </div>
+
+                </article>
+              ))}
+            </>
+          )}
+        </div>
+
       </div>
     </section>
   )
@@ -430,10 +471,6 @@ export function MatchingAddressListPage({ go }) {
   const flow = useCustomerFlow()
   const { updateMatchingFlow } = flow
   const selectedAddress = flow.matchingFlow.selectedAddress
-  const [keyword, setKeyword] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [searchStatus, setSearchStatus] = useState('idle')
-  const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -442,15 +479,8 @@ export function MatchingAddressListPage({ go }) {
       if (event.data?.type !== 'TUKTAK_JUSO_SELECTED') return
 
       const payload = event.data.payload || {}
-      let addressPayload
-
-      try {
-        addressPayload = normalizeJusoPayload(payload)
-      } catch {
-        addressPayload = { fullAddress: '' }
-      }
-
-      if (!addressPayload.fullAddress) {
+      const fullAddress = payload.roadFullAddr || [payload.roadAddrPart1, payload.addrDetail].filter(Boolean).join(' ')
+      if (!fullAddress) {
         setError('주소 정보를 받아오지 못했습니다. 다시 검색해주세요.')
         return
       }
@@ -458,15 +488,14 @@ export function MatchingAddressListPage({ go }) {
       setError('')
       updateMatchingFlow({
         selectedAddress: {
-          address_id: addressPayload.bdMgtSn || Date.now(),
-          region_code_id: addressPayload.admCd || null,
-          address: addressPayload.fullAddress,
-          base_address: addressPayload.fullAddress,
-          road_addr_part1: addressPayload.roadAddrPart1 || addressPayload.roadAddress || '',
-          address_detail: addressPayload.addrDetail || addressPayload.detailAddress || '',
-          zip_no: addressPayload.zipNo || '',
-          adm_cd: addressPayload.admCd || '',
-          label: addressPayload.fullAddress,
+          address_id: payload.bdMgtSn || Date.now(),
+          region_code_id: payload.admCd || null,
+          address: fullAddress,
+          road_addr_part1: payload.roadAddrPart1 || '',
+          address_detail: payload.addrDetail || '',
+          zip_no: payload.zipNo || '',
+          adm_cd: payload.admCd || '',
+          label: fullAddress,
         },
       })
     }
@@ -475,60 +504,14 @@ export function MatchingAddressListPage({ go }) {
     return () => window.removeEventListener('message', handleMessage)
   }, [updateMatchingFlow])
 
-  const searchAddress = async () => {
-    const trimmedKeyword = keyword.trim()
-
-    if (!hasJusoSearchKey()) {
-      setError('.env에 VITE_JUSO_SEARCH_KEY 또는 VITE_JUSO_CONFIRM_KEY를 설정한 뒤 다시 실행해주세요.')
-      return
-    }
-    if (trimmedKeyword.length < 2) {
-      setError('주소 검색어를 2글자 이상 입력해주세요.')
+  const openAddressSearch = () => {
+    if (!hasJusoConfirmKey()) {
+      setError('.env에 VITE_JUSO_CONFIRM_KEY를 설정한 뒤 다시 실행해주세요.')
       return
     }
 
     setError('')
-    setSearchStatus('loading')
-
-    try {
-      const data = await searchJusoAddresses({ keyword: trimmedKeyword })
-      setSearchResults(data.items)
-      setSearchStatus(data.items.length ? 'loaded' : 'empty')
-      setIsResultModalOpen(data.items.length > 0)
-    } catch (searchError) {
-      setSearchResults([])
-      setSearchStatus('error')
-      setIsResultModalOpen(false)
-      setError(searchError.message || '주소 검색에 실패했습니다. 검색어와 API 키를 확인해주세요.')
-    }
-  }
-
-  const selectSearchResult = (result) => {
-    setError('')
-    setIsResultModalOpen(false)
-    updateMatchingFlow({
-      selectedAddress: jusoResultToAddress(result),
-    })
-  }
-
-  const updateAddressDetail = (detail) => {
-    updateMatchingFlow((current) => {
-      const currentAddress = current.selectedAddress
-      if (!currentAddress) return current
-
-      const baseAddress = currentAddress.base_address || currentAddress.road_addr_part1 || currentAddress.address || ''
-      const trimmedDetail = detail.trim()
-
-      return {
-        selectedAddress: {
-          ...currentAddress,
-          base_address: baseAddress,
-          address_detail: detail,
-          address: trimmedDetail ? `${baseAddress}, ${trimmedDetail}` : baseAddress,
-          label: trimmedDetail ? `${baseAddress}, ${trimmedDetail}` : baseAddress,
-        },
-      }
-    })
+    window.open(getJusoPopupUrl(), 'jusoSearch', 'width=430,height=760,scrollbars=yes,resizable=yes')
   }
 
   const clearAddress = () => {
@@ -537,47 +520,12 @@ export function MatchingAddressListPage({ go }) {
     })
   }
 
-  const selectMockAddress = () => {
-    setError('')
-    updateMatchingFlow({
-      selectedAddress: mockMatchingAddress,
-    })
-  }
-
-  const goNextSchedule = () => {
-    if (!selectedAddress) {
-      setError('주소를 먼저 선택해주세요.')
-      return
-    }
-    if (!selectedAddress.address_detail?.trim()) {
-      setError('상세 주소를 입력해주세요.')
-      return
-    }
-
-    setError('')
-    go(screens.matchingSchedule)
-  }
-
   return (
     <section className="selection-screen">
       <CustomerTopBar go={go} />
       <button className="inline-back-arrow" onClick={() => go(screens.matchingEstimateSelect)}>‹</button>
       <p className="small-copy">시공 지역을 알려주세요 !</p>
       <h1>내 주소목록</h1>
-      <div className="matching-inline-editor">
-        <input
-          value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') searchAddress()
-          }}
-          placeholder="도로명, 건물명, 지번을 입력해주세요"
-        />
-        <button className="wide-action" type="button" onClick={searchAddress}>
-          {searchStatus === 'loading' ? '검색중...' : '주소 검색'}
-        </button>
-      </div>
-      {searchStatus === 'empty' ? <p className="muted center">검색 결과가 없습니다. 검색어를 다시 입력해주세요.</p> : null}
       <div className="address-list matching-address-list">
         <article className={`address-row matching-address-card ${selectedAddress ? 'selected' : ''}`}>
           <div className="address-main-button">
@@ -588,26 +536,10 @@ export function MatchingAddressListPage({ go }) {
           {selectedAddress ? <button className="address-edit-button" type="button" onClick={clearAddress}>삭제</button> : null}
         </article>
       </div>
-      {selectedAddress ? (
-        <div className="matching-inline-editor">
-          <input
-            value={selectedAddress.address_detail || ''}
-            onChange={(event) => updateAddressDetail(event.target.value)}
-            placeholder="상세주소를 입력해주세요. 예: 101동 202호"
-          />
-        </div>
-      ) : null}
       {selectedAddress?.zip_no ? <p className="muted center">우편번호 {selectedAddress.zip_no}</p> : null}
       {error ? <p className="muted center">{error}</p> : null}
-      {useMatchingMocks ? <button className="add-address" type="button" onClick={selectMockAddress}>개발용 주소 선택</button> : null}
-      <PrimaryButton narrow onClick={goNextSchedule}>다음</PrimaryButton>
-      {isResultModalOpen ? (
-        <AddressSearchResultModal
-          results={searchResults}
-          onClose={() => setIsResultModalOpen(false)}
-          onSelect={selectSearchResult}
-        />
-      ) : null}
+      <button className="add-address" type="button" onClick={openAddressSearch}>⊕ 도로명 주소 검색</button>
+      <PrimaryButton narrow onClick={() => go(screens.matchingSchedule)}>다음</PrimaryButton>
     </section>
   )
 }
@@ -646,10 +578,6 @@ export function MatchingSchedulePage({ go, openUrgent }) {
       setSubmitStatus('missing-address')
       return
     }
-    if (!address?.address_detail?.trim()) {
-      setSubmitStatus('missing-address-detail')
-      return
-    }
 
     setSubmitStatus('submitting')
 
@@ -664,19 +592,8 @@ export function MatchingSchedulePage({ go, openUrgent }) {
         matchingExpiresAt: data.expires_at,
       })
     } catch {
-      if (!useMatchingMocks) {
-        setSubmitStatus('error')
-        return
-      }
-
-      flow.updateMatchingFlow({
-        isEmergency: false,
-        matchingStatus: mockMatchingRequest.matching_status,
-        schedule,
-        matchingRequestId: mockMatchingRequest.matching_request_id,
-        matchedContractorCount: mockMatchingRequest.matched_contractor_count,
-        matchingExpiresAt: mockMatchingRequest.expires_at,
-      })
+      setSubmitStatus('error')
+      return
     }
     go(screens.matchingProgress)
   }
@@ -698,10 +615,6 @@ export function MatchingSchedulePage({ go, openUrgent }) {
       setSubmitStatus('missing-address')
       return
     }
-    if (!address?.address_detail?.trim()) {
-      setSubmitStatus('missing-address-detail')
-      return
-    }
 
     setSubmitStatus('submitting')
 
@@ -716,19 +629,8 @@ export function MatchingSchedulePage({ go, openUrgent }) {
         matchingExpiresAt: data.expires_at,
       })
     } catch {
-      if (!useMatchingMocks) {
-        setSubmitStatus('error')
-        return
-      }
-
-      flow.updateMatchingFlow({
-        isEmergency: true,
-        matchingStatus: mockMatchingRequest.matching_status,
-        schedule,
-        matchingRequestId: mockMatchingRequest.matching_request_id,
-        matchedContractorCount: mockMatchingRequest.matched_contractor_count,
-        matchingExpiresAt: mockMatchingRequest.expires_at,
-      })
+      setSubmitStatus('error')
+      return
     }
     go(screens.matchingProgress)
   }
@@ -765,7 +667,6 @@ export function MatchingSchedulePage({ go, openUrgent }) {
       {submitStatus === 'submitting' ? <p className="muted center">매칭 요청을 생성하는 중입니다.</p> : null}
       {submitStatus === 'missing-estimate' ? <p className="muted center">AI 견적서를 먼저 선택해주세요.</p> : null}
       {submitStatus === 'missing-address' ? <p className="muted center">도로명 주소 검색으로 지역 코드가 포함된 주소를 선택해주세요.</p> : null}
-      {submitStatus === 'missing-address-detail' ? <p className="muted center">상세 주소를 입력해주세요.</p> : null}
       {submitStatus === 'error' ? <p className="muted center">매칭 요청 생성에 실패했습니다. 서버 연결과 로그인 상태를 확인해주세요.</p> : null}
       <div className="button-row bottom-actions">
         <PrimaryButton orange onClick={() => go(screens.matchingAddressList)}>취소</PrimaryButton>
@@ -804,8 +705,6 @@ export function MatchingAuctionPage({ go }) {
   const flow = useCustomerFlow()
   const [proposalPartner, setProposalPartner] = useState(null)
   const [profilePartner, setProfilePartner] = useState(null)
-  const [confirmPartner, setConfirmPartner] = useState(null)
-  const [completePartner, setCompletePartner] = useState(null)
   const [isSelecting, setIsSelecting] = useState(false)
   const [partners, setPartners] = useState([])
   const [loadStatus, setLoadStatus] = useState(isMockId(flow.matchingFlow.matchingRequestId) ? 'missing-request' : 'loading')
@@ -824,9 +723,6 @@ export function MatchingAuctionPage({ go }) {
         if (data?.quotes?.length) {
           setPartners(data.quotes.map(quoteToPartner))
           setLoadStatus('loaded')
-        } else if (useMatchingMocks) {
-          setPartners(mockMatchingQuotes.map(quoteToPartner))
-          setLoadStatus('loaded')
         } else {
           setPartners([])
           setLoadStatus('empty')
@@ -834,13 +730,8 @@ export function MatchingAuctionPage({ go }) {
       })
       .catch(() => {
         if (!ignore) {
-          if (useMatchingMocks) {
-            setPartners(mockMatchingQuotes.map(quoteToPartner))
-            setLoadStatus('loaded')
-          } else {
-            setPartners([])
-            setLoadStatus('error')
-          }
+          setPartners([])
+          setLoadStatus('error')
         }
       })
 
@@ -854,39 +745,18 @@ export function MatchingAuctionPage({ go }) {
 
     try {
       const data = await selectMatchingQuote(matchingRequestId, partner.quote_id)
-      const record = buildMatchingHistoryRecord(flow, partner, data)
-      flow.updateMatchingFlow((current) => ({
+      flow.updateMatchingFlow({
         selectedQuoteId: data.selected_quote_id || partner.quote_id,
         selectedQuote: partner,
         selectedPartner: partner,
         workOrderId: data.work_order_id,
-        matchingStatus: record.matchingStatus,
+        matchingStatus: data.matching_status || '파트너 선택 완료',
         hasCompletedMatching: true,
-        currentMatchingId: record.id,
-        matchingHistory: [record, ...(current.matchingHistory || []).filter((item) => item.id !== record.id)],
-      }))
+      })
       setProposalPartner(null)
-      setConfirmPartner(null)
-      setCompletePartner(partner)
+      go(screens.matchingDone)
     } catch {
-      if (useMatchingMocks) {
-        const record = buildMatchingHistoryRecord(flow, partner)
-        flow.updateMatchingFlow((current) => ({
-          selectedQuoteId: partner.quote_id,
-          selectedQuote: partner,
-          selectedPartner: partner,
-          workOrderId: 'mock-work-order-001',
-          matchingStatus: record.matchingStatus,
-          hasCompletedMatching: true,
-          currentMatchingId: record.id,
-          matchingHistory: [record, ...(current.matchingHistory || []).filter((item) => item.id !== record.id)],
-        }))
-        setProposalPartner(null)
-        setConfirmPartner(null)
-        setCompletePartner(partner)
-      } else {
-        setSelectStatus('error')
-      }
+      setSelectStatus('error')
     } finally {
       setIsSelecting(false)
     }
@@ -900,7 +770,7 @@ export function MatchingAuctionPage({ go }) {
       {loadStatus === 'loading' ? <p className="muted center">파트너 견적을 불러오는 중입니다.</p> : null}
       {loadStatus === 'missing-request' ? <p className="muted center">매칭 요청 ID가 없어 견적 목록을 불러올 수 없습니다.</p> : null}
       {loadStatus === 'error' ? <p className="muted center">파트너 견적을 불러오지 못했습니다. 서버 연결을 확인해주세요.</p> : null}
-      {loadStatus === 'empty' ? <p className="muted center">아직 매칭에 응답한 파트너가 없어요.</p> : null}
+      {loadStatus === 'empty' ? <p className="muted center">도착한 견적이 아직 없어요.</p> : null}
       {selectStatus === 'error' ? <p className="muted center">파트너 선택에 실패했습니다. 다시 시도해주세요.</p> : null}
       <div className="list-stack">
         {partners.map((partner) => (
@@ -917,17 +787,7 @@ export function MatchingAuctionPage({ go }) {
         <span>견적 도착 : {partners.length}명</span>
       </div>
       <p className="muted center">파트너 카드를 눌러 상세 제안을 확인하세요</p>
-      <ProposalModal partner={proposalPartner} onClose={() => setProposalPartner(null)} onSelect={setConfirmPartner} isSelecting={isSelecting} />
-      <PartnerSelectConfirmModal
-        partner={confirmPartner}
-        onClose={() => setConfirmPartner(null)}
-        onConfirm={() => selectPartner(confirmPartner)}
-        isSelecting={isSelecting}
-      />
-      <MatchingCompleteModal
-        partner={completePartner}
-        onConfirm={() => go(screens.matchingDone)}
-      />
+      <ProposalModal partner={proposalPartner} onClose={() => setProposalPartner(null)} onSelect={selectPartner} isSelecting={isSelecting} />
       <ProfileModal partner={profilePartner} onClose={() => setProfilePartner(null)} />
     </section>
   )
@@ -975,13 +835,12 @@ export function MatchingPartnerInfoPage({ go }) {
   )
 }
 
-export function LegacyMatchingDonePage({ go }) {
+export function MatchingDonePage({ go }) {
   const flow = useCustomerFlow()
   const selectedPartner = flow.matchingFlow.selectedPartner
   const estimate = flow.matchingFlow.selectedEstimate
   const address = flow.matchingFlow.selectedAddress
   const schedule = flow.matchingFlow.schedule
-  const [profilePartner, setProfilePartner] = useState(null)
 
   if (!selectedPartner) {
     return (
@@ -1040,9 +899,7 @@ export function LegacyMatchingDonePage({ go }) {
         <section className="current-detail-section">
           <h3>선택한 파트너</h3>
           <div className="partner-inline">
-            <button className="partner-avatar-button" type="button" onClick={() => setProfilePartner(selectedPartner)} aria-label="파트너 프로필 보기">
-              <Avatar tone={selectedPartner.avatar} />
-            </button>
+            <Avatar tone={selectedPartner.avatar} />
             <div>
               <strong>{selectedPartner.contractor.business_name}</strong>
               <PartnerStars rating={selectedPartner.contractor.rating_avg} />
@@ -1060,153 +917,9 @@ export function LegacyMatchingDonePage({ go }) {
 
         <div className="button-row bottom-actions">
           <PrimaryButton ghost onClick={() => go(screens.matchingAuction)}>견적 다시 보기</PrimaryButton>
-          <PrimaryButton ghost onClick={() => go(screens.matchingEstimateSelect)}>추가 매칭하기</PrimaryButton>
           <PrimaryButton onClick={() => go(screens.chatRoom)}>1:1 채팅 상담</PrimaryButton>
         </div>
       </article>
-      <ProfileModal
-        partner={profilePartner}
-        onClose={() => setProfilePartner(null)}
-        onChat={() => go(screens.chatRoom)}
-      />
-    </section>
-  )
-}
-
-export function MatchingDonePage({ go }) {
-  const flow = useCustomerFlow()
-  const selectedPartner = flow.matchingFlow.selectedPartner
-  const latestRecord = selectedPartner ? {
-    id: flow.matchingFlow.currentMatchingId || 'current-matching',
-    matchingStatus: flow.matchingFlow.matchingStatus || '시공 예정',
-    estimate: flow.matchingFlow.selectedEstimate,
-    address: flow.matchingFlow.selectedAddress,
-    schedule: flow.matchingFlow.schedule,
-    partner: selectedPartner,
-    createdAt: new Date().toISOString(),
-  } : null
-  const matchingRecords = (flow.matchingFlow.matchingHistory?.length ? flow.matchingFlow.matchingHistory : latestRecord ? [latestRecord] : [])
-    .slice()
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-  const [expandedRecordId, setExpandedRecordId] = useState(matchingRecords[0]?.id || null)
-  const [profilePartner, setProfilePartner] = useState(null)
-
-  if (!matchingRecords.length) {
-    return (
-      <section className="subpage-screen current-matching-screen">
-        <CustomerTopBar go={go} />
-        <button className="inline-back-arrow" onClick={() => go(screens.home)}>‹</button>
-        <div className="matching-title-row">
-          <h1 className="matching-history-title">현재 매칭</h1>
-          <button className="mini-primary" type="button" onClick={() => go(screens.matchingEstimateSelect)}>추가 매칭하기</button>
-        </div>
-        <article className="current-matching-panel">
-          <MatchingStatusBadge status={flow.matchingFlow.matchingStatus || '진행중인 매칭 없음'} />
-          <h2>진행중인 매칭이 없어요</h2>
-          <p>AI 견적서를 선택하고 주소 정보를 연결한 뒤 매칭을 요청해보세요.</p>
-        </article>
-      </section>
-    )
-  }
-
-  return (
-    <section className="subpage-screen current-matching-screen">
-      <CustomerTopBar go={go} />
-      <button className="inline-back-arrow" onClick={() => go(screens.home)}>‹</button>
-      <div className="matching-title-row">
-        <h1 className="matching-history-title">현재 매칭</h1>
-        <button className="mini-primary" type="button" onClick={() => go(screens.matchingEstimateSelect)}>추가 매칭하기</button>
-      </div>
-      <div className="matching-record-list">
-        {matchingRecords.map((record, index) => {
-          const isExpanded = expandedRecordId === record.id
-          const recordPartner = record.partner
-          const recordSchedule = record.schedule || {}
-
-          if (!isExpanded) {
-            return (
-              <article className="current-matching-panel matching-record-card compact" key={record.id}>
-                <div className="current-matching-head">
-                  <div>
-                    <MatchingStatusBadge status={record.matchingStatus || '시공 예정'} />
-                    <h2>{estimateTitle(record.estimate)}</h2>
-                    <p>{recordPartner.contractor.business_name} · {formatWon(recordPartner.total_amount)}</p>
-                  </div>
-                  <span>{recordPartner.available_date || formatDate(recordSchedule.preferred_date)}</span>
-                </div>
-                <button className="wide-action" type="button" onClick={() => setExpandedRecordId(record.id)}>자세히 보기</button>
-              </article>
-            )
-          }
-
-          return (
-            <article className="current-matching-panel matching-record-card" key={record.id}>
-              {index === 0 ? <small className="latest-matching-label">최신 매칭</small> : null}
-              <div className="current-matching-head">
-                <div>
-                  <MatchingStatusBadge status={record.matchingStatus || '시공 예정'} />
-                  <h2>{estimateTitle(record.estimate)}</h2>
-                </div>
-                <span>{recordPartner.available_date || formatDate(recordSchedule.preferred_date)}</span>
-              </div>
-
-              <div className="current-summary-grid">
-                <div>
-                  <small>AI 견적</small>
-                  <strong>{estimateCost(record.estimate)}</strong>
-                </div>
-                <div>
-                  <small>확정 금액</small>
-                  <strong>{formatWon(recordPartner.total_amount)}</strong>
-                </div>
-                <div>
-                  <small>예약 시간</small>
-                  <strong>{recordSchedule.preferred_time_start ? `${recordSchedule.preferred_time_start} ~ ${recordSchedule.preferred_time_end}` : '긴급 요청'}</strong>
-                </div>
-                <div>
-                  <small>예상 소요</small>
-                  <strong>{estimateMinutesLabel(recordPartner.estimated_minutes)}</strong>
-                </div>
-              </div>
-
-              <section className="current-detail-section">
-                <h3>시공 주소</h3>
-                <p>{record.address?.address || record.address?.label || '주소 정보 없음'}</p>
-              </section>
-
-              <section className="current-detail-section">
-                <h3>매칭된 파트너</h3>
-                <div className="partner-inline">
-                  <button className="partner-avatar-button" type="button" onClick={() => setProfilePartner(recordPartner)} aria-label="파트너 프로필 보기">
-                    <Avatar tone={recordPartner.avatar} />
-                  </button>
-                  <div>
-                    <strong>{recordPartner.contractor.business_name}</strong>
-                    <PartnerStars rating={recordPartner.contractor.rating_avg} />
-                    <p>{recordPartner.specialty} / 경력 {recordPartner.career}</p>
-                    <p>{recordPartner.contractor.phone}</p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="current-detail-section">
-                <h3>파트너 제안 내용</h3>
-                <p>{recordPartner.work_scope}</p>
-                <p>{recordPartner.additional_note}</p>
-              </section>
-
-              <div className="button-row bottom-actions">
-                <PrimaryButton onClick={() => go(screens.chatRoom)}>1:1 채팅 상담</PrimaryButton>
-              </div>
-            </article>
-          )
-        })}
-      </div>
-      <ProfileModal
-        partner={profilePartner}
-        onClose={() => setProfilePartner(null)}
-        onChat={() => go(screens.chatRoom)}
-      />
     </section>
   )
 }
@@ -1238,8 +951,8 @@ export function ReviewWritePage({ go }) {
 
 export function UrgentModal({ close, confirm }) {
   return (
-    <div className="modal-overlay matching-modal-overlay">
-      <div className="modal-card matching-confirm-modal-card">
+    <div className="modal-overlay">
+      <div className="modal-card">
         <div className="modal-icon">!</div>
         <h3>긴급 수리 요청 선택 시</h3>
         <p>최대한 빠르게 시공을 받아볼 수 있으며, 추가 비용이 발생할 수 있어요.</p>

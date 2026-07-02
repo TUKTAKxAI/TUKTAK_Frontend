@@ -4,13 +4,17 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { CustomerFlowProvider } from './context/CustomerFlowProvider.jsx'
+// 추가
+import { AuthProvider } from './context/AuthContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <CustomerFlowProvider>
-        <App />
-      </CustomerFlowProvider>
+      <AuthProvider>
+        <CustomerFlowProvider>
+          <App />
+        </CustomerFlowProvider>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 )

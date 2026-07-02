@@ -13,8 +13,20 @@ import {
   MyEstimateListPage,
 } from './pages/Customer/EstimatePages'
 import { HomePage } from './pages/Customer/HomePage'
-import { MatchingUrgentDialog } from './pages/Customer/MatchingUrgentDialog'
-import { getMatchingPageRoutes } from './pages/Customer/matchingPageRoutes'
+import {
+  MatchingAddressListPage,
+  MatchingAddressSelectPage,
+  MatchingAuctionPage,
+  MatchingDonePage,
+  MatchingEstimateSelectPage,
+  MatchingHomePage,
+  MatchingPartnerInfoPage,
+  MatchingPartnerPage,
+  MatchingProgressPage,
+  MatchingSchedulePage,
+  ReviewWritePage,
+  UrgentModal,
+} from './pages/Customer/MatchingPages'
 import { MatchHistoryPage, MyPage, MyReviewsPage, ProfilePage } from './pages/Customer/MyPages'
 import { MyRiskListPage, RiskDonePage, RiskHomePage, RiskLoadingPage, RiskOutputPage, RiskSelectPage } from './pages/Customer/RiskPages'
 import { routeScreens, screenPaths } from './routes/customerRoutes'
@@ -49,16 +61,42 @@ function PublicRoute({ screen }) {
 
 function CustomerLayout({ screen, children }) {
   const { go } = useScreenNavigator()
+  const fixedListScreens = [screens.matchHistory, screens.myEstimateList, screens.myRiskList, screens.myReviews]
 
   return (
     <>
-      <div className="scroll-area app-flow">{children}</div>
+      <div className={`scroll-area app-flow ${fixedListScreens.includes(screen) ? 'history-layout-scroll' : ''}`}>{children}</div>
       <BottomNav current={screen} go={go} />
-      <MatchingUrgentDialog go={go} />
+      <UrgentDialog />
     </>
   )
 }
 
+function UrgentDialog() {
+  const flow = useCustomerFlow()
+  const { go } = useScreenNavigator()
+
+  if (!flow.showUrgentModal) return null
+
+  return (
+    <UrgentModal
+      close={() => flow.setShowUrgentModal(false)}
+      confirm={async () => {
+        try {
+          await flow.submitMatchingRequest(true)
+          flow.setShowUrgentModal(false)
+          go(screens.matchingProgress)
+        } catch {
+          flow.updateMatchingFlow({
+            matchingStatus: '매칭 요청 실패',
+            matchingError: '긴급 매칭 요청에 실패했습니다. AI 견적서와 주소 정보를 확인해주세요.',
+          })
+          flow.setShowUrgentModal(false)
+        }
+      }}
+    />
+  )
+}
 
 function CustomerRoute({ screen }) {
   const flow = useCustomerFlow()
@@ -71,14 +109,23 @@ function CustomerRoute({ screen }) {
     [screens.estimateLoading]: <EstimateLoadingPage go={go} />,
     [screens.estimateDone]: <EstimateDonePage go={go} />,
     [screens.estimateOutput]: <EstimateOutputPage go={go} />,
-    [screens.myEstimateList]: <MyEstimateListPage go={go} />,
-    ...getMatchingPageRoutes({ go }),
+    [screens.myEstimateList]: <MyEstimateListPage go={go} back={back} />,
+    [screens.matchingHome]: <MatchingHomePage go={go} />,
+    [screens.matchingEstimateSelect]: <MatchingEstimateSelectPage go={go} />,
+    [screens.matchingAddressList]: <MatchingAddressListPage go={go} />,
+    [screens.matchingAddressSelect]: <MatchingAddressSelectPage go={go} />,
+    [screens.matchingSchedule]: <MatchingSchedulePage go={go} openUrgent={() => flow.setShowUrgentModal(true)} />,
+    [screens.matchingProgress]: <MatchingProgressPage go={go} />,
+    [screens.matchingAuction]: <MatchingAuctionPage go={go} />,
+    [screens.matchingPartner]: <MatchingPartnerPage go={go} />,
+    [screens.matchingPartnerInfo]: <MatchingPartnerInfoPage go={go} />,
+    [screens.matchingDone]: <MatchingDonePage go={go} />,
     [screens.riskHome]: <RiskHomePage go={go} />,
     [screens.riskSelect]: <RiskSelectPage go={go} />,
     [screens.riskLoading]: <RiskLoadingPage go={go} />,
     [screens.riskDone]: <RiskDonePage go={go} />,
     [screens.riskOutput]: <RiskOutputPage go={go} />,
-    [screens.myRiskList]: <MyRiskListPage go={go} />,
+    [screens.myRiskList]: <MyRiskListPage go={go} back={back} />,
     [screens.chatList]: (
       <ChatListPage
         threads={chatThreads}
@@ -96,10 +143,11 @@ function CustomerRoute({ screen }) {
         back={back}
       />
     ),
-    [screens.mypage]: <MyPage go={go} />,
-    [screens.myReviews]: <MyReviewsPage go={go} />,
-    [screens.profile]: <ProfilePage go={go} />,
-    [screens.matchHistory]: <MatchHistoryPage go={go} />,
+    [screens.mypage]: <MyPage go={go} back={back} />,
+    [screens.myReviews]: <MyReviewsPage go={go} back={back} />,
+    [screens.profile]: <ProfilePage go={go} back={back} />,
+    [screens.matchHistory]: <MatchHistoryPage go={go} back={back} />,
+    [screens.reviewWrite]: <ReviewWritePage go={go} />,
   }
 
   return <CustomerLayout screen={screen}>{pages[screen] || <Navigate to={screenPaths.home} replace />}</CustomerLayout>
