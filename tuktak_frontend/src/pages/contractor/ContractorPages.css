@@ -5,7 +5,43 @@
 }
 
 .contractor-content {
-  padding: 18px 18px 96px;
+  padding: 18px 18px 36px;
+}
+
+.contractor-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 52px;
+  margin-bottom: 18px;
+}
+
+.contractor-page-head > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contractor-page-head h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.contractor-back-button {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #111827;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.contractor-page-action {
+  flex: 0 0 auto;
 }
 
 .contractor-topbar {
@@ -142,6 +178,16 @@
   font-size: 92px;
 }
 
+.contractor-alarm.off {
+  border-color: #d1d5db;
+  background: #e5e7eb;
+  color: #7a8596;
+}
+
+.contractor-alarm.off svg {
+  color: #b6becb;
+}
+
 .contractor-list {
   display: grid;
   gap: 13px;
@@ -152,6 +198,10 @@
   grid-template-columns: 1fr auto;
   gap: 10px;
   padding: 16px 14px;
+}
+
+.contractor-request-card.simple {
+  align-items: center;
 }
 
 .contractor-request-card h2 {
@@ -171,6 +221,7 @@
 
 .contractor-card-side button,
 .contractor-card-actions button,
+.contractor-detail-link,
 .contractor-bottom-actions button:last-child,
 .contractor-button-row button:last-child {
   border: 0;
@@ -185,6 +236,13 @@
   align-items: center;
   gap: 4px;
   padding: 9px 10px;
+}
+
+.contractor-detail-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
 }
 
 .contractor-card-actions {
@@ -266,6 +324,55 @@
   font-size: 48px;
 }
 
+.contractor-ai-summary {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #e8f0ff;
+}
+
+.contractor-ai-summary > svg {
+  color: #2461dc;
+  font-size: 28px;
+}
+
+.contractor-ai-summary strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.contractor-ai-summary p {
+  margin: 0 0 6px;
+}
+
+.contractor-photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.contractor-photo-mock {
+  aspect-ratio: 1 / 1;
+  border: 1.5px dashed #9ca3af;
+  border-radius: 10px;
+  background: #f6f7f9;
+  color: #6b7280;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.contractor-photo-mock svg {
+  font-size: 28px;
+}
+
 .contractor-form {
   display: grid;
   gap: 28px;
@@ -313,6 +420,10 @@
   border: 1.5px solid #aaa;
   font-weight: 800;
   font-size: 18px;
+}
+
+.contractor-bottom-actions.sticky {
+  margin-top: 18px;
 }
 
 .contractor-filter {
@@ -376,8 +487,76 @@
   padding: 18px;
 }
 
-.contractor-review-card svg {
+.contractor-review-card h2 {
+  margin: 14px 0 6px;
+  font-size: 21px;
+}
+
+.contractor-review-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.contractor-review-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contractor-review-profile svg {
+  color: #3866be;
+  font-size: 34px;
+}
+
+.contractor-report-button {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+}
+
+.contractor-review-stars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 10px;
+  color: #cbd5e1;
+}
+
+.contractor-review-stars svg.filled {
   color: #f6be2c;
+}
+
+.contractor-review-stars span {
+  margin-left: 6px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.contractor-review-price {
+  margin: 0;
+  color: #2461dc;
+  font-weight: 900;
+}
+
+.contractor-review-body {
+  margin: 18px 0 12px;
+  line-height: 1.5;
+}
+
+.contractor-review-card time {
+  display: block;
+  text-align: right;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .contractor-profile-head {
@@ -402,6 +581,197 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.contractor-edit-list {
+  display: grid;
+  gap: 12px;
+}
+
+.contractor-edit-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 24px;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 0 16px;
+  border: 1.5px solid #858585;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+}
+
+.contractor-edit-row span {
+  color: #6b7280;
+  font-weight: 800;
+}
+
+.contractor-edit-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contractor-edit-row svg {
+  justify-self: end;
+  color: #7a8596;
+}
+
+.contractor-edit-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1.5px solid #858585;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.contractor-edit-panel label {
+  display: grid;
+  gap: 10px;
+  font-weight: 800;
+}
+
+.contractor-edit-panel input {
+  min-height: 52px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 16px;
+}
+
+.contractor-tree {
+  display: grid;
+  gap: 16px;
+}
+
+.contractor-tree-group {
+  padding: 16px;
+  border: 1.5px solid #858585;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.contractor-tree-group h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.contractor-tree-children {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contractor-tree-option {
+  border: 0;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #4b5563;
+  padding: 10px 13px;
+  font-weight: 800;
+}
+
+.contractor-tree-option.selected {
+  background: #e8f0ff;
+  color: #2461dc;
+}
+
+.contractor-selected-summary {
+  margin: 16px 0 0;
+  color: #6b7280;
+  font-weight: 800;
+}
+
+.contractor-split-selector {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  min-height: 390px;
+  overflow: hidden;
+  border: 1.5px solid #858585;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.contractor-category-list {
+  display: grid;
+  align-content: start;
+  border-right: 1px solid #e5e7eb;
+  background: #f6f7f9;
+}
+
+.contractor-category-list button {
+  min-height: 56px;
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 800;
+  text-align: left;
+  padding: 0 12px;
+}
+
+.contractor-category-list button.active {
+  background: #fff;
+  color: #2461dc;
+}
+
+.contractor-subcategory-list {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 10px;
+}
+
+.contractor-checkbox-row {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.contractor-checkbox-row:has(input:checked) {
+  background: #e8f0ff;
+  color: #2461dc;
+}
+
+.contractor-checkbox-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: #2461dc;
+}
+
+.contractor-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgb(17 24 39 / 45%);
+}
+
+.contractor-modal {
+  width: min(100%, 360px);
+  border-radius: 14px;
+  background: #fff;
+  padding: 22px;
+  box-shadow: 0 18px 50px rgb(17 24 39 / 24%);
+}
+
+.contractor-modal h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.contractor-modal p {
+  margin: 0;
+  color: #4b5563;
 }
 
 .contractor-bottom-nav button span {

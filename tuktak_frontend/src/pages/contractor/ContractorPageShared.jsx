@@ -1,15 +1,32 @@
 import { FaChevronRight } from 'react-icons/fa'
-import { ContractorTopBar } from '../../components/contractor/ContractorTopBar'
+import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { contractorScreens } from '../../data/contractorData'
+import { screens } from '../../data/customerData'
 
 export function StatusBadge({ children, tone = 'blue' }) {
   return <span className={`contractor-status ${tone}`}>{children}</span>
 }
 
-export function ContractorPage({ title, children, back, action }) {
+export function ContractorPage({ title, children, go, back, action }) {
+  const headerGo = (screen) => {
+    go?.(screen === screens.mypage ? contractorScreens.mypage : screen)
+  }
+
   return (
     <section className="contractor-screen">
-      <ContractorTopBar title={title} back={back} action={action} />
-      <div className="contractor-content">{children}</div>
+      <CustomerTopBar go={headerGo} compact onNotificationClick={() => go?.(contractorScreens.notifications)} />
+      <div className="contractor-content">
+        {(title || back || action) ? (
+          <div className="contractor-page-head">
+            <div>
+              {back ? <button className="contractor-back-button" type="button" onClick={back}>‹</button> : null}
+              {title ? <h1>{title}</h1> : null}
+            </div>
+            {action ? <div className="contractor-page-action">{action}</div> : null}
+          </div>
+        ) : null}
+        {children}
+      </div>
     </section>
   )
 }
@@ -23,22 +40,17 @@ export function MenuTile({ icon, label, onClick }) {
   )
 }
 
-export function RequestCard({ item, onDetail, onAiEstimate, onQuote }) {
+export function RequestCard({ item, onDetail }) {
   return (
-    <article className="contractor-request-card">
+    <article className="contractor-request-card simple">
       <div>
-        <strong className="contractor-region">{item.region}</strong>
+        <strong className="contractor-region">{item.city}</strong>
         <h2>{item.title}</h2>
-        <p>{item.budget} · {item.desiredDate}</p>
+        <p>{item.desiredDate} · {item.time}</p>
       </div>
-      <div className="contractor-card-side">
-        <small>시공일시<br />{item.desiredDate}<br />{item.time}</small>
-        <button type="button" onClick={onDetail}>자세히 보기 <FaChevronRight /></button>
-      </div>
-      <div className="contractor-card-actions">
-        <button type="button" onClick={onAiEstimate}>AI 견적서</button>
-        <button type="button" onClick={onQuote}>견적 작성</button>
-      </div>
+      <button className="contractor-detail-link" type="button" onClick={onDetail}>
+        자세히 보기 <FaChevronRight />
+      </button>
     </article>
   )
 }

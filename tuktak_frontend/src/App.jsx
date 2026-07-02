@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { ContractorBottomNav } from './components/contractor/ContractorBottomNav'
 import { BottomNav } from './components/customer/BottomNav'
 import { useCustomerFlow } from './context/CustomerFlowContext'
 import { contractorScreens } from './data/contractorData'
@@ -102,13 +101,10 @@ function useContractorNavigator() {
   return { go }
 }
 
-function ContractorLayout({ screen, children }) {
-  const { go } = useContractorNavigator()
-
+function ContractorLayout({ children }) {
   return (
     <>
       <div className="scroll-area app-flow">{children}</div>
-      <ContractorBottomNav current={screen} go={go} />
     </>
   )
 }
@@ -137,7 +133,7 @@ function ContractorRoute({ screen }) {
     [contractorScreens.myRegions]: <ContractorMyRegionsPage go={go} />,
   }
 
-  return <ContractorLayout screen={screen}>{pages[screen] || <Navigate to={contractorScreenPaths[contractorScreens.home]} replace />}</ContractorLayout>
+  return <ContractorLayout>{pages[screen] || <Navigate to={contractorScreenPaths[contractorScreens.home]} replace />}</ContractorLayout>
 }
 
 function UrgentDialog() {

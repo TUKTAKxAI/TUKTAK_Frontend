@@ -4,7 +4,7 @@ import { ContractorPage, StatusBadge } from './ContractorPageShared'
 
 export function ContractorRecordsPage({ go }) {
   return (
-    <ContractorPage title="시공 기록">
+    <ContractorPage title="시공 기록" go={go} back={() => go(contractorScreens.home)}>
       <div className="contractor-list">
         {contractorWorkOrders.map((item) => (
           <button className="contractor-line-card clickable" type="button" key={item.id} onClick={() => go(contractorScreens.recordDetail)}>
@@ -26,7 +26,7 @@ export function ContractorRecordDetailPage({ go }) {
   const item = contractorWorkOrders[0]
 
   return (
-    <ContractorPage title="작업 상세" back={() => go(contractorScreens.records)}>
+    <ContractorPage title="작업 상세" go={go} back={() => go(contractorScreens.records)}>
       <article className="contractor-detail-card">
         <StatusBadge>{item.status}</StatusBadge>
         <h1>{item.title}</h1>
