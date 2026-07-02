@@ -22,6 +22,9 @@ import mypageProfileTitle from '../../assets/figma/mypage-profile-upgraded-title
 import mypageProfilePhoto from '../../assets/figma/mypage-profile-photo.svg'
 import mypageRiskReport from '../../assets/figma/mypage-risk-report-upgraded-tile.webp'
 import mypageRiskReportTitle from '../../assets/figma/mypage-risk-report-upgraded-title.webp'
+import calendar from '../../assets/figma/calendar.png'
+import clock from '../../assets/figma/clock.png' 
+import siren from '../../assets/figma/siren.png'
 
 export const figmaAssets = {
   logo,
@@ -49,4 +52,7 @@ export const figmaAssets = {
   mypageRiskReport,
   mypageRiskReportTitle,
   matchingHistoryEmpty: mypageMatching,
+  calendar,
+  clock,
+  siren,
 }

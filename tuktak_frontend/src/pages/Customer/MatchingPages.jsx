@@ -1,6 +1,6 @@
 import { api } from '../../api/apiClient'
 import { useEffect, useState, useRef } from 'react'
-import { getJusoPopupUrl, hasJusoConfirmKey } from '../../api/jusoApi'
+import { getJusoPopupUrl, hasJusoConfirmKey, searchJusoAddresses } from '../../api/jusoApi'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
@@ -558,14 +558,14 @@ export function MatchingAddressListPage({ go }) {
         <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">시공 지역 선택</h1>
       </div>
 
-      <p className="text-sm font-medium text-gray-700 mb-3">시공을 진행할 도로명 주소 또는 건물명을 검색해 주세요!</p>
+      <p className="text-xs font-medium text-center text-gray-700 mt-5 mb-9">시공을 진행할 도로명 주소 또는 건물명을 검색해 주세요!</p>
 
       {/* 🛠️ 1. 주소 텍스트 입력 폼 (검색창 디자인) */}
       <form onSubmit={handleSearch} className="flex gap-2 mb-4 w-full">
         <input 
           type="text" 
           className="flex-1 px-4 py-2.5 border border-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          placeholder="Ex) 테헤란로 123 또는 사ピア타워"
+          placeholder="도로명주소 또는 건물명"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
         />
@@ -603,18 +603,23 @@ export function MatchingAddressListPage({ go }) {
       {/* 🛠️ 3. 최종 선택 완료된 주소가 박히는 인라인 카드 */}
       <h2 className="text-base font-bold text-gray-800 mb-3 mt-2">선택된 시공 주소</h2>
       <div className="address-list matching-address-list mb-auto">
-        <article className={`bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex items-center justify-between transition-all ${selectedAddress ? 'border-blue-500 bg-blue-50/20' : ''}`}>
+        <article className={`bg-white rounded-[14px] p-3 border border-gray-400 shadow-sm flex items-center justify-between transition-all ${selectedAddress ? 'border-blue-500 bg-blue-50/20' : ''}`}>
           <div className="flex items-center gap-3">
-            <div className="address-icon house w-6 h-6 bg-contain bg-no-repeat" />
+            <div className="address-icon house p-3 bg-contain bg-no-repeat" />
             <span className="text-[14px] text-gray-800 font-medium leading-tight">
-              {selectedAddress?.address || '위 검색창에서 주소를 검색하고 리스트에서 선택해 주세요.'}
+              {selectedAddress?.address || (
+                <>
+                  위 검색창에서 주소를 검색하고<br />리스트에서 선택해 주세요.
+                </>
+              )}
             </span>
           </div>
           {selectedAddress && (
             <button 
-              className="text-xs text-red-500 font-bold border border-red-200 px-2 py-1 rounded bg-white hover:bg-red-50 transition-colors" 
+              className="text-red-500 font-bold border border-red-200 px-3 py-2 rounded bg-white hover:bg-red-50 transition-colors" 
               type="button" 
               onClick={clearAddress}
+              style={{ fontSize:"15px", whiteSpace: 'nowrap' }}
             >
               삭제
             </button>
@@ -731,43 +736,118 @@ export function MatchingSchedulePage({ go, openUrgent }) {
     }
     go(screens.matchingProgress)
   }
+return (
+    <section className="selection-screen schedule-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10">
+      {/* 1. 상단 뒤로가기 버튼 */}
+      <div className="flex items-center mb-10">
+        <button 
+          className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+          onClick={() => go(screens.matchingAddressList)}
+        >
+          <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
+        </button>
+      </div>
 
-  return (
-    <section className="selection-screen schedule-screen">
-      <button className="inline-back-arrow" onClick={() => go(screens.matchingAddressList)}>‹</button>
-      <h1>시공을 예약할 날짜와 시간을 선택해주세요</h1>
-      <div className="schedule-row">
-        <div className="schedule-icon calendar" />
-        <input className="schedule-input" type="date" min={todayString()} value={selectedDate} onChange={(event) => {
-          setSelectedDate(event.target.value)
-          setSelectedSlot(null)
-        }} />
-      </div>
-      <div className="slot-grid">
-        {timeSlots.map((slot) => {
-          const disabled = !isSlotSelectable(selectedDate, slot)
-          const active = selectedSlot?.start === slot.start
-          return (
-            <button
-              className={`time-slot-button ${active ? 'active' : ''}`}
-              disabled={disabled}
-              key={slot.start}
-              type="button"
-              onClick={() => setSelectedSlot(slot)}
+      {/* 2. 메인 타이틀 (가운데 정렬 및 줄바꿈 적용) */}
+      <h1 className="text-[30px] font-medium text-gray-900 text-center leading-snug pt-10 pb-14"
+        style={{ WebkitTextStroke: '0.5px currentColor' }}>
+        시공을 예약할 날짜와<br />시간을 선택해주세요
+      </h1>
+
+      <div className="flex flex-col gap-6 px-2 pt-18">
+        
+        {/* 3. 날짜 선택 영역 */}
+        <div className="flex items-center gap-4">
+          {/* 달력 아이콘 (시안과 동일한 SVG) */}
+          <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+            <img src={figmaAssets.calendar} alt="달력 아이콘" className="w-12 h-12 object-contain" />
+          </div>
+          <input 
+            className="flex-1 border border-gray-600 rounded-xl px-4 py-2.5 text-[17px] bg-white focus:outline-none" 
+            type="date" 
+            min={todayString()} 
+            value={selectedDate} 
+            onChange={(event) => {
+              setSelectedDate(event.target.value)
+              setSelectedSlot(null)
+            }} 
+          />
+        </div>
+
+        {/* 4. 시간 선택 영역 (드롭다운 Select 박스로 교체) */}
+        <div className="flex items-center gap-4">
+          {/* 시계 아이콘 (시안과 동일한 SVG) */}
+          <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+            <img src={figmaAssets.clock} alt="시계 아이콘" className="w-10 h-10 object-contain" />
+          </div>
+          <div className="relative flex-1">
+            <select 
+              className="w-full border border-gray-600 rounded-xl px-4 py-2.5 text-[17px] bg-white focus:outline-none appearance-none"
+              value={selectedSlot ? selectedSlot.start : ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) {
+                  setSelectedSlot(null);
+                  return;
+                }
+                const slot = timeSlots.find(s => s.start === val);
+                setSelectedSlot(slot);
+              }}
             >
-              {slot.start} ~ {slot.end}
-            </button>
-          )
-        })}
+              <option value="" disabled>시간을 선택해주세요</option>
+              {timeSlots.map((slot) => {
+                const disabled = !isSlotSelectable(selectedDate, slot)
+                return (
+                  <option key={slot.start} value={slot.start} disabled={disabled}>
+                    {slot.start}-{slot.end} {disabled ? '(마감)' : ''}
+                  </option>
+                )
+              })}
+            </select>
+            {/* 커스텀 화살표 아이콘 */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-black text-sm">
+              ▼
+            </div>
+          </div>
+        </div>
+
       </div>
-      <button className="urgent-banner" onClick={openUrgent || startEmergency}>긴급 수리 요청</button>
-      {submitStatus === 'submitting' ? <p className="muted center">매칭 요청을 생성하는 중입니다.</p> : null}
-      {submitStatus === 'missing-estimate' ? <p className="muted center">AI 견적서를 먼저 선택해주세요.</p> : null}
-      {submitStatus === 'missing-address' ? <p className="muted center">도로명 주소 검색으로 지역 코드가 포함된 주소를 선택해주세요.</p> : null}
-      {submitStatus === 'error' ? <p className="muted center">매칭 요청 생성에 실패했습니다. 서버 연결과 로그인 상태를 확인해주세요.</p> : null}
-      <div className="button-row bottom-actions">
-        <PrimaryButton orange onClick={() => go(screens.matchingAddressList)}>취소</PrimaryButton>
-        <PrimaryButton onClick={startMatching}>{submitStatus === 'submitting' ? '요청중...' : canContinue ? '매칭 시작하기' : '시간 선택 필요'}</PrimaryButton>
+
+      {/* 5. 하단 영역 (긴급 배너 & 확인 버튼들) */}
+      <div className="mt-35 pt-10 flex flex-col gap-5">
+        
+        {/* 긴급 수리 요청 배너 */}
+        <button 
+          className="w-full bg-[#FF8989] text-black font-bold text-[22px] py-4 flex items-center justify-center gap-3 active:bg-[#FF7373] transition-colors"
+          onClick={openUrgent || startEmergency}
+        >
+          <img src={figmaAssets.siren} alt="긴급 수리 아이콘" className="w-8 h-8" /> 
+          <span 
+          style={{ fontSize:'24px', fontWeight: 'bold' }}>긴급 수리 요청</span>
+        </button>
+
+        {/* 상태 메시지 출력 (오류나 로딩 시에만 보임) */}
+        {submitStatus === 'submitting' && <p className="text-center text-sm font-medium text-gray-500">매칭 요청을 생성하는 중입니다.</p>}
+        {submitStatus === 'missing-estimate' && <p className="text-center text-sm font-medium text-red-500">AI 견적서를 먼저 선택해주세요.</p>}
+        {submitStatus === 'missing-address' && <p className="text-center text-sm font-medium text-red-500">도로명 주소 검색으로 지역 코드가 포함된 주소를 선택해주세요.</p>}
+        {submitStatus === 'error' && <p className="text-center text-sm font-medium text-red-500">매칭 요청 생성에 실패했습니다.</p>}
+
+        {/* 취소 & 매칭 시작하기 버튼 */}
+        <div className="flex gap-3">
+          <button 
+            className="flex-1 bg-[#EB5E0B] text-white font-bold py-4 rounded-[14px] text-[17px] active:scale-95 transition-transform"
+            onClick={() => go(screens.matchingAddressList)}
+          >
+            취소
+          </button>
+          <button 
+            className={`flex-1 font-bold py-4 rounded-[14px] text-[17px] active:scale-95 transition-transform ${canContinue ? 'bg-[#1C54D4] text-white' : 'bg-gray-400 text-white cursor-not-allowed'}`}
+            onClick={startMatching}
+            disabled={!canContinue && submitStatus !== 'submitting'}
+          >
+            {submitStatus === 'submitting' ? '요청중...' : canContinue ? '매칭 시작하기' : '시간 선택 필요'}
+          </button>
+        </div>
       </div>
     </section>
   )
