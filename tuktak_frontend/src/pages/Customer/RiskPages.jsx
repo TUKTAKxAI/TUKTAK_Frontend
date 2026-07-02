@@ -1,8 +1,9 @@
+import { api } from '../../api/apiClient'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Logo, PrimaryButton } from '../../components/customer/FormControls'
-import { riskCards, screens } from '../../data/customerData'
-import React, { useState, useEffect, useRef } from 'react'
+import { screens } from '../../data/customerData'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { RiskCard, SearchBar } from '../../components/customer/Cards'
 import { screenPaths } from '../../routes/customerRoutes'
@@ -135,14 +136,9 @@ export function RiskSelectPage({ go }) {
   useEffect(() => {
     const fetchMyEstimates = async () => {
       try {
-        const response = await fetch('http://localhost:8081/api/v1/users/me/ai-estimates', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        const data = await response.json();
+        const data = await api.get('/api/v1/users/me/ai-estimates');
         
-        // 백엔드 응답 구조에 맞게 데이터 세팅 (보통 data.items 배열로 옴)
-        if (response.ok && data.items) {
+        if (data && data.items) {
           setEstimates(data.items);
         }
       } catch (error) {
@@ -155,20 +151,11 @@ export function RiskSelectPage({ go }) {
     fetchMyEstimates();
   }, []);
 
-  const requestRiskReport = async (estimateId) => {
+const requestRiskReport = async (estimateId) => {
     try {
-      const response = await fetch('http://localhost:8081/api/v1/risk-reports', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ estimate_id: estimateId })
-      });
-      
-      const data = await response.json();
+      const data = await api.post('/api/v1/risk-reports', { estimate_id: estimateId });
 
-      if (response.ok && data.risk_report_id) {
+      if (data && data.risk_report_id) {
         navigate(screenPaths[screens.riskLoading], { 
           state: { riskReportId: data.risk_report_id } 
         });
@@ -177,7 +164,8 @@ export function RiskSelectPage({ go }) {
       }
     } catch (error) {
       console.error('요청 실패:', error);
-      alert('백엔드 서버와 통신하는 중 오류가 발생했습니다.');
+      // 에러 메시지도 클라이언트가 던져주는 예쁜 메시지로 출력합니다.
+      alert(`백엔드 서버와 통신하는 중 오류가 발생했습니다: ${error.message}`);
     }
   };
 
@@ -292,11 +280,7 @@ export function RiskLoadingPage({ go }) {
     
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8081/api/v1/risk-reports/${riskReportId}`, {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const data = await response.json();
+        const data = await api.get(`/api/v1/risk-reports/${riskReportId}`);
         
         if (data.success && data.report && (data.report.report_status === 'COMPLETED' || data.report.report_status === 'SUCCESS')) {
           clearInterval(interval);
@@ -473,7 +457,7 @@ export function RiskOutputPage({ go }) {
               <ul className="space-y-3">
                 {checklist.map((item, idx) => (
                   <li key={idx} className="flex items-center text-[14px] text-gray-700">
-                    <span className="flex items-center justify-center w-5 h-5 mr-3 bg-blue-100 text-blue-600 rounded-full text-[10px] font-bold flex-shrink-0">
+                    <span className="flex items-center justify-center w-5 h-5 mr-3 bg-blue-100 text-blue-600 rounded-full text-[10px] font-bold shrink-0">
                       {idx + 1}
                     </span>
                     {/* 💡 백엔드 JSON에서 'label'이라는 이름표로 보내주므로 item.label을 1순위로 찾습니다. */}
@@ -579,22 +563,31 @@ export function RiskOutputPage({ go }) {
 }
 
 // 7. 내 리스크 리포트 목록 페이지 (실제 데이터 연동)
-export function MyRiskListPage({ go }) {
-  // 💡 리스크 리포트 목록을 백엔드에서 받아오도록 수정!
+export function MyRiskListPage({ go, back }) {
+  // 💡 모달에 띄울 데이터를 담아둘 상태(State) 상자를 만듭니다.
+  const [selectedRisk, setSelectedRisk] = useState(null);
+  
   const [riskReports, setRiskReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchMyRiskReports = async () => {
       try {
-        const response = await fetch('http://localhost:8081/api/v1/risk-reports', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        const data = await response.json();
+        const data = await api.get('/api/v1/risk-reports');
         
-        if (response.ok && data.items) {
-          setRiskReports(data.items);
+        if (data && data.items) {
+          const mappedList = data.items.map((item) => ({
+            ...item, 
+            id: item.risk_report_id,
+            date: item.created_at ? item.created_at.split('T')[0] : '날짜 없음',
+            title: item.repair_task_name || '시공 리스크 리포트', 
+            riskScore: item.risk_score || 0,                         
+            riskLevel: item.risk_level || '미정',                    
+            isExpired: false,                                        
+            expireLabel: item.report_status === 'COMPLETED' ? '완료' : '진행중' 
+          }));
+          
+          setRiskReports(mappedList);
         }
       } catch (error) {
         console.error('리스크 리포트 목록 불러오기 실패:', error);
@@ -606,33 +599,226 @@ export function MyRiskListPage({ go }) {
     fetchMyRiskReports();
   }, []);
 
+  const handleCardClick = async (reportId) => {
+    try {
+      const data = await api.get(`/api/v1/risk-reports/${reportId}`);
+      
+      if (data && data.report) {
+        // 💡 예전엔 navigate로 화면을 이동시켰지만, 이제는 모달 상자(selectedRisk)에 데이터를 쏙 담습니다!
+        setSelectedRisk(data.report);
+      }
+    } catch (error) {
+      console.error('상세 정보 불러오기 실패:', error);
+      alert('상세 리포트 정보를 불러오지 못했습니다.');
+    }
+  };
+
   return (
     <section className="subpage-screen history-page risk-list-page">
-      <div className="subpage-title-row">
-        <button className="inline-back-arrow" onClick={back}>‹</button>
+      <div className="subpage-title-row">          
+        <button 
+            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+            onClick={() => go(screens.mypage)}
+          >
+            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
+          </button>
         <img className="subpage-title-icon risk-title-icon" src={figmaAssets.mypageRiskReportTitle} alt="" />
         <h1>내 리스크리포트</h1>
       </div>
+      
       <SearchBar />
       
-      <div className="list-stack overflow-y-auto">
-        {/* 💡 백엔드 연동: 로딩 및 빈 목록 처리 */}
+      <div className="list-stack overflow-y-auto pb-10">
         {isLoading ? (
           <p className="text-center text-gray-500 mt-10">목록을 불러오는 중 ...</p>
         ) : riskReports.length === 0 ? (
           <p className="text-center text-gray-500 mt-10">생성된 리스크 리포트가 없습니다.</p>
         ) : (
-          // 진짜 데이터를 기존 RiskCard 컴포넌트에 넘겨주기
           riskReports.map((item) => (
             <RiskCard 
-              key={item.risk_report_id} 
+              key={item.id} 
               item={item} 
-              onClick={() => go(screens.riskOutput)} 
+              onClick={() => handleCardClick(item.id)} 
             />
           ))
         )}
       </div>
-      {selectedRisk ? <RiskReportModal item={selectedRisk} onClose={() => setSelectedRisk(null)} /> : null}
+
+      {/* 💡 상자에 데이터가 들어가면 팝업(모달)을 화면 최상단에 띄워줍니다! */}
+      {selectedRisk ? (
+        <RiskReportModal 
+          item={selectedRisk} 
+          onClose={() => setSelectedRisk(null)} 
+        />
+      ) : null}
     </section>
+  )
+}
+
+// ==============================================================
+// 💡 새롭게 추가된 리스크 리포트 전용 팝업(모달) 컴포넌트입니다!
+// 견적서 모달과 동일한 오버레이 배경을 쓰되, 안쪽은 리포트 디자인으로 꽉 채웠습니다.
+// ==============================================================
+function RiskReportModal({ item, onClose }) {
+  const riskItems = item.risk_items || item.risk_items_json || [];
+  const checklist = item.checklist || item.checklist_json || [];
+  const additionalCostRisks = item.additional_cost_risks || item.additional_cost_risks_json || [];
+  const safetyRisks = item.safety_risks || item.safety_risks_json || [];
+  const contractRisks = item.contract_risks || item.contract_risks_json || [];
+  const fieldVariableRisks = item.field_variable_risks || item.field_variable_risks_json || [];
+
+  return (
+    <div className="estimate-result-overlay">
+      <article className="estimate-result-modal" style={{ maxHeight: '85vh', overflowY: 'auto', padding: '24px' }}>
+        
+        {/* 모달 상단 헤더 (날짜, 상태, 닫기 버튼) */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <span className="text-[13px] text-gray-500 mr-2">{item.created_at?.split('T')[0]}</span>
+            <small className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[11px] font-bold">
+              {item.report_status === 'COMPLETED' ? '완료' : '진행중'}
+            </small>
+          </div>
+          {/* 💡 여기서도 X 버튼을 정가운데로 예쁘게 정렬했습니다! */}
+          <button 
+            onClick={onClose} 
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+            style={{ fontSize: '18px', paddingBottom: '2px' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 1. 점수 및 등급 */}
+        <div className="flex gap-4 mb-6">
+          <div className="flex-1 bg-gray-50 rounded-2xl p-4 text-center border border-gray-100">
+            <p className="text-[11px] text-gray-400 mb-1">리스크 점수</p>
+            <strong className="text-[20px] font-bold text-gray-900">{item.risk_score}점</strong>
+          </div>
+          <div className="flex-1 bg-gray-50 rounded-2xl p-4 text-center border border-gray-100">
+            <p className="text-[11px] text-gray-400 mb-1">리스크 등급</p>
+            <strong className={`text-[20px] font-bold ${item.risk_level === 'LOW' ? 'text-green-500' : item.risk_level === 'MEDIUM' ? 'text-yellow-500' : 'text-red-500'}`}>
+              {item.risk_level}
+            </strong>
+          </div>
+        </div>
+
+        {/* 2. 상세 요약 */}
+        <div className="space-y-6 text-left">
+          <section>
+            <h3 className="text-[15px] font-bold text-gray-800 mb-2">상세 요약</h3>
+            <p className="text-[13px] text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
+              {item.summary || "요약 정보가 없습니다."}
+            </p>
+          </section>
+
+          {/* 3. 체크리스트 */}
+          {checklist.length > 0 && (
+            <section className="border-t border-gray-100 pt-5">
+              <h3 className="text-[15px] font-bold text-gray-800 mb-3">확인 체크리스트</h3>
+              <ul className="space-y-2">
+                {checklist.map((c, idx) => (
+                  <li key={idx} className="flex items-center text-[13px] text-gray-700">
+                    <span className="flex items-center justify-center w-5 h-5 mr-3 bg-blue-100 text-blue-600 rounded-full text-[10px] font-bold flex-shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span>{c.label || c.task || c.title || (typeof c === 'string' ? c : '')}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* 4. 세부 위험 요소 모음 */}
+          {additionalCostRisks.length > 0 && (
+            <section className="border-t border-gray-100 pt-5">
+              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
+                <span className="mr-2">💰</span> 추가 비용 위험
+              </h3>
+              <ul className="space-y-2">
+                {additionalCostRisks.map((r, idx) => (
+                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
+                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                    <span>
+                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && r.expected_impact && " : "}
+                      {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {safetyRisks.length > 0 && (
+            <section className="border-t border-gray-100 pt-5">
+              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
+                <span className="mr-2">⚠️</span> 안전 및 자격 위험
+              </h3>
+              <ul className="space-y-2">
+                {safetyRisks.map((r, idx) => (
+                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
+                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                    <span>
+                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && r.expected_impact && " : "}
+                      {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {contractRisks.length > 0 && (
+            <section className="border-t border-gray-100 pt-5">
+              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
+                <span className="mr-2">📝</span> 계약 및 분쟁 위험
+              </h3>
+              <ul className="space-y-2">
+                {contractRisks.map((r, idx) => (
+                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
+                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                    <span>
+                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && r.expected_impact && " : "}
+                      {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {fieldVariableRisks.length > 0 && (
+            <section className="border-t border-gray-100 pt-5">
+              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
+                <span className="mr-2">🔍</span> 확인 어려운 현장 변수
+              </h3>
+              <ul className="space-y-2">
+                {fieldVariableRisks.map((r, idx) => (
+                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
+                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                    <span>
+                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && r.expected_impact && " : "}
+                      {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+
+        {/* 확인 버튼 */}
+        <div className="mt-8 flex justify-center">
+          <PrimaryButton onClick={onClose} style={{ width: '100%', height: '52px', fontSize: '16px', fontWeight: 'bold' }}>
+            확인
+          </PrimaryButton>
+        </div>
+
+      </article>
+    </div>
   )
 }

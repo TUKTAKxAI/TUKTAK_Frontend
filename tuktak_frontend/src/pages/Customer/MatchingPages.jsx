@@ -1,7 +1,6 @@
+import { api } from '../../api/apiClient'
 import { useEffect, useState, useRef } from 'react'
-import { getMyAiEstimates } from '../../api/estimateApi'
 import { getJusoPopupUrl, hasJusoConfirmKey } from '../../api/jusoApi'
-import { createMatchingRequest, getMatchingQuotes, selectMatchingQuote } from '../../api/matchingApi'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
@@ -12,7 +11,7 @@ import preview10 from '../../assets/figma/preview10.webp';
 import preview11 from '../../assets/figma/preview11.webp';
 import preview12 from '../../assets/figma/preview12.webp';
 import loadingSvg from '../../assets/figma/loading.svg?raw';
-import errorSvg from '../../assets/figma/error.svg?raw';
+import errorSvg from "../../assets/figma/error.svg?raw"
 
 const previewImages = [preview9, preview10, preview11, preview12];
 
@@ -40,6 +39,7 @@ function formatWon(value) {
   return `${Number(value).toLocaleString('ko-KR')}원`
 }
 
+// 이전에 작성했던 location 방어 코드 로직을 매칭쪽 타이틀 함수에도 안전하게 적용해둡니다.
 function estimateTitle(estimate) {
   return estimate?.repair_task_name || estimate?.title || '견적 정보 없음'
 }
@@ -166,7 +166,15 @@ function ProposalModal({ partner, onClose, onSelect, isSelecting }) {
   return (
     <div className="modal-overlay matching-modal-overlay">
       <div className="modal-card proposal-modal-card">
-        <button className="modal-close-button" type="button" onClick={onClose}>×</button>
+        {/* 💡 X버튼 정중앙 배치 정석 스타일을 여기 모달에도 깔끔하게 적용했습니다 */}
+        <button 
+          className="modal-close-button flex items-center justify-center" 
+          type="button" 
+          onClick={onClose}
+          style={{ paddingBottom: '2px' }}
+        >
+          ✕
+        </button>
         <div className="partner-profile-card">
           <Avatar tone={partner.avatar} />
           <div>
@@ -199,7 +207,7 @@ function ProfileModal({ partner, onClose }) {
   return (
     <div className="modal-overlay matching-modal-overlay">
       <div className="modal-card profile-modal-card">
-        <button className="modal-close-button" type="button" onClick={onClose}>×</button>
+        <button className="modal-close-button flex items-center justify-center" type="button" onClick={onClose} style={{ paddingBottom: '2px' }}>✕</button>
         <div className="partner-info-top">
           <Avatar tone={partner.avatar} />
           <div>
@@ -344,7 +352,8 @@ export function MatchingEstimateSelectPage({ go }) {
   useEffect(() => {
     let ignore = false
 
-    getMyAiEstimates({ status: 'COMPLETED', page: 0, size: 20 })
+    // 💡 1. 견적서 목록 가져오기 주소 수정 완료! 앞에 /api/v1/ 명시 및 후행 슬래시 추가
+    api.get('/api/v1/users/me/ai-estimates/?status=COMPLETED&page=1&size=20')
       .then((data) => {
         if (ignore) return
         if (data?.items?.length) {
@@ -560,6 +569,7 @@ export function MatchingSchedulePage({ go, openUrgent }) {
 
   const canContinue = Boolean(selectedDate && selectedSlot)
 
+  // 💡 2. 일반 매칭 요청 (POST) -> /api/v1/matching-requests 로 라우터 매핑 수정 완료!
   const startMatching = async () => {
     if (!canContinue) return
     const estimate = flow.matchingFlow.selectedEstimate
@@ -582,7 +592,9 @@ export function MatchingSchedulePage({ go, openUrgent }) {
     setSubmitStatus('submitting')
 
     try {
-      const data = await createMatchingRequest(buildMatchingRequestBody({ estimate, address, schedule, isEmergency: false }))
+      const body = buildMatchingRequestBody({ estimate, address, schedule, isEmergency: false })
+      const data = await api.post('/api/v1/matching-requests', body)
+      
       flow.updateMatchingFlow({
         isEmergency: false,
         matchingStatus: data.matching_status || '매칭 진행중',
@@ -598,6 +610,7 @@ export function MatchingSchedulePage({ go, openUrgent }) {
     go(screens.matchingProgress)
   }
 
+  // 💡 3. 긴급 매칭 요청 (POST) -> /api/v1/matching-requests 로 라우터 매핑 수정 완료!
   const startEmergency = async () => {
     const estimate = flow.matchingFlow.selectedEstimate
     const address = flow.matchingFlow.selectedAddress
@@ -619,7 +632,9 @@ export function MatchingSchedulePage({ go, openUrgent }) {
     setSubmitStatus('submitting')
 
     try {
-      const data = await createMatchingRequest(buildMatchingRequestBody({ estimate, address, schedule, isEmergency: true }))
+      const body = buildMatchingRequestBody({ estimate, address, schedule, isEmergency: true })
+      const data = await api.post('/api/v1/matching-requests', body)
+      
       flow.updateMatchingFlow({
         isEmergency: true,
         matchingStatus: data.matching_status || '매칭 진행중',
@@ -712,12 +727,13 @@ export function MatchingAuctionPage({ go }) {
   const matchingRequestId = flow.matchingFlow.matchingRequestId
   const title = estimateTitle(flow.matchingFlow.selectedEstimate)
 
+  // 💡 4. 도착 견적 목록 조회 주소 앞에도 /api/v1/ 적용
   useEffect(() => {
     if (isMockId(matchingRequestId)) return
 
     let ignore = false
 
-    getMatchingQuotes(matchingRequestId)
+    api.get(`/api/v1/matching-requests/${matchingRequestId}/quotes`)
       .then((data) => {
         if (ignore) return
         if (data?.quotes?.length) {
@@ -740,11 +756,13 @@ export function MatchingAuctionPage({ go }) {
     }
   }, [matchingRequestId])
 
+  // 💡 5. 특정 파트너 수락(선택) 주소 앞에도 /api/v1/ 적용
   const selectPartner = async (partner) => {
     setIsSelecting(true)
 
     try {
-      const data = await selectMatchingQuote(matchingRequestId, partner.quote_id)
+      const data = await api.post(`/api/v1/matching-requests/${matchingRequestId}/quotes/${partner.quote_id}/select`)
+      
       flow.updateMatchingFlow({
         selectedQuoteId: data.selected_quote_id || partner.quote_id,
         selectedQuote: partner,

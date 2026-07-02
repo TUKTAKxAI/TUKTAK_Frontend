@@ -1,12 +1,12 @@
 import { api } from '../../api/apiClient'
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { fetchAiEstimateDetail, fetchMyAiEstimates } from '../../api/mypageApi'
+// import { fetchAiEstimateDetail, fetchMyAiEstimates } from '../../api/mypageApi'
 import { EstimateCard, SearchBar } from '../../components/customer/Cards'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Logo, PrimaryButton } from '../../components/customer/FormControls'
-import { estimateCards, screens } from '../../data/customerData'
+import { screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
 import preview1 from '../../assets/figma/preview1.webp';
 import preview2 from '../../assets/figma/preview2.webp';
@@ -455,7 +455,7 @@ export function MyEstimateListPage({ go, back }) {
     const fetchEstimates = async () => {
       try {
         // 💡 백엔드 엔드포인트에서 데이터 호출
-        const data = await api.get('/users/me/ai-estimates');
+        const data = await api.get('/api/v1/users/me/ai-estimates/');
         
         if (isMounted && data && data.items) {
           // 💡 화면 컴포넌트(<EstimateCard>)가 에러를 뿜지 않도록 프론트엔드 양식에 맞게 매핑(Mapping)합니다.
@@ -464,7 +464,7 @@ export function MyEstimateListPage({ go, back }) {
             date: item.created_at ? item.created_at.split('T')[0] : '날짜 없음',
             status: item.estimate_status === 'COMPLETED' ? '완료' : '진행중',
             title: item.repair_task_name || 'AI 시공 견적',
-            subtitle: `예상 비용: ${item.min_price?.toLocaleString() || 0}원`,
+            subtitle: `${parseInt(item.min_price?.toLocaleString()) || 0}원 ~ ${parseInt(item.max_price?.toLocaleString()) || 0}원`,
             price: item.min_price || 0, // 정렬용
             details: {
               location: item.main_category ? `${item.main_category} > ${item.object_label || ''}` : '미정',
@@ -508,7 +508,7 @@ export function MyEstimateListPage({ go, back }) {
   const handleCardClick = async (id) => {
     try {
       // 💡 특정 id로 상세 데이터 요청
-      const data = await api.get(`/ai-estimates/${id}`);
+      const data = await api.get(`/api/v1/ai-estimates/${id}`);
       
       if (data && data.estimate) {
         const detailItem = data.estimate;
@@ -519,8 +519,7 @@ export function MyEstimateListPage({ go, back }) {
           date: detailItem.created_at ? detailItem.created_at.split('T')[0] : '날짜 없음',
           status: detailItem.estimate_status === 'COMPLETED' ? '완료' : '진행중',
           title: detailItem.repair_task_name || 'AI 시공 견적',
-          subtitle: `예상 비용: ${detailItem.min_price?.toLocaleString() || 0}원`,
-          price: detailItem.min_price || 0,
+          subtitle: `예상 비용: ${parseInt(detailItem.min_price?.toLocaleString()) || 0}원 ~ ${parseInt(detailItem.max_price?.toLocaleString()) || 0}원`,
           details: {
             location: detailItem.main_category ? `${detailItem.main_category} > ${detailItem.object_label || ''}` : '미정',
             request: detailItem.description || '요청 내용이 없습니다.',
@@ -537,8 +536,13 @@ export function MyEstimateListPage({ go, back }) {
 
   return (
     <section className="subpage-screen history-page estimate-list-page">
-      <div className="subpage-title-row">
-        <button className="inline-back-arrow" onClick={back}>‹</button>
+      <div className="subpage-title-row">          
+        <button 
+            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+            onClick={() => go(screens.mypage)}
+          >
+            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
+          </button>
         <img className="subpage-title-icon estimate-title-icon" src={figmaAssets.mypageAiEstimateTitle} alt="" />
         <h1>내 AI 견적서</h1>
       </div>
@@ -584,7 +588,14 @@ function EstimateResultModal({ item, onClose, onStartMatching }) {
             <span>{item.date}</span>
             <small>{item.status}</small>
           </div>
-          <button onClick={onClose} aria-label="닫기">×</button>
+          <button 
+            onClick={onClose} 
+            aria-label="닫기"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors"
+            style={{ fontSize: '18px', paddingBottom: '2px' }}
+          >
+            ✕
+          </button>
         </div>
         <div className="estimate-result-title">
           <img src={figmaAssets.mypageAiEstimateTitle} alt="" />
