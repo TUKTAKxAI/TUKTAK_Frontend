@@ -9,6 +9,7 @@ import {
   signupCustomer,
   checkEmailAvailability,
 } from '../../services/authService'
+import { searchJusoAddresses } from '../../api/jusoApi'
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export function AuthPages({
@@ -248,26 +249,13 @@ export function AuthPages({
     }
 
     try {
-      const params = new URLSearchParams({
-        confmKey: import.meta.env.VITE_JUSO_KEY,
-        currentPage: "1",
-        countPerPage: "10",
+      const data = await searchJusoAddresses({
         keyword: addressKeyword,
-        resultType: "json",
+        currentPage: 1,
+        countPerPage: 10,
       });
 
-      const response = await fetch(
-        `https://business.juso.go.kr/addrlink/addrLinkApi.do?${params}`
-      );
-
-      const data = await response.json();
-
-      if (data.results.common.errorCode !== "0") {
-        alert(data.results.common.errorMessage);
-        return;
-      }
-
-      setAddressList(data.results.juso || []);
+      setAddressList(data.items || []);
 
     } catch (error) {
       console.error(error);
