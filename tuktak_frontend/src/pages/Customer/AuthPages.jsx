@@ -43,30 +43,25 @@ export function AuthPages({
 
   const handleLogin = async () => {
     try {
-      const result = await login(
+      await login(
         loginData.email,
         loginData.password
       );
 
-      console.log("로그인 성공");
-      console.log(result);
+      await authLogin();
 
-      authLogin(result);
+      alert("로그인 성공");
 
       setScreen(screens.home);
 
     } catch (err) {
       const detail = err.response?.data?.detail;
 
-      console.log(err.response?.data);
-
-      // 이메일 형식이 잘못된 경우(422)
       if (Array.isArray(detail)) {
         alert("올바른 이메일 형식으로 입력해주세요.");
         return;
       }
 
-      // 로그인 실패
       if (
         detail === "Invalid email or password" ||
         detail === "Invalid credentials"
@@ -182,12 +177,8 @@ export function AuthPages({
         email: signupData.email,
         password: signupData.password,
         phone: signupData.phone,
-
-        address: signupData.address,
-        detail_address: signupData.detailAddress,
-
         agreements,
-      })
+      });
 
       go(screens.welcome)
 

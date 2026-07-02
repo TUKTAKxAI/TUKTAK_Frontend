@@ -28,7 +28,7 @@ export const signupCustomer = async (signupData) => {
 
 /**
  * 파트너 회원가입
- * (추후 사용)
+ * POST /auth/signup/contractor
  */
 export const signupPartner = async (signupData) => {
     const response = await api.post(
@@ -58,28 +58,10 @@ export const checkEmailAvailability = async (email) => {
 
 /**
  * 로그아웃
+ * 쿠키는 브라우저가 자동 전송
  */
-export const logout = async (refreshToken) => {
-    const response = await api.post(
-        "/auth/logout",
-        {
-            refresh_token: refreshToken,
-        }
-    );
-
-    return response.data;
-};
-
-/**
- * 토큰 재발급
- */
-export const refresh = async (refreshToken) => {
-    const response = await api.post(
-        "/auth/refresh",
-        {
-            refresh_token: refreshToken,
-        }
-    );
+export const logout = async () => {
+    const response = await api.post("/auth/logout");
 
     return response.data;
 };
