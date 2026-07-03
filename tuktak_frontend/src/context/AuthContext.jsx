@@ -1,9 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
     getUser,
-    getAccessToken,
     clearAuth,
-    saveTokens,
     saveUser,
 } from "../utils/token";
 
@@ -14,10 +12,9 @@ export function AuthProvider({ children }) {
     const [isLogin, setIsLogin] = useState(false);
 
     useEffect(() => {
-        const token = getAccessToken();
         const storedUser = getUser();
 
-        if (token && storedUser) {
+        if (storedUser) {
             setUser(storedUser);
             setIsLogin(true);
         }
@@ -27,11 +24,6 @@ export function AuthProvider({ children }) {
      * 로그인 성공 시 호출
      */
     const login = (response) => {
-        saveTokens(
-            response.access_token,
-            response.refresh_token
-        );
-
         saveUser(response.user);
 
         setUser(response.user);

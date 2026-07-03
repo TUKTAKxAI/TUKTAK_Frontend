@@ -6,7 +6,7 @@ export async function apiClient(endpoint, options = {}) {
   const config = {
     credentials: 'include', 
     ...options,
-  };
+  };;
 
   if (!(options.body instanceof FormData)) {
     config.headers = {
@@ -32,4 +32,4 @@ export const api = {
     method: 'POST', 
     body: body instanceof FormData ? body : JSON.stringify(body) 
   }),
-};
+}

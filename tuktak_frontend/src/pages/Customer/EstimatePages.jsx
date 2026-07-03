@@ -1,11 +1,15 @@
 import { api } from '../../api/apiClient'
 import { useState, useEffect, useRef } from 'react'
+import { api } from '../../api/apiClient'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+// import { fetchAiEstimateDetail, fetchMyAiEstimates } from '../../api/mypageApi'
 // import { fetchAiEstimateDetail, fetchMyAiEstimates } from '../../api/mypageApi'
 import { EstimateCard, SearchBar } from '../../components/customer/Cards'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { screens } from '../../data/customerData'
 import { screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
 import preview1 from '../../assets/figma/preview1.webp';
@@ -16,6 +20,10 @@ import loadingSvg from '../../assets/figma/loading.svg?raw';
 import confirmSvg from '../../assets/figma/confirm.svg?raw';
 
 const previewImages = [preview1, preview2, preview3, preview4];
+
+function formatWon(value) {
+  return Number(value || 0).toLocaleString('ko-KR')
+}
 
 function ServiceHero({ onClick, buttonLabel, go }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -61,7 +69,10 @@ function ServiceHero({ onClick, buttonLabel, go }) {
 
       <div className="flex flex-col items-center flex-1 py-0">
         <h1 className="text-2xl font-bold text-gray-900 mt-0 text-center">AI 견적 서비스</h1>
+      <div className="flex flex-col items-center flex-1 py-0">
+        <h1 className="text-2xl font-bold text-gray-900 mt-0 text-center">AI 견적 서비스</h1>
         
+        <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
         <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
           <h2 className="text-base font-semibold text-gray-700 leading-snug">
             AI로 수리 비용 및 시간을<br />미리 예측하세요
@@ -164,6 +175,7 @@ export function EstimateStartPage({ go }) {
     try {
       
       const data = await api.post('/api/v1/ai-estimates', formData);
+      const data = await api.post('/api/v1/ai-estimates', formData);
       
       if (data.success) {
         const newCount = remainingCount - 1;
@@ -259,6 +271,7 @@ useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const data = await api.get(`/api/v1/ai-estimates/${estimateId}`);
+        const data = await api.get(`/api/v1/ai-estimates/${estimateId}`);
         
         if (data.success && (data.estimate.estimate_status === 'COMPLETED' || data.estimate.estimate_status === 'SUCCESS')) {
           clearInterval(interval);
@@ -285,6 +298,7 @@ useEffect(() => {
         className="mb-5 w-full px-4 font-bold text-gray-800 text-center whitespace-nowrap tracking-tighter"
         style={{ fontSize: '24px' }}
       >
+        AI 견적서 생성중 ...
         AI 견적서 생성중 ...
       </h2>
       
@@ -343,11 +357,15 @@ export function EstimateDonePage({ go }) {
 export function EstimateOutputPage({ go }) {
   const location = useLocation();
   // EstimateLoadingPage 또는 다른 곳에서 state로 넘겨받은 AI 견적 데이터
+  // EstimateLoadingPage 또는 다른 곳에서 state로 넘겨받은 AI 견적 데이터
   const resultData = location.state?.resultData;
 
   // 데이터가 없을 경우에 대한 예외 처리 (RiskOutputPage와 동일한 스타일 적용)
+  // 데이터가 없을 경우에 대한 예외 처리 (RiskOutputPage와 동일한 스타일 적용)
   if (!resultData) {
     return (
+      <section className="flex flex-col h-full bg-[#F2F3F5] items-center justify-center">
+        <p className="mb-4 text-gray-600">견적서 데이터를 불러올 수 없습니다.</p>
       <section className="flex flex-col h-full bg-[#F2F3F5] items-center justify-center">
         <p className="mb-4 text-gray-600">견적서 데이터를 불러올 수 없습니다.</p>
         <PrimaryButton narrow onClick={() => go(screens.estimateHome)}>홈으로</PrimaryButton>
@@ -424,13 +442,49 @@ export function EstimateOutputPage({ go }) {
             <h3 className="text-[16px] font-bold text-gray-800 mb-2">AI 종합 요약</h3>
             {/* AI 요약 내용은 시각적으로 눈에 띄도록 옅은 파란색 배경을 적용했습니다 */}
             <p className="text-[14px] text-gray-600 leading-relaxed bg-blue-50 p-4 rounded-xl">
+        {/* 4. 시공 상세 분석, 요청 내용, AI 요약 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
+          
+          <section className="border-b border-gray-100 pb-6">
+            <h3 className="text-[16px] font-bold text-gray-800 mb-4">시공 분석 정보</h3>
+            <ul className="space-y-3">
+              <li className="flex items-start text-[14px] text-gray-700">
+                <span className="w-16 text-gray-400 font-medium">분류</span> 
+                <span className="flex-1">{resultData.main_category} &gt; {resultData.object_label}</span>
+              </li>
+              <li className="flex items-start text-[14px] text-gray-700">
+                <span className="w-16 text-gray-400 font-medium">증상</span> 
+                <span className="flex-1 text-red-500 font-medium">{resultData.problem_label}</span>
+              </li>
+            </ul>
+          </section>
+
+          <section className="border-b border-gray-100 pb-6">
+            <h3 className="text-[16px] font-bold text-gray-800 mb-2">고객 요청 상세</h3>
+            <p className="text-[14px] text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
+              {resultData.description || '요청 내용이 없습니다.'}
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-[16px] font-bold text-gray-800 mb-2">AI 종합 요약</h3>
+            {/* AI 요약 내용은 시각적으로 눈에 띄도록 옅은 파란색 배경을 적용했습니다 */}
+            <p className="text-[14px] text-gray-600 leading-relaxed bg-blue-50 p-4 rounded-xl">
               {resultData.ai_summary}
+            </p>
+          </section>
+
             </p>
           </section>
 
         </div>
       </main>
+      </main>
 
+      {/* 5. 하단 액션 버튼 */}
+      <div className="px-2 pt-6 pb-0 bg-F2F3F5 border-t border-gray-200 flex space-x-5">
+        <PrimaryButton ghost onClick={() => go(screens.estimateHome)} style={{ border: '1px solid #ccc', width: '180px', height: '52px', fontSize: '20px', fontWeight: 'bold' }}>확 인</PrimaryButton>
+        <PrimaryButton onClick={() => go(screens.matchingEstimateSelect)} style={{ width: '180px', height: '52px', fontSize: '18px', fontWeight: 'bold' }}>매칭 시작하기</PrimaryButton>
       {/* 5. 하단 액션 버튼 */}
       <div className="px-2 pt-6 pb-0 bg-F2F3F5 border-t border-gray-200 flex space-x-5">
         <PrimaryButton ghost onClick={() => go(screens.estimateHome)} style={{ border: '1px solid #ccc', width: '180px', height: '52px', fontSize: '20px', fontWeight: 'bold' }}>확 인</PrimaryButton>
@@ -441,6 +495,14 @@ export function EstimateOutputPage({ go }) {
 }
 
 export function MyEstimateListPage({ go, back }) {
+  const [selectedEstimate, setSelectedEstimate] = useState(null);
+  const [estimateList, setEstimateList] = useState([]);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('latest');
+
+  // ==========================================
+  // 1. 견적서 목록 가져오기 (apiClient 직접 사용)
+  // ==========================================
   const [selectedEstimate, setSelectedEstimate] = useState(null);
   const [estimateList, setEstimateList] = useState([]);
   const [query, setQuery] = useState('');
@@ -484,6 +546,12 @@ export function MyEstimateListPage({ go, back }) {
     fetchEstimates();
 
     return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // 검색 및 정렬 로직 (기존과 동일)
+  const normalizedQuery = query.trim().toLowerCase();
       isMounted = false;
     };
   }, []);
@@ -543,9 +611,17 @@ export function MyEstimateListPage({ go, back }) {
           >
             <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
           </button>
+      <div className="subpage-title-row">          
+        <button 
+            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+            onClick={() => go(screens.mypage)}
+          >
+            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
+          </button>
         <img className="subpage-title-icon estimate-title-icon" src={figmaAssets.mypageAiEstimateTitle} alt="" />
         <h1>내 AI 견적서</h1>
       </div>
+      
       
       <div className="history-search-row estimate-search-row">
         <SearchBar value={query} onChange={setQuery} />
@@ -556,6 +632,7 @@ export function MyEstimateListPage({ go, back }) {
         </select>
       </div>
       
+      
       <div className="history-scroll-area">
         <div className="list-stack">
           {filteredEstimateCards.map((item) => (
@@ -563,11 +640,13 @@ export function MyEstimateListPage({ go, back }) {
               key={item.id}
               item={item}
               onClick={() => handleCardClick(item.id)} // 💡 여기서 방금 만든 상세 조회 함수를 부릅니다!
+              onClick={() => handleCardClick(item.id)} // 💡 여기서 방금 만든 상세 조회 함수를 부릅니다!
             />
           ))}
           {filteredEstimateCards.length === 0 ? <p className="empty-list-message">검색 결과가 없습니다.</p> : null}
         </div>
       </div>
+      
       
       {selectedEstimate ? (
         <EstimateResultModal
@@ -588,6 +667,14 @@ function EstimateResultModal({ item, onClose, onStartMatching }) {
             <span>{item.date}</span>
             <small>{item.status}</small>
           </div>
+          <button 
+            onClick={onClose} 
+            aria-label="닫기"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors"
+            style={{ fontSize: '18px', paddingBottom: '2px' }}
+          >
+            ✕
+          </button>
           <button 
             onClick={onClose} 
             aria-label="닫기"

@@ -2,30 +2,34 @@
  * Access Token
  */
 export const saveAccessToken = (token) => {
-    localStorage.setItem("accessToken", token);
+    void token;
 };
 
 export const getAccessToken = () => {
-    return localStorage.getItem("accessToken");
+    return null;
 };
 
 export const removeAccessToken = () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("tuktak_access_token");
 };
 
 /**
  * Refresh Token
  */
 export const saveRefreshToken = (token) => {
-    localStorage.setItem("refreshToken", token);
+    void token;
 };
 
 export const getRefreshToken = () => {
-    return localStorage.getItem("refreshToken");
+    return null;
 };
 
 export const removeRefreshToken = () => {
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("tuktak_refresh_token");
 };
 
 /**
