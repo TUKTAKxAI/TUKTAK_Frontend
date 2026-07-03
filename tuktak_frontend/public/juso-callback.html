@@ -7,7 +7,8 @@
   </head>
   <body>
     <script>
-      const params = new URLSearchParams(window.location.search)
+      const rawHash = window.location.hash.replace(/^#/, '')
+      const params = new URLSearchParams(window.location.search || rawHash)
       const payload = Object.fromEntries(params.entries())
 
       if (window.opener) {
