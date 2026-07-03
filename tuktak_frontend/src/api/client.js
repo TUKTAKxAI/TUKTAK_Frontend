@@ -1,82 +1,58 @@
-const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+import axios from 'axios'
+
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'
 const API_PREFIX = '/api/v1'
 
-function getBaseUrl() {
-  return RAW_API_BASE_URL.replace(/\/$/, '')
+function getBaseURL() {
+  const baseURL = RAW_API_BASE_URL.replace(/\/$/, '')
+  return baseURL.endsWith(API_PREFIX) ? baseURL : `${baseURL}${API_PREFIX}`
 }
 
-function normalizePath(path) {
-  const requestPath = path.startsWith('/') ? path : `/${path}`
-  return requestPath.startsWith(API_PREFIX) ? requestPath : `${API_PREFIX}${requestPath}`
+function normalizePath(path = '') {
+  const requestPath = String(path).startsWith('/') ? String(path) : `/${path}`
+  return requestPath.startsWith(API_PREFIX)
+    ? requestPath.slice(API_PREFIX.length) || '/'
+    : requestPath
 }
 
-function buildUrl(path, query) {
-  const baseUrl = getBaseUrl()
-  let requestPath = normalizePath(path)
-
-  if (baseUrl.endsWith(API_PREFIX)) {
-    requestPath = requestPath.slice(API_PREFIX.length) || '/'
-  }
-
-  const url = new URL(`${baseUrl}${requestPath}`, window.location.origin)
-
-  if (query) {
-    Object.entries(query).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        url.searchParams.set(key, value)
-      }
-    })
-  }
-
-  return baseUrl ? url.toString() : `${url.pathname}${url.search}`
+function normalizeError(error) {
+  const data = error.response?.data
+  const message = data?.detail || data?.message || data?.code || error.message || 'API request failed'
+  const normalized = new Error(message)
+  normalized.status = error.response?.status
+  normalized.data = data
+  return normalized
 }
 
-export function getAccessToken() {
-  return null
-}
+const client = axios.create({
+  baseURL: getBaseURL(),
+  withCredentials: true,
+})
 
-export function getRefreshToken() {
-  return null
-}
+client.interceptors.request.use((config) => ({
+  ...config,
+  url: normalizePath(config.url || ''),
+}))
+
+client.interceptors.response.use(
+  (response) => response,
+  (error) => Promise.reject(normalizeError(error)),
+)
 
 export function hasAccessToken() {
-  // HttpOnly Cookie는 JavaScript에서 읽을 수 없으므로 API를 직접 호출해 인증 여부를 확인합니다.
   return true
 }
 
 export async function apiRequest(path, { method = 'GET', body, query, headers } = {}) {
-  const requestHeaders = new Headers(headers)
-
-  if (body && !(body instanceof FormData) && !requestHeaders.has('Content-Type')) {
-    requestHeaders.set('Content-Type', 'application/json')
-  }
-
-  const response = await fetch(buildUrl(path, query), {
+  const response = await client.request({
+    url: path,
     method,
-    headers: requestHeaders,
-    credentials: 'include',
-    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    params: query,
+    data: body,
+    headers,
   })
 
-  const text = await response.text()
-  let data = null
-
-  if (text) {
-    try {
-      data = JSON.parse(text)
-    } catch {
-      data = { message: text }
-    }
-  }
-
-  if (!response.ok) {
-    const error = new Error(data?.message || data?.code || `API request failed: ${response.status}`)
-    error.status = response.status
-    error.data = data
-    throw error
-  }
-
-  return data
+  return response.data
 }
 
 export async function apiFormRequest(path, formData, options = {}) {
@@ -86,3 +62,21 @@ export async function apiFormRequest(path, formData, options = {}) {
     body: formData,
   })
 }
+
+export async function apiClient(endpoint, options = {}) {
+  return apiRequest(endpoint, {
+    method: options.method,
+    body: options.body,
+    headers: options.headers,
+  })
+}
+
+export const api = {
+  get: (endpoint, config = {}) => client.get(endpoint, config).then((response) => response.data),
+  post: (endpoint, body, config = {}) => client.post(endpoint, body, config).then((response) => response.data),
+  patch: (endpoint, body, config = {}) => client.patch(endpoint, body, config).then((response) => response.data),
+  put: (endpoint, body, config = {}) => client.put(endpoint, body, config).then((response) => response.data),
+  delete: (endpoint, config = {}) => client.delete(endpoint, config).then((response) => response.data),
+}
+
+export default client

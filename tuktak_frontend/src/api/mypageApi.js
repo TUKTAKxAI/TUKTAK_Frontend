@@ -1,6 +1,5 @@
 import { apiFormRequest, apiRequest, hasAccessToken } from './client'
 import { estimateCards, historyCards, riskCards } from '../data/customerData'
-import { getUser } from '../utils/token'
 
 const defaultProfile = {
   nickname: '사용자',
@@ -13,15 +12,9 @@ const defaultProfile = {
 }
 
 function getFallbackProfile() {
-  const storedUser = getUser() ?? {}
-  const nickname = storedUser.nickname ?? storedUser.name ?? defaultProfile.nickname
-
   return {
     ...defaultProfile,
-    nickname,
-    name: storedUser.name ?? nickname,
-    email: storedUser.email ?? '',
-    userId: storedUser.user_id ? `USER-${storedUser.user_id}` : '',
+    userId: '',
   }
 }
 
