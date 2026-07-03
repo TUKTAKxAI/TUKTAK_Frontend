@@ -12,6 +12,11 @@ export const defaultNearbySummary = {
   contractorCount: 13,
 }
 
+export const defaultActiveWorkSummary = {
+  hasActiveWork: true,
+  activeCount: 1,
+}
+
 function getDistrictFromAddress(address) {
   const match = String(address || '').match(/[가-힣]+구/)
   return match?.[0] ?? '주소'
@@ -54,8 +59,8 @@ export async function fetchHomeAddress() {
   if (!hasAccessToken()) return defaultHomeAddress
 
   try {
-    const data = await apiRequest('/users/me')
-    const address = data.user?.default_address || data.user?.address || data.default_address || data.address
+    const data = await apiRequest('/users/me/addresses')
+    const address = data.items?.find((item) => item.is_default) || data.items?.[0]
     return mapBackendAddress(address) || defaultHomeAddress
   } catch (error) {
     console.warn('home address fallback:', error)
@@ -104,5 +109,31 @@ export async function fetchNearbySummary(address) {
   } catch (error) {
     console.warn('nearby summary fallback:', error)
     return defaultNearbySummary
+  }
+}
+
+// 진행중 시공 요약: GET /api/v1/work-orders
+// 매칭 히스토리와 같은 work-orders 데이터를 기준으로 홈의 진행중 건수를 계산합니다.
+export async function fetchActiveWorkSummary() {
+  if (!hasAccessToken()) return defaultActiveWorkSummary
+
+  try {
+    const data = await apiRequest('/work-orders', {
+      query: {
+        size: 100,
+      },
+    })
+
+    const activeItems = (data.items ?? []).filter((item) => (
+      !['COMPLETED', 'CANCELLED', '완료', '완료됨', '취소'].includes(item.work_order_status)
+    ))
+
+    return {
+      hasActiveWork: activeItems.length > 0,
+      activeCount: activeItems.length,
+    }
+  } catch (error) {
+    console.warn('active work summary fallback:', error)
+    return defaultActiveWorkSummary
   }
 }

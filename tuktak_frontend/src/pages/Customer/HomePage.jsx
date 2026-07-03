@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   defaultHomeAddress,
   defaultNearbySummary,
+  fetchActiveWorkSummary,
   fetchHomeAddress,
   fetchNearbySummary,
   mapJusoPayloadToHomeAddress,
@@ -12,7 +13,9 @@ import { figmaAssets } from '../../components/customer/figmaAssets'
 import { HeaderIcon } from '../../components/customer/CustomerTopBar'
 import { Logo } from '../../components/customer/FormControls'
 import { screens } from '../../data/customerData'
+import { screenPaths } from '../../routes/customerRoutes'
 import notificationEmptyBell from '../../assets/figma/notification-empty-bell-gray.svg'
+import { useNavigate } from 'react-router-dom'
 
 // 최신 리뷰 탭에서 사용할 카테고리 목록
 const reviewCategories = ['도어락', '목공', '배관', '보일러', '전기']
@@ -50,6 +53,13 @@ const initialNotifications = [
     isRead: true,
   },
 ]
+
+// 진행중 시공 API 연결 전 홈 화면 시안 확인용 기본값
+const defaultActiveMatching = {
+  status: '진행중',
+}
+
+const defaultActiveMatchingCount = 1
 
 // 홈 화면 최신 리뷰 임시 데이터
 // 카테고리별로 리뷰 목록을 분리해서 탭 클릭 시 해당 리뷰만 보여줌
@@ -134,6 +144,7 @@ function StarRating({ rating }) {
 // 홈 화면 전체 컴포넌트
 // go 함수는 다른 화면으로 이동할 때 사용함
 export function HomePage({ go }) {
+  const navigate = useNavigate()
   // 현재 선택된 최신 리뷰 카테고리
   const [activeCategory, setActiveCategory] = useState(reviewCategories[0])
   // 현재 설정된 사용자 주소
@@ -148,6 +159,9 @@ export function HomePage({ go }) {
   const [notifications, setNotifications] = useState(initialNotifications)
   // 주소 검색/저장 과정에서 발생한 에러 메시지
   const [addressError, setAddressError] = useState('')
+  // 진행중 시공 요약. 백엔드 API 연결 전에는 기본값으로 UI를 확인함
+  const [activeMatching, setActiveMatching] = useState(defaultActiveMatching)
+  const [activeMatchingCount, setActiveMatchingCount] = useState(defaultActiveMatchingCount)
   // 현재 선택된 카테고리에 해당하는 리뷰만 화면에 표시
   const visibleReviews = homeReviews[activeCategory] ?? []
   // 읽지 않은 알림 개수 계산
@@ -169,6 +183,29 @@ export function HomePage({ go }) {
 
     loadHomeAddress()
     // 컴포넌트가 사라진 뒤 비동기 응답이 늦게 도착해도 state 변경을 막기 위한 정리 함수
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  // 진행중 시공 요약 조회. 매칭 히스토리와 같은 work-orders 데이터를 기준으로 계산함
+  useEffect(() => {
+    let ignore = false
+
+    async function loadActiveMatching() {
+      const summary = await fetchActiveWorkSummary()
+      if (ignore) return
+
+      if (summary.hasActiveWork) {
+        setActiveMatching(defaultActiveMatching)
+        setActiveMatchingCount(summary.activeCount || defaultActiveMatchingCount)
+      } else {
+        setActiveMatching(null)
+        setActiveMatchingCount(0)
+      }
+    }
+
+    loadActiveMatching()
     return () => {
       ignore = true
     }
@@ -236,19 +273,58 @@ export function HomePage({ go }) {
         </div>
       </header>
 
-      {/* 메인 CTA 카드: AI 견적 시작 화면으로 이동 */}
-      <button className="home-alert-card" type="button" onClick={() => go(screens.estimateHome)}>
-        <div className="home-alert-copy">
-          <span>AI 견적 시작</span>
-          <h2>수리가 필요하다면?</h2>
-          <p>사진과 설명을 올리면 예상 비용과 시간을 확인할 수 있어요.</p>
-          <strong className="home-alert-cta">무료 AI 견적 받기</strong>
-        </div>
-        <div className="home-alert-visual">
-          <strong>AI</strong>
-          <small>무료 AI 견적 3회</small>
-        </div>
-      </button>
+      {activeMatching ? (
+        // 진행중 시공 카드: 매칭 히스토리로 이동하면서 진행중 필터를 자동 선택
+        <button
+          className="home-alert-card home-progress-card"
+          type="button"
+          onClick={() => go(screens.estimateHome)}
+        >
+          <div className="home-alert-copy">
+            <span>{activeMatching.status}</span>
+            <h2>진행중인 시공이 있어요</h2>
+            <p>현재 시공은 매칭 히스토리에서 확인하고, 새 견적도 바로 받을 수 있어요.</p>
+            <strong className="home-alert-cta">새 AI 견적 받기</strong>
+          </div>
+          <div
+            className="home-progress-visual"
+            role="button"
+            tabIndex={0}
+            onClick={(event) => {
+              event.stopPropagation()
+              navigate(screenPaths[screens.matchHistory], {
+                state: { statusFilter: '진행중' },
+              })
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                event.stopPropagation()
+                navigate(screenPaths[screens.matchHistory], {
+                  state: { statusFilter: '진행중' },
+                })
+              }
+            }}
+          >
+            <strong>진행중</strong>
+            <small>{activeMatchingCount}건</small>
+          </div>
+        </button>
+      ) : (
+        // 메인 CTA 카드: AI 견적 시작 화면으로 이동
+        <button className="home-alert-card" type="button" onClick={() => go(screens.estimateHome)}>
+          <div className="home-alert-copy">
+            <span>AI 견적 시작</span>
+            <h2>수리가 필요하다면?</h2>
+            <p>사진과 설명을 올리면 예상 비용과 시간을 확인할 수 있어요.</p>
+            <strong className="home-alert-cta">무료 AI 견적 받기</strong>
+          </div>
+          <div className="home-alert-visual">
+            <strong>AI</strong>
+            <small>무료 AI 견적 3회</small>
+          </div>
+        </button>
+      )}
 
       {/* 근처 시공자 요약 카드: 매칭 홈으로 이동 */}
       <button className="home-near-card" type="button" onClick={() => go(screens.matchingHome)}>

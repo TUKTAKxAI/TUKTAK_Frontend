@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { fetchHomeAddress, saveHomeAddress } from '../../api/homeApi'
 import { fetchMatchingHistory, fetchMyProfile, logout as requestLogout, updateMyProfile } from '../../api/mypageApi'
 import { HistoryCard, InfoRows, MenuTile, ReviewCard, SearchBar } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
@@ -17,8 +19,14 @@ export function MyPage({ go, back }) {
   useEffect(() => {
     let isMounted = true
 
-    fetchMyProfile().then((data) => {
-      if (isMounted) setProfile((current) => ({ ...current, ...data }))
+    Promise.all([fetchMyProfile(), fetchHomeAddress()]).then(([profileData, addressData]) => {
+      if (isMounted) {
+        setProfile((current) => ({
+          ...current,
+          ...profileData,
+          address: addressData.detail || addressData.title || current.address,
+        }))
+      }
     })
 
     return () => {
@@ -155,9 +163,24 @@ export function ProfilePage({ go, back }) {
     setDraftValue(profile[field.key] ?? '')
   }
 
-  // 수정 모달 저장: 백엔드 연결 가능 시 PATCH /users/me 호출
+  // 수정 모달 저장: 주소는 기본주소 API, 나머지 프로필 항목은 PATCH /users/me 호출
   const saveProfileField = async () => {
     if (!editingField?.editable) {
+      setEditingField(null)
+      return
+    }
+
+    if (editingField.key === 'address') {
+      const savedAddress = await saveHomeAddress({
+        detail: draftValue,
+        title: draftValue,
+        zipNo: '',
+        regionCodeId: null,
+      })
+      setProfile((current) => ({
+        ...current,
+        address: savedAddress.detail || savedAddress.title || draftValue,
+      }))
       setEditingField(null)
       return
     }
@@ -289,10 +312,17 @@ function ProfileConfirmModal({ action, onClose, onConfirm }) {
 
 // 매칭 히스토리: work-orders 기반 목록, 검색, 필터, 리뷰 작성 모달을 담당
 export function MatchHistoryPage({ go, back }) {
+  const location = useLocation()
   const [reviewTarget, setReviewTarget] = useState(null)
   const [historyList, setHistoryList] = useState([])
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState('latest')
+  const [filter, setFilter] = useState(location.state?.statusFilter || 'latest')
+
+  useEffect(() => {
+    if (location.state?.statusFilter) {
+      setFilter(location.state.statusFilter)
+    }
+  }, [location.state])
 
   useEffect(() => {
     let isMounted = true

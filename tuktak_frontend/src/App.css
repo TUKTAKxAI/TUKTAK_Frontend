@@ -695,6 +695,63 @@ button {
   text-align: center;
 }
 
+.home-progress-card {
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 58%, #99f6e4 100%);
+}
+
+.home-progress-card .home-alert-copy span {
+  background: rgba(236, 253, 245, 0.2);
+  border-color: rgba(187, 247, 208, 0.42);
+}
+
+.home-progress-visual {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 24px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  color: #1d4ed8;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 104px;
+  justify-content: center;
+  padding: 12px;
+  position: relative;
+  width: 104px;
+  z-index: 1;
+}
+
+.home-progress-visual strong {
+  color: #0f766e;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.home-progress-visual small {
+  color: #0d9488;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  margin-top: 8px;
+}
+
+.home-progress-visual em {
+  color: #6b7280;
+  display: -webkit-box;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 8px;
+  max-width: 76px;
+  overflow: hidden;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .home-near-card {
   flex-direction: column;
   margin-top: 12px;
