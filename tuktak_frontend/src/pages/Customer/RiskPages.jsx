@@ -24,7 +24,7 @@ function ServiceHero({ onClick, buttonLabel, go }) {
   useEffect(() => {
     const interval = setInterval(() => {
       const nextIndex = (activeIndex + 1) % previewImages.length;
-      
+
       if (scrollRef.current) {
         const cardWidth = scrollRef.current.offsetWidth * 0.5;
         scrollRef.current.scrollTo({
@@ -71,26 +71,26 @@ function ServiceHero({ onClick, buttonLabel, go }) {
           </p>
         </div>
 
-        <div 
+        <div
           ref={scrollRef}
           onScroll={handleScroll}
           className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide py-8 gap-4 px-[25%] cursor-grab active:cursor-grabbing items-center"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {previewImages.map((img, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className={`min-w-[85%] ml-5 transition-all duration-500 snap-center flex justify-center items-center
                 ${activeIndex === index ? 'scale-100 opacity-100' : 'scale-70 opacity-40'}
               `}
             >
               <div className="w-full aspect-9/16 bg-white rounded-3xl shadow-lg border border-gray-300 overflow-hidden">
-                 <img 
-                   src={img} 
-                   alt={`미리보기 ${index + 1}`} 
-                   className="w-full h-full object-cover" 
-                   draggable="false" 
-                 />
+                <img
+                  src={img}
+                  alt={`미리보기 ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  draggable="false"
+                />
               </div>
             </div>
           ))}
@@ -99,10 +99,10 @@ function ServiceHero({ onClick, buttonLabel, go }) {
         {/* 페이지네이션 도트 */}
         <div className="flex justify-center space-x-2 mb-6">
           {previewImages.map((_, i) => (
-            <button 
-              key={i} 
+            <button
+              key={i}
               onClick={() => goToIndex(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-blue-600' : 'w-2 bg-gray-300'}`} 
+              className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-blue-600' : 'w-2 bg-gray-300'}`}
             />
           ))}
         </div>
@@ -127,7 +127,7 @@ export function RiskHomePage({ go }) {
 
 export function RiskSelectPage({ go }) {
   const navigate = useNavigate();
-  
+
   // 💡 서버에서 받아온 견적서 목록을 담을 상태(State)
   const [estimates, setEstimates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,12 +172,12 @@ const requestRiskReport = async (estimateId) => {
   return (
     <section className="selection-screen flex flex-col h-full bg-[#F2F3F5]">
       <CustomerTopBar go={go} />
-      
+
       <div className="flex flex-col flex-1 px-6 pt-4">
-        
+
         <div className="flex items-center mb-0">
-          <button 
-            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
+          <button
+            className="mr-3 flex items-center justify-center transition-transform active:scale-90"
             onClick={() => go(screens.riskHome)}
           >
             <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
@@ -190,21 +190,21 @@ const requestRiskReport = async (estimateId) => {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center mt-16">
               <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                   dangerouslySetInnerHTML={{ __html: loadingSvg }} 
+                dangerouslySetInnerHTML={{ __html: loadingSvg }}
               />
               <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서 불러오는 중 ...</p>
             </div>
           ) : estimates.length === 0 ? (
             <div className="flex flex-col items-center justify-center mt-16">
               <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                   dangerouslySetInnerHTML={{ __html: errorSvg }} 
+                dangerouslySetInnerHTML={{ __html: errorSvg }}
               />
               <p className="text-center font-bold text-[20px] text-gray-900 mt-1">생성된 AI 견적서가 없습니다 !</p>
               <p className="text-center font-medium text-[15px] text-gray-900 mt-5">AI 견적서를 새로 만들어 볼까요?</p>
-              <button 
+              <button
                 onClick={() => go(screens.estimateStart)}
                 className="w-3/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700 mt-2"
-                style={{ fontSize: '16px', fontWeight: 'bold' }} 
+                style={{ fontSize: '16px', fontWeight: 'bold' }}
               >
                 AI 견적서 생성
               </button>
@@ -212,7 +212,7 @@ const requestRiskReport = async (estimateId) => {
 
           ) : (
             <>
-              <h2 
+              <h2
                 className="text-gray-700 text-center mb-6 font-bold"
                 style={{ fontSize: '20px' }}
               >
@@ -221,7 +221,7 @@ const requestRiskReport = async (estimateId) => {
               {
                 estimates.map((estimate) => (
                   <article key={estimate.estimate_id} className="bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex flex-col mb-4">
-                    
+
                     <div className="flex justify-between items-start mb-4 border-b border-gray-300 pb-3">
                       <span className="text-[13px] text-gray-500">
                         {estimate.created_at ? estimate.created_at.split('T')[0] : '날짜 없음'}
@@ -230,7 +230,7 @@ const requestRiskReport = async (estimateId) => {
                         {estimate.estimate_status === 'COMPLETED' ? '완료' : '진행중'}
                       </small>
                     </div>
-                    
+
                     <div className="flex flex-col text-left ">
                       <h3 className="text-[22px] font-bold text-gray-900 mb-1.5 tracking-tight">
                         {estimate.repair_task_name || 'AI 시공 견적'}
@@ -241,12 +241,12 @@ const requestRiskReport = async (estimateId) => {
                       <p className="text-[13px] font-bold text-gray-500 mb-4.5">
                         확정 시공 비용 : {estimate.min_price ? Number(estimate.min_price).toLocaleString() : '0'}원
                       </p>
-                      
+
                       <div className="flex justify-center w-full">
-                        <button 
+                        <button
                           onClick={() => requestRiskReport(estimate.estimate_id)}
                           className="w-4/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700"
-                          style={{ fontSize: '16px', fontWeight: 'bold' }} 
+                          style={{ fontSize: '16px', fontWeight: 'bold' }}
                         >
                           리스크 리포트 요청하기
                         </button>
@@ -255,7 +255,7 @@ const requestRiskReport = async (estimateId) => {
                   </article>
                 ))
               }
-              </>
+            </>
           )}
         </div>
 
@@ -284,8 +284,8 @@ export function RiskLoadingPage({ go }) {
         
         if (data.success && data.report && (data.report.report_status === 'COMPLETED' || data.report.report_status === 'SUCCESS')) {
           clearInterval(interval);
-          navigate(screenPaths[screens.riskDone], { 
-            state: { resultData: data.report } 
+          navigate(screenPaths[screens.riskDone], {
+            state: { resultData: data.report }
           });
         }
       } catch (error) {
@@ -301,21 +301,21 @@ export function RiskLoadingPage({ go }) {
       <div className="transform scale-[2.5] mb-16 flex justify-center">
         <Logo />
       </div>
-      
-      <h2 
+
+      <h2
         className="mb-5 w-full px-4 font-bold text-gray-800 text-center whitespace-nowrap tracking-tighter"
         style={{ fontSize: '24px' }}
       >
         리스크 리포트 생성중 ...
       </h2>
-      
+
       <div className="w-48 h-48 mb-12 flex justify-center items-center pointer-events-none">
-        <div 
+        <div
           className="w-full h-full flex justify-center items-center [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: loadingSvg }} 
+          dangerouslySetInnerHTML={{ __html: loadingSvg }}
         />
       </div>
-      
+
       <PrimaryButton narrow orange className="relative z-10" onClick={() => go(screens.riskSelect)}>
         취소
       </PrimaryButton>
@@ -330,8 +330,8 @@ export function RiskDonePage({ go }) {
   const resultData = location.state?.resultData;
 
   const goToOutput = () => {
-    navigate(screenPaths[screens.riskOutput], { 
-      state: { resultData: resultData } 
+    navigate(screenPaths[screens.riskOutput], {
+      state: { resultData: resultData }
     });
   };
 
@@ -340,18 +340,18 @@ export function RiskDonePage({ go }) {
       <div className="transform scale-[2.5] mb-16 flex justify-center">
         <Logo />
       </div>
-      
-      <h2 
+
+      <h2
         className="mb-5 w-full px-4 font-bold text-gray-800 text-center whitespace-nowrap tracking-tighter"
         style={{ fontSize: '24px' }}
       >
         리스크 리포트가 생성되었습니다 !
       </h2>
-      
+
       <div className="w-48 h-48 mb-12 flex justify-center items-center pointer-events-none">
-        <div 
+        <div
           className="w-full h-full flex justify-center items-center transform scale-[2] [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: confirmSvg }} 
+          dangerouslySetInnerHTML={{ __html: confirmSvg }}
         />
       </div>
 
@@ -388,11 +388,11 @@ export function RiskOutputPage({ go }) {
       {/* 상단 고정 헤더 */}
       <header className="flex justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
         <button onClick={() => go(screens.riskHome)} className="p-2 -ml-2">
-           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <div className="text-center">
-            <h1 className="text-[17px] font-bold text-gray-900">시공 리스크 리포트</h1>
-            <p className="text-[10px] text-gray-400 mt-0.5">{resultData.created_at?.split('T')[0]}</p>
+          <h1 className="text-[17px] font-bold text-gray-900">시공 리스크 리포트</h1>
+          <p className="text-[10px] text-gray-400 mt-0.5">{resultData.created_at?.split('T')[0]}</p>
         </div>
         <div className='w-10' />
       </header>

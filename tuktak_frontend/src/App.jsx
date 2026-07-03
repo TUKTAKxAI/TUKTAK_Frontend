@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
 import { useCustomerFlow } from './context/CustomerFlowContext'
@@ -98,9 +99,25 @@ function UrgentDialog() {
   )
 }
 
+/* 수정 */
 function CustomerRoute({ screen }) {
   const flow = useCustomerFlow()
   const { navigate, go, back } = useScreenNavigator()
+
+  const [threadList, setThreadList] = useState(chatThreads)
+
+  const clearUnread = (threadId) => {
+    setThreadList((prev) =>
+      prev.map((thread) =>
+        thread.id === threadId
+          ? {
+            ...thread,
+            unread: 0,
+          }
+          : thread
+      )
+    )
+  }
 
   const pages = {
     [screens.home]: <HomePage go={go} />,
@@ -126,11 +143,16 @@ function CustomerRoute({ screen }) {
     [screens.riskDone]: <RiskDonePage go={go} />,
     [screens.riskOutput]: <RiskOutputPage go={go} />,
     [screens.myRiskList]: <MyRiskListPage go={go} back={back} />,
+    /* 수정 */
     [screens.chatList]: (
       <ChatListPage
-        threads={chatThreads}
+        threads={threadList}
+        messagesByThread={flow.messagesByThread}
         go={go}
-        goToRoom={(threadId) => flow.openThread(threadId, navigate)}
+        clearUnread={clearUnread}
+        goToRoom={(threadId) =>
+          flow.openThread(threadId, navigate)
+        }
       />
     ),
     [screens.chatRoom]: (
