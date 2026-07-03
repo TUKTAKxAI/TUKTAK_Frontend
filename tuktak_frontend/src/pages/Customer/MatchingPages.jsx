@@ -816,7 +816,7 @@ export function MatchingSchedulePage({ go, openUrgent }) {
                 const disabled = !isSlotSelectable(selectedDate, slot)
                 return (
                   <option key={slot.start} value={slot.start} disabled={disabled} className={disabled ? "text-gray-400" : "text-gray-900"}>
-                    {slot.start}-{slot.end} {disabled ? '(마감)' : ''}
+                    {slot.start} - {slot.end} {disabled ? '(마감)' : ''}
                   </option>
                 )
               })}
