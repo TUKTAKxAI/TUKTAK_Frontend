@@ -1,43 +1,46 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import {
-    getUser,
-    clearAuth,
-    saveUser,
-} from "../utils/token";
+import { getMe } from "../services/userService";
+import { logout as logoutApi } from "../services/authService";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [isLogin, setIsLogin] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedUser = getUser();
-
-        if (storedUser) {
-            setUser(storedUser);
-            setIsLogin(true);
-        }
+        initialize();
     }, []);
 
-    /**
-     * 로그인 성공 시 호출
-     */
-    const login = (response) => {
-        saveUser(response.user);
+    const initialize = async () => {
+        try {
+            const result = await getMe();
 
-        setUser(response.user);
+            setUser(result.user);
+            setIsLogin(true);
+        } catch {
+            setUser(null);
+            setIsLogin(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const login = async () => {
+        const result = await getMe();
+
+        setUser(result.user);
         setIsLogin(true);
     };
 
-    /**
-     * 로그아웃
-     */
-    const logout = () => {
-        clearAuth();
-
-        setUser(null);
-        setIsLogin(false);
+    const logout = async () => {
+        try {
+            await logoutApi();
+        } finally {
+            setUser(null);
+            setIsLogin(false);
+        }
     };
 
     return (
@@ -45,6 +48,7 @@ export function AuthProvider({ children }) {
             value={{
                 user,
                 isLogin,
+                loading,
                 login,
                 logout,
             }}
