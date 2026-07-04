@@ -13,8 +13,8 @@ export const defaultNearbySummary = {
 }
 
 export const defaultActiveWorkSummary = {
-  hasActiveWork: true,
-  activeCount: 1,
+  hasActiveWork: false,
+  activeCount: 0,
 }
 
 function getDistrictFromAddress(address) {

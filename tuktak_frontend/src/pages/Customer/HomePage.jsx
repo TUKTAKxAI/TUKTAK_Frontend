@@ -126,9 +126,9 @@ export function HomePage({ go }) {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
   // 주소 검색/저장 과정에서 발생한 에러 메시지
   const [addressError, setAddressError] = useState('')
-  // 진행중 시공 요약. 백엔드 API 연결 전에는 기본값으로 UI를 확인함
-  const [activeMatching, setActiveMatching] = useState(defaultActiveMatching)
-  const [activeMatchingCount, setActiveMatchingCount] = useState(defaultActiveMatchingCount)
+  // 진행중 시공 요약. undefined는 API 확인 전 상태라서 임의 카드를 보여주지 않음
+  const [activeMatching, setActiveMatching] = useState(undefined)
+  const [activeMatchingCount, setActiveMatchingCount] = useState(0)
   // 현재 선택된 카테고리에 해당하는 리뷰만 화면에 표시
   const visibleReviews = homeReviews[activeCategory] ?? []
   // 홈 화면 최초 진입 시 저장된 주소와 근처 시공자 정보를 불러옴
@@ -224,7 +224,9 @@ export function HomePage({ go }) {
       {/* 상단 헤더 영역: 로고, 알림, 마이페이지 버튼 */}
       <CustomerTopBar go={go} />
 
-      {activeMatching ? (
+      {activeMatching === undefined ? (
+        <div className="home-alert-card home-alert-placeholder" aria-hidden="true" />
+      ) : activeMatching ? (
         // 진행중 시공 카드: 매칭 히스토리로 이동하면서 진행중 필터를 자동 선택
         <button
           className="home-alert-card home-progress-card"

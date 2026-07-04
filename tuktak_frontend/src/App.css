@@ -606,6 +606,17 @@ button {
   position: relative;
 }
 
+.home-alert-placeholder {
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.home-alert-placeholder::before,
+.home-alert-placeholder::after {
+  display: none;
+}
+
 .home-alert-card::after {
   background: rgba(255, 255, 255, 0.16);
   border-radius: 999px;
