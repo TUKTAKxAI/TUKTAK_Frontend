@@ -1,4 +1,5 @@
 import { screens } from '../../data/customerData'
+import { useNotifications } from '../../context/notificationContext'
 import { figmaAssets } from './figmaAssets'
 import { Logo } from './FormControls'
 
@@ -10,16 +11,25 @@ export function HeaderIcon({ src, label, onClick }) {
   )
 }
 
-/* hideTitle 추가 */
-export function CustomerTopBar({ go, title, compact = false, hideTitle = false, }) {
+export function CustomerTopBar({
+  go,
+  notificationIcon,
+  notificationCount,
+  onNotificationClick,
+}) {
+  const notifications = useNotifications()
+  const resolvedNotificationIcon = notificationIcon ?? notifications?.notificationIcon ?? figmaAssets.notification
+  const resolvedNotificationCount = notificationCount ?? notifications?.unreadCount ?? 0
+  const handleNotificationClick = onNotificationClick ?? notifications?.openNotifications
+
   return (
-    <header className={`customer-topbar ${compact ? 'compact' : ''}`}>
-      <div className="brand-with-title">
-        <Logo />
-        {!hideTitle && title ? <h1>{title}</h1> : null}
-      </div>
+    <header className="home-topbar customer-topbar">
+      <Logo />
       <div className="top-actions">
-        <HeaderIcon src={figmaAssets.notification} label="알림" />
+        <div className="home-notification-trigger">
+          <HeaderIcon src={resolvedNotificationIcon} label="알림" onClick={handleNotificationClick} />
+          {resolvedNotificationCount > 0 ? <span>{resolvedNotificationCount}</span> : null}
+        </div>
         <HeaderIcon src={figmaAssets.userProfile} label="마이페이지" onClick={() => go?.(screens.mypage)} />
       </div>
     </header>

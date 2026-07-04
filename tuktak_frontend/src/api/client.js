@@ -36,7 +36,31 @@ client.interceptors.request.use((config) => ({
 
 client.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(normalizeError(error)),
+  async (error) => {
+    const originalRequest = error.config
+    const status = error.response?.status
+    const requestUrl = normalizePath(originalRequest?.url || '')
+    const canRefresh =
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !originalRequest._skipAuthRefresh &&
+      requestUrl !== '/auth/login' &&
+      requestUrl !== '/auth/logout' &&
+      requestUrl !== '/auth/refresh'
+
+    if (canRefresh) {
+      try {
+        originalRequest._retry = true
+        await client.post('/auth/refresh', undefined, { _skipAuthRefresh: true })
+        return client.request(originalRequest)
+      } catch {
+        // Fall through to the normalized original error.
+      }
+    }
+
+    return Promise.reject(normalizeError(error))
+  },
 )
 
 export function hasAccessToken() {

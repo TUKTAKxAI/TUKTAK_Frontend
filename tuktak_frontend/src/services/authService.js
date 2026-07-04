@@ -61,16 +61,12 @@ export const checkEmailAvailability = async (email) => {
  * 쿠키는 브라우저가 자동 전송
  */
 export const logout = async () => {
-    const response = await api.post("/auth/logout");
-
-    return response.data;
+    return api.post("/auth/logout");
 };
 
 /**
  * 토큰 재발급
  */
 export const refresh = async () => {
-    const response = await api.post("/auth/refresh");
-
-    return response.data;
+    return api.post("/auth/refresh");
 };

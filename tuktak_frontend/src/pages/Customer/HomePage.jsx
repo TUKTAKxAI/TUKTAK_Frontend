@@ -9,12 +9,9 @@ import {
   saveHomeAddress,
 } from '../../api/homeApi'
 import { getJusoPopupUrl, hasJusoConfirmKey } from '../../api/jusoApi'
-import { figmaAssets } from '../../components/customer/figmaAssets'
-import { HeaderIcon } from '../../components/customer/CustomerTopBar'
-import { Logo } from '../../components/customer/FormControls'
+import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
-import notificationEmptyBell from '../../assets/figma/notification-empty-bell-gray.svg'
 import { useNavigate } from 'react-router-dom'
 
 // 최신 리뷰 탭에서 사용할 카테고리 목록
@@ -26,32 +23,6 @@ const serviceSteps = [
   ['02', 'ai', 'AI 견적', '예상 비용과 작업 시간을 확인해요.'],
   ['03', 'risk', '리스크 확인', '추가 비용과 주의사항을 미리 봐요.'],
   ['04', 'match', '파트너 매칭', '조건에 맞는 시공자와 연결돼요.'],
-]
-
-// 알림 모달에서 사용할 임시 알림 데이터
-// 추후 백엔드 알림 API가 생기면 이 부분을 API 응답으로 대체하면 됨
-const initialNotifications = [
-  {
-    id: 1,
-    title: 'AI 견적서가 생성되었습니다.',
-    message: '거실 몰딩 시공 견적서를 확인해보세요.',
-    time: '방금 전',
-    isRead: false,
-  },
-  {
-    id: 2,
-    title: '리스크 리포트가 준비되었습니다.',
-    message: '추가 비용 가능성과 계약 전 체크리스트를 확인할 수 있어요.',
-    time: '12분 전',
-    isRead: false,
-  },
-  {
-    id: 3,
-    title: '새로운 시공자 견적이 도착했습니다.',
-    message: '김도배 파트너님이 견적을 보냈습니다.',
-    time: '1시간 전',
-    isRead: true,
-  },
 ]
 
 // 진행중 시공 API 연결 전 홈 화면 시안 확인용 기본값
@@ -153,10 +124,6 @@ export function HomePage({ go }) {
   const [nearbySummary, setNearbySummary] = useState(defaultNearbySummary)
   // 주소 관리 모달 열림 여부
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
-  // 알림 모달 열림 여부
-  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
-  // 알림 목록 상태
-  const [notifications, setNotifications] = useState(initialNotifications)
   // 주소 검색/저장 과정에서 발생한 에러 메시지
   const [addressError, setAddressError] = useState('')
   // 진행중 시공 요약. 백엔드 API 연결 전에는 기본값으로 UI를 확인함
@@ -164,9 +131,6 @@ export function HomePage({ go }) {
   const [activeMatchingCount, setActiveMatchingCount] = useState(defaultActiveMatchingCount)
   // 현재 선택된 카테고리에 해당하는 리뷰만 화면에 표시
   const visibleReviews = homeReviews[activeCategory] ?? []
-  // 읽지 않은 알림 개수 계산
-  const unreadNotificationCount = notifications.filter((notification) => !notification.isRead).length
-
   // 홈 화면 최초 진입 시 저장된 주소와 근처 시공자 정보를 불러옴
   useEffect(() => {
     let ignore = false
@@ -258,20 +222,7 @@ export function HomePage({ go }) {
   return (
     <section className="home-layout">
       {/* 상단 헤더 영역: 로고, 알림, 마이페이지 버튼 */}
-      <header className="home-topbar">
-        <Logo />
-        <div className="top-actions">
-          <div className="home-notification-trigger">
-            <HeaderIcon
-              src={unreadNotificationCount > 0 ? figmaAssets.notification : notificationEmptyBell}
-              label="알림"
-              onClick={() => setIsNotificationModalOpen(true)}
-            />
-            {unreadNotificationCount > 0 ? <span>{unreadNotificationCount}</span> : null}
-          </div>
-          <HeaderIcon src={figmaAssets.userProfile} label="마이페이지" onClick={() => go(screens.mypage)} />
-        </div>
-      </header>
+      <CustomerTopBar go={go} />
 
       {activeMatching ? (
         // 진행중 시공 카드: 매칭 히스토리로 이동하면서 진행중 필터를 자동 선택
@@ -447,62 +398,6 @@ export function HomePage({ go }) {
         </div>
       )}
 
-      {/* 알림 모달: 알림 목록 확인 및 읽음 처리 */}
-      {isNotificationModalOpen && (
-        <div className="home-address-overlay" role="presentation" onClick={() => setIsNotificationModalOpen(false)}>
-          <section className="home-notification-modal" role="dialog" aria-modal="true" aria-labelledby="home-notification-title" onClick={(event) => event.stopPropagation()}>
-            <div className="home-address-head">
-              <h2 id="home-notification-title">알림</h2>
-              <button type="button" onClick={() => setIsNotificationModalOpen(false)} aria-label="닫기">
-                ×
-              </button>
-            </div>
-            <div className="home-notification-summary">
-              <strong>읽지 않은 알림 {unreadNotificationCount}개</strong>
-              <button
-                type="button"
-                onClick={() => {
-                  // 모든 알림을 읽음 상태로 변경
-                  setNotifications((items) => items.map((item) => ({ ...item, isRead: true })))
-                }}
-              >
-                모두 읽음
-              </button>
-            </div>
-            <div className="home-notification-list">
-              {notifications.length === 0 ? (
-                <div className="home-notification-empty">
-                  <img src={notificationEmptyBell} alt="" />
-                  <p>도착한 알림이 없습니다.</p>
-                </div>
-              ) : (
-                notifications.map((notification) => (
-                  <button
-                    className={`home-notification-item ${notification.isRead ? 'read' : ''}`}
-                    key={notification.id}
-                    type="button"
-                    onClick={() => {
-                      // 클릭한 알림만 읽음 상태로 변경
-                      setNotifications((items) => (
-                        items.map((item) => (
-                          item.id === notification.id ? { ...item, isRead: true } : item
-                        ))
-                      ))
-                    }}
-                  >
-                    <span aria-hidden="true" />
-                    <div>
-                      <strong>{notification.title}</strong>
-                      <p>{notification.message}</p>
-                      <small>{notification.time}</small>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-      )}
     </section>
   )
 }

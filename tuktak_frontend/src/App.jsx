@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
+import { useAuth } from './context/authContext'
 import { useCustomerFlow } from './context/CustomerFlowContext'
+import { CustomerNotificationProvider } from './context/CustomerNotificationProvider'
 import { chatThreads, publicScreens, screens } from './data/customerData'
 import { AuthPages } from './pages/Customer/AuthPages'
 import { ChatListPage, ChatRoomPage } from './pages/Customer/ChatPage'
@@ -44,7 +46,11 @@ function useScreenNavigator() {
 
 function PublicRoute({ screen }) {
   const flow = useCustomerFlow()
+  const { isLogin, loading } = useAuth()
   const { go, back, setScreen } = useScreenNavigator()
+
+  if (loading) return null
+  if (isLogin) return <Navigate to={screenPaths[screens.home]} replace />
 
   return (
     <AuthPages
@@ -102,9 +108,13 @@ function UrgentDialog() {
 /* 수정 */
 function CustomerRoute({ screen }) {
   const flow = useCustomerFlow()
+  const { isLogin, loading } = useAuth()
   const { navigate, go, back } = useScreenNavigator()
 
   const [threadList, setThreadList] = useState(chatThreads)
+
+  if (loading) return null
+  if (!isLogin) return <Navigate to={screenPaths[screens.login]} replace />
 
   const clearUnread = (threadId) => {
     setThreadList((prev) =>
@@ -176,20 +186,25 @@ function CustomerRoute({ screen }) {
 }
 
 function App() {
+  const { isLogin, loading } = useAuth()
+  const initialPath = loading || !isLogin ? screenPaths[screens.login] : screenPaths[screens.home]
+
   return (
     <div className="app-shell">
       <main className="phone">
-        <Routes>
-          <Route path="/" element={<Navigate to={screenPaths[screens.login]} replace />} />
-          {routeScreens.map(({ screen, path }) => (
-            <Route
-              key={screen}
-              path={path}
-              element={publicScreens.includes(screen) ? <PublicRoute screen={screen} /> : <CustomerRoute screen={screen} />}
-            />
-          ))}
-          <Route path="*" element={<Navigate to={screenPaths[screens.login]} replace />} />
-        </Routes>
+        <CustomerNotificationProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to={initialPath} replace />} />
+            {routeScreens.map(({ screen, path }) => (
+              <Route
+                key={screen}
+                path={path}
+                element={publicScreens.includes(screen) ? <PublicRoute screen={screen} /> : <CustomerRoute screen={screen} />}
+              />
+            ))}
+            <Route path="*" element={<Navigate to={initialPath} replace />} />
+          </Routes>
+        </CustomerNotificationProvider>
       </main>
     </div>
   )

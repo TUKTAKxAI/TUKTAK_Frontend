@@ -1,9 +1,9 @@
 import { ChoiceCard } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
-import { BackButton, Field, Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { BackButton, Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { screens, signupTerms } from '../../data/customerData'
 import { useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/authContext'
 import {
   login,
   signupCustomer,

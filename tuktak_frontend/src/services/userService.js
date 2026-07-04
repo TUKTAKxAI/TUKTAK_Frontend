@@ -4,15 +4,14 @@ import api from "./api";
  * 현재 로그인한 사용자 조회
  */
 export const getMe = async () => {
-    const response = await api.get("/users/me");
-    return response.data;
+    return api.get("/users/me");
 };
 
 /**
  * 내 정보 수정
  */
 export const updateMe = async (formData) => {
-    const response = await api.patch(
+    return api.patch(
         "/users/me",
         formData,
         {
@@ -21,6 +20,4 @@ export const updateMe = async (formData) => {
             },
         }
     );
-
-    return response.data;
 };
