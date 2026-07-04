@@ -2,6 +2,37 @@ import axios from 'axios'
 
 const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'
 const API_PREFIX = '/api/v1'
+const ACCESS_TOKEN_KEY = 'tuktak_access_token'
+const REFRESH_TOKEN_KEY = 'tuktak_refresh_token'
+
+function getStorage() {
+  if (typeof window === 'undefined') return null
+  return window.localStorage
+}
+
+export function getAccessToken() {
+  return getStorage()?.getItem(ACCESS_TOKEN_KEY) || ''
+}
+
+export function getRefreshToken() {
+  return getStorage()?.getItem(REFRESH_TOKEN_KEY) || ''
+}
+
+export function setAuthTokens(tokens = {}) {
+  const storage = getStorage()
+  if (!storage) return
+
+  if (tokens.access_token) storage.setItem(ACCESS_TOKEN_KEY, tokens.access_token)
+  if (tokens.refresh_token) storage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token)
+}
+
+export function clearAuthTokens() {
+  const storage = getStorage()
+  if (!storage) return
+
+  storage.removeItem(ACCESS_TOKEN_KEY)
+  storage.removeItem(REFRESH_TOKEN_KEY)
+}
 
 function getBaseURL() {
   const baseURL = RAW_API_BASE_URL.replace(/\/$/, '')
@@ -29,10 +60,22 @@ const client = axios.create({
   withCredentials: true,
 })
 
-client.interceptors.request.use((config) => ({
-  ...config,
-  url: normalizePath(config.url || ''),
-}))
+client.interceptors.request.use((config) => {
+  const accessToken = getAccessToken()
+  const headers = {
+    ...(config.headers || {}),
+  }
+
+  if (accessToken && !headers.Authorization) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+
+  return {
+    ...config,
+    headers,
+    url: normalizePath(config.url || ''),
+  }
+})
 
 client.interceptors.response.use(
   (response) => response,
@@ -52,9 +95,22 @@ client.interceptors.response.use(
     if (canRefresh) {
       try {
         originalRequest._retry = true
-        await client.post('/auth/refresh', undefined, { _skipAuthRefresh: true })
+        const refreshToken = getRefreshToken()
+        if (!refreshToken) throw error
+
+        const refreshResponse = await client.post(
+          '/auth/refresh',
+          { refresh_token: refreshToken },
+          { _skipAuthRefresh: true },
+        )
+        setAuthTokens(refreshResponse.data)
+        originalRequest.headers = {
+          ...(originalRequest.headers || {}),
+          Authorization: `Bearer ${refreshResponse.data.access_token}`,
+        }
         return client.request(originalRequest)
       } catch {
+        clearAuthTokens()
         // Fall through to the normalized original error.
       }
     }
@@ -64,7 +120,7 @@ client.interceptors.response.use(
 )
 
 export function hasAccessToken() {
-  return true
+  return Boolean(getAccessToken())
 }
 
 export async function apiRequest(path, { method = 'GET', body, query, headers } = {}) {

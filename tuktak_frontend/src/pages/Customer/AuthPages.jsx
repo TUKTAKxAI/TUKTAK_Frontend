@@ -1,6 +1,7 @@
 import { ChoiceCard } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { BackButton, Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { screens, signupTerms } from '../../data/customerData'
 import { useState } from 'react'
 import { useAuth } from '../../context/authContext'
@@ -39,6 +40,8 @@ export function AuthPages({
     phoneCarrier: 'KT',
     address: '',
     detailAddress: '',
+    zipNo: '',
+    regionCodeId: null,
   })
 
   const handleLogin = async () => {
@@ -177,8 +180,19 @@ export function AuthPages({
         email: signupData.email,
         password: signupData.password,
         phone: signupData.phone,
+        default_address_json: signupData.address.trim()
+          ? {
+            address: signupData.address,
+            address_detail: signupData.detailAddress.trim(),
+            zip_no: signupData.zipNo,
+            region_code_id: signupData.regionCodeId,
+          }
+          : null,
         agreements,
       });
+
+      await login(signupData.email, signupData.password);
+      await authLogin();
 
       go(screens.welcome)
 
@@ -209,8 +223,6 @@ export function AuthPages({
 
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  const [addressKeyword, setAddressKeyword] = useState("");
-  const [addressList, setAddressList] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
 
   const resetSignupForm = () => {
@@ -224,6 +236,8 @@ export function AuthPages({
       phoneCarrier: 'KT',
       address: '',
       detailAddress: '',
+      zipNo: '',
+      regionCodeId: null,
     });
 
     setEmailCheckResult(null);
@@ -236,43 +250,7 @@ export function AuthPages({
 
     setUserType("customer");
 
-    setAddressKeyword("");
-    setAddressList([]);
     setShowAddressModal(false);
-  };
-
-  const searchAddress = async () => {
-    if (addressKeyword.trim().length < 2) {
-      alert("주소를 2글자 이상 입력해주세요.");
-      return;
-    }
-
-    try {
-      const params = new URLSearchParams({
-        confmKey: import.meta.env.VITE_JUSO_KEY,
-        currentPage: "1",
-        countPerPage: "10",
-        keyword: addressKeyword,
-        resultType: "json",
-      });
-
-      const response = await fetch(
-        `https://business.juso.go.kr/addrlink/addrLinkApi.do?${params}`
-      );
-
-      const data = await response.json();
-
-      if (data.results.common.errorCode !== "0") {
-        alert(data.results.common.errorMessage);
-        return;
-      }
-
-      setAddressList(data.results.juso || []);
-
-    } catch (error) {
-      console.error(error);
-      alert("주소 검색 실패");
-    }
   };
 
   if (screen === screens.login) {
@@ -892,11 +870,7 @@ export function AuthPages({
         <button
           className="input-like"
           type="button"
-          onClick={() => {
-            setAddressKeyword("");
-            setAddressList([]);
-            setShowAddressModal(true);
-          }}
+          onClick={() => setShowAddressModal(true)}
         >
           주소 검색
         </button>
@@ -937,80 +911,22 @@ export function AuthPages({
           건너뛰기
         </button>
 
-        {showAddressModal && (
-          <div
-            className="terms-modal-overlay"
-            onClick={() => setShowAddressModal(false)}
-          >
-            <div
-              className="terms-modal"
-              onClick={(e) => e.stopPropagation()}
-            >
+        {showAddressModal ? (
+          <JusoSearchModal
+            onClose={() => setShowAddressModal(false)}
+            onSelect={(item) => {
+              setSignupData((current) => ({
+                ...current,
+                address: item.roadAddr,
+                detailAddress: current.detailAddress,
+                zipNo: item.zipNo || '',
+                regionCodeId: item.admCd || null,
+              }))
+              setShowAddressModal(false)
+            }}
+          />
+        ) : null}
 
-              <h3>주소 검색</h3>
-
-              <div className="address-search-row">
-                <input
-                  className="address-search-input"
-                  placeholder="도로명 주소를 입력하세요"
-                  value={addressKeyword}
-                  onChange={(e) => setAddressKeyword(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") searchAddress();
-                  }}
-                />
-
-                <button
-                  className="address-search-btn"
-                  onClick={searchAddress}
-                >
-                  검색
-                </button>
-              </div>
-
-              <div className="address-result-list">
-
-                {addressList.length === 0 ? (
-                  <div className="empty-result">
-                    🔍 검색 결과가 없습니다.
-                  </div>
-                ) : (
-                  addressList.map((addr) => (
-                    <button
-                      key={addr.bdMgtSn}
-                      className="address-item"
-                      onClick={() => {
-                        setSignupData(prev => ({
-                          ...prev,
-                          address: addr.roadAddr,
-                        }));
-
-                        setShowAddressModal(false);
-                      }}
-                    >
-                      <div className="address-main">
-                        {addr.roadAddr}
-                      </div>
-
-                      <div className="address-sub">
-                        우편번호 {addr.zipNo}
-                      </div>
-                    </button>
-                  ))
-                )}
-
-              </div>
-
-              <button
-                className="primary-button narrow"
-                onClick={() => setShowAddressModal(false)}
-              >
-                닫기
-              </button>
-
-            </div>
-          </div>
-        )}
       </section>
     );
   }

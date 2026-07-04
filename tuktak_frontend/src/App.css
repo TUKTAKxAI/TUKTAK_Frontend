@@ -2783,6 +2783,26 @@ button {
   font-size: 17px;
 }
 
+.profile-address-search {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.profile-address-search>span {
+  color: #526d9a;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.profile-selected-address {
+  margin: 0;
+}
+
+.profile-address-detail-field {
+  margin-bottom: 0;
+}
+
 .profile-readonly-message {
   margin: 0 0 14px;
   padding: 14px;
@@ -3740,6 +3760,12 @@ button {
   margin-bottom: 18px;
 }
 
+.juso-search-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 78vh;
+}
+
 .address-search-input {
   flex: 1;
   height: 48px;
@@ -3831,6 +3857,35 @@ button {
 .address-sub {
   font-size: 13px;
   color: #8c95a3;
+}
+
+.matching-address-detail {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.matching-address-detail span {
+  color: #526d9a;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.matching-address-detail input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+.matching-address-detail input:focus {
+  border-color: #1a57db;
+  box-shadow: 0 0 0 3px rgba(26, 87, 219, .12);
 }
 
 .chat-filter {

@@ -73,13 +73,16 @@ export function CustomerFlowProvider({ children }) {
       preferred_time_start: null,
       preferred_time_end: null,
     } : matchingFlow.schedule
+    const fullAddress = [address.address, address.address_detail]
+      .filter(Boolean)
+      .join(' ')
     let data
     try {
       data = await createMatchingRequest({
         estimate_id: estimate.estimate_id,
         title: getEstimateTitle(estimate),
         region_code_id: address.region_code_id,
-        address: address.address,
+        address: fullAddress,
         preferred_date: schedule.preferred_date,
         preferred_time_start: isEmergency ? undefined : schedule.preferred_time_start,
         preferred_time_end: isEmergency ? undefined : schedule.preferred_time_end,

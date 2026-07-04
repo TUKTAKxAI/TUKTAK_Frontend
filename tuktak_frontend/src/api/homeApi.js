@@ -1,4 +1,4 @@
-import { apiRequest, hasAccessToken } from './client'
+import { apiFormRequest, apiRequest, hasAccessToken } from './client'
 
 export const defaultHomeAddress = {
   district: '관악구',
@@ -37,58 +37,56 @@ export function mapJusoPayloadToHomeAddress(payload = {}) {
   }
 }
 
+function getUserPayload(data = {}) {
+  return data.user ?? data.data ?? data
+}
+
 function mapBackendAddress(address = {}) {
-  const detail = address.address || address.roadFullAddr || address.road_addr || address.road_address || ''
-  const title = address.address_detail || address.detail_address || address.addrDetail || address.title || detail
+  const addressPayload = address.default_address_json || address
+  const detail = addressPayload.address || addressPayload.roadFullAddr || addressPayload.road_addr || addressPayload.road_address || ''
+  const title = addressPayload.address_detail || addressPayload.detail_address || addressPayload.addrDetail || addressPayload.title || ''
 
   if (!detail) return null
 
   return {
-    addressId: address.address_id || address.id,
     district: getDistrictFromAddress(detail),
     title,
     detail,
-    zipNo: address.zip_no || address.zipNo || '',
-    regionCodeId: address.region_code_id || address.adm_cd || address.admCd || null,
+    zipNo: addressPayload.zip_no || addressPayload.zipNo || '',
+    regionCodeId: addressPayload.region_code_id || addressPayload.adm_cd || addressPayload.admCd || null,
   }
 }
 
-// TODO: 백엔드 주소 API 확정 후 실제 경로로 교체합니다.
-// 예상 후보: GET /users/me, GET /users/me/addresses
 export async function fetchHomeAddress() {
   if (!hasAccessToken()) return defaultHomeAddress
 
   try {
-    const data = await apiRequest('/users/me/addresses')
-    const address = data.items?.find((item) => item.is_default) || data.items?.[0]
-    return mapBackendAddress(address) || defaultHomeAddress
+    const data = await apiRequest('/users/me')
+    return mapBackendAddress(getUserPayload(data)) || defaultHomeAddress
   } catch (error) {
     console.warn('home address fallback:', error)
     return defaultHomeAddress
   }
 }
 
-// TODO: 백엔드 주소 저장 API 확정 후 실제 경로로 교체합니다.
-// 예상 후보: POST /users/me/addresses, PATCH /users/me/addresses/{address_id}
 export async function saveHomeAddress(address) {
   if (!hasAccessToken()) return address
 
-  try {
-    await apiRequest('/users/me/addresses', {
-      method: 'POST',
-      body: {
-        address: address.detail,
-        address_detail: address.title,
-        zip_no: address.zipNo,
-        region_code_id: address.regionCodeId,
-        is_default: true,
-      },
-    })
-  } catch (error) {
-    console.warn('home address save pending:', error)
-  }
+  const formData = new FormData()
+  formData.append('default_address_json', JSON.stringify({
+    address: address.detail || '',
+    address_detail: address.title || '',
+    zip_no: address.zipNo || '',
+    region_code_id: address.regionCodeId || null,
+  }))
 
-  return address
+  try {
+    const data = await apiFormRequest('/users/me', formData, { method: 'PATCH' })
+    return mapBackendAddress(getUserPayload(data)) || address
+  } catch (error) {
+    console.warn('home address save failed:', error)
+    throw error
+  }
 }
 
 // TODO: 백엔드 주변 시공자 API 확정 후 실제 경로로 교체합니다.

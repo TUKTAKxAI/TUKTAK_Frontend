@@ -5,6 +5,7 @@ import { fetchMatchingHistory, fetchMyProfile, logout as requestLogout, updateMy
 import { HistoryCard, InfoRows, MenuTile, ReviewCard, SearchBar } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Avatar, Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { reviewCards, screens } from '../../data/customerData'
 
 // 마이페이지 메인 홈: 각 마이페이지 메뉴로 이동하는 화면
@@ -21,10 +22,15 @@ export function MyPage({ go, back }) {
 
     Promise.all([fetchMyProfile(), fetchHomeAddress()]).then(([profileData, addressData]) => {
       if (isMounted) {
+        const displayAddress = [addressData.detail, addressData.title]
+          .filter(Boolean)
+          .filter((item, index, items) => items.indexOf(item) === index)
+          .join(' ')
+
         setProfile((current) => ({
           ...current,
           ...profileData,
-          address: addressData.detail || addressData.title || current.address,
+          address: displayAddress || current.address,
         }))
       }
     })
@@ -63,7 +69,7 @@ export function MyPage({ go, back }) {
 }
 
 // 내가 쓴 리뷰: 검색, 정렬, 삭제 기능을 담당
-export function MyReviewsPage({ go, back }) {
+export function MyReviewsPage({ back }) {
   const [myReviews, setMyReviews] = useState(reviewCards)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('latest')
@@ -137,13 +143,28 @@ export function ProfilePage({ go, back }) {
   const [profile, setProfile] = useState(initialProfile)
   const [editingField, setEditingField] = useState(null)
   const [draftValue, setDraftValue] = useState('')
+  const [draftAddress, setDraftAddress] = useState(null)
+  const [draftAddressDetail, setDraftAddressDetail] = useState('')
+  const [addressError, setAddressError] = useState('')
+  const [showAddressSearch, setShowAddressSearch] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null)
 
   useEffect(() => {
     let isMounted = true
 
-    fetchMyProfile().then((data) => {
-      if (isMounted) setProfile((current) => ({ ...current, ...data }))
+    Promise.all([fetchMyProfile(), fetchHomeAddress()]).then(([profileData, addressData]) => {
+      if (!isMounted) return
+
+      const displayAddress = [addressData.detail, addressData.title]
+        .filter(Boolean)
+        .filter((item, index, items) => items.indexOf(item) === index)
+        .join(' ')
+
+      setProfile((current) => ({
+        ...current,
+        ...profileData,
+        address: displayAddress || current.address,
+      }))
     })
 
     return () => {
@@ -161,9 +182,20 @@ export function ProfilePage({ go, back }) {
   const openEditModal = (field) => {
     setEditingField(field)
     setDraftValue(profile[field.key] ?? '')
+    setDraftAddress(null)
+    setDraftAddressDetail('')
+    setAddressError('')
   }
 
-  // 수정 모달 저장: 주소는 기본주소 API, 나머지 프로필 항목은 PATCH /users/me 호출
+  const closeEditModal = () => {
+    setEditingField(null)
+    setDraftAddress(null)
+    setDraftAddressDetail('')
+    setAddressError('')
+    setShowAddressSearch(false)
+  }
+
+  // 수정 모달 저장: 주소와 프로필 항목 모두 PATCH /users/me 호출
   const saveProfileField = async () => {
     if (!editingField?.editable) {
       setEditingField(null)
@@ -171,16 +203,37 @@ export function ProfilePage({ go, back }) {
     }
 
     if (editingField.key === 'address') {
-      const savedAddress = await saveHomeAddress({
-        detail: draftValue,
-        title: draftValue,
-        zipNo: '',
-        regionCodeId: null,
-      })
+      if (!draftAddress && !draftValue.trim()) {
+        setAddressError('주소를 먼저 검색해주세요.')
+        return
+      }
+
+      let savedAddress
+
+      try {
+        savedAddress = await saveHomeAddress({
+          detail: draftAddress?.detail ?? draftValue,
+          title: draftAddressDetail.trim() || draftAddress?.title || draftValue,
+          zipNo: draftAddress?.zipNo ?? '',
+          regionCodeId: draftAddress?.regionCodeId ?? null,
+        })
+      } catch {
+        setAddressError('주소 저장에 실패했습니다. 잠시 후 다시 시도해주세요.')
+        return
+      }
+
+      const displayAddress = [
+        savedAddress.detail || draftAddress?.detail || draftValue,
+        draftAddressDetail.trim(),
+      ].filter(Boolean).join(' ')
+
       setProfile((current) => ({
         ...current,
-        address: savedAddress.detail || savedAddress.title || draftValue,
+        address: displayAddress || savedAddress.title || draftValue,
       }))
+      setDraftAddress(null)
+      setDraftAddressDetail('')
+      setAddressError('')
       setEditingField(null)
       return
     }
@@ -224,9 +277,33 @@ export function ProfilePage({ go, back }) {
         <ProfileEditModal
           field={editingField}
           value={draftValue}
+          address={draftAddress}
+          addressDetail={draftAddressDetail}
+          addressError={addressError}
           onChange={setDraftValue}
-          onClose={() => setEditingField(null)}
+          onAddressDetailChange={setDraftAddressDetail}
+          onAddressSearch={() => setShowAddressSearch(true)}
+          onClose={closeEditModal}
           onSave={saveProfileField}
+        />
+      ) : null}
+      {showAddressSearch ? (
+        <JusoSearchModal
+          onClose={() => setShowAddressSearch(false)}
+          onSelect={(item) => {
+            const nextAddress = {
+              title: item.roadAddrPart1 || item.roadAddr,
+              detail: item.roadAddr,
+              zipNo: item.zipNo || '',
+              regionCodeId: item.admCd || null,
+            }
+
+            setDraftAddress(nextAddress)
+            setDraftValue(nextAddress.detail)
+            setDraftAddressDetail('')
+            setAddressError('')
+            setShowAddressSearch(false)
+          }}
         />
       ) : null}
       {confirmAction ? (
@@ -241,7 +318,20 @@ export function ProfilePage({ go, back }) {
 }
 
 // 내 정보 수정 모달: 항목별 입력/읽기 전용 안내
-function ProfileEditModal({ field, value, onChange, onClose, onSave }) {
+function ProfileEditModal({
+  field,
+  value,
+  address,
+  addressDetail,
+  addressError,
+  onChange,
+  onAddressDetailChange,
+  onAddressSearch,
+  onClose,
+  onSave,
+}) {
+  const isAddressField = field.key === 'address'
+
   return (
     <div className="estimate-result-overlay profile-modal-overlay">
       <article className="estimate-result-modal profile-edit-modal">
@@ -259,7 +349,35 @@ function ProfileEditModal({ field, value, onChange, onClose, onSave }) {
             <p>{field.editable ? '변경할 내용을 입력해 주세요.' : '현재는 읽기 전용 항목입니다.'}</p>
           </div>
         </div>
-        {field.editable ? (
+        {field.editable && isAddressField ? (
+          <div className="profile-address-search">
+            <span>{field.label}</span>
+            <button className="home-address-search" type="button" onClick={onAddressSearch}>
+              <span aria-hidden="true" />
+              <strong>도로명, 지번 또는 건물명으로 검색</strong>
+            </button>
+            {addressError ? <p className="home-address-error">{addressError}</p> : null}
+            <article className="home-current-address profile-selected-address">
+              <i aria-hidden="true" />
+              <div>
+                <em>{address ? '선택된 주소' : '현재 주소'}</em>
+                <h3>{address?.title || value || '주소를 검색해 주세요'}</h3>
+                <p>{address?.detail || value || '주소찾기를 눌러 도로명주소를 선택해 주세요.'}</p>
+              </div>
+            </article>
+            {address ? (
+              <label className="profile-edit-field profile-address-detail-field">
+                <span>상세 주소</span>
+                <input
+                  type="text"
+                  placeholder="상세 주소 입력 (ex : 202동 301호)"
+                  value={addressDetail}
+                  onChange={(event) => onAddressDetailChange(event.target.value)}
+                />
+              </label>
+            ) : null}
+          </div>
+        ) : field.editable ? (
           <label className="profile-edit-field">
             <span>{field.label}</span>
             <input
@@ -317,12 +435,6 @@ export function MatchHistoryPage({ go, back }) {
   const [historyList, setHistoryList] = useState([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState(location.state?.statusFilter || 'latest')
-
-  useEffect(() => {
-    if (location.state?.statusFilter) {
-      setFilter(location.state.statusFilter)
-    }
-  }, [location.state])
 
   useEffect(() => {
     let isMounted = true

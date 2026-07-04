@@ -2,15 +2,15 @@ const DEFAULT_JUSO_POPUP_URL = 'https://www.juso.go.kr/addrlink/addrLinkUrl.do'
 const DEFAULT_JUSO_SEARCH_URL = 'https://business.juso.go.kr/addrlink/addrLinkApi.do'
 
 export function hasJusoConfirmKey() {
-  return Boolean(import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_CONFIRM_KEY)
+  return Boolean(import.meta.env.VITE_JUSO_CONFIRM_KEY || import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_KEY)
 }
 
 export function hasJusoSearchKey() {
-  return Boolean(import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_CONFIRM_KEY)
+  return Boolean(import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_CONFIRM_KEY || import.meta.env.VITE_JUSO_KEY)
 }
 
 export function getJusoPopupUrl() {
-  const confirmKey = import.meta.env.VITE_JUSO_CONFIRM_KEY
+  const confirmKey = import.meta.env.VITE_JUSO_CONFIRM_KEY || import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_KEY
   const popupUrl = import.meta.env.VITE_JUSO_POPUP_URL || DEFAULT_JUSO_POPUP_URL
   const returnUrl = `${window.location.origin}/juso-callback.html`
   const cssUrl = `${window.location.origin}/addrlinkMobileSample.css`
@@ -26,7 +26,7 @@ export function getJusoPopupUrl() {
 }
 
 export async function searchJusoAddresses({ keyword, currentPage = 1, countPerPage = 10 }) {
-  const confirmKey = import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_CONFIRM_KEY
+  const confirmKey = import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_CONFIRM_KEY || import.meta.env.VITE_JUSO_KEY
   const searchUrl = import.meta.env.VITE_JUSO_SEARCH_URL || DEFAULT_JUSO_SEARCH_URL
   const params = new URLSearchParams({
     confmKey: confirmKey,

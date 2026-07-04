@@ -1,6 +1,6 @@
 import { api } from '../../api/apiClient'
 import { useEffect, useState, useRef } from 'react'
-import { getJusoPopupUrl, hasJusoConfirmKey, searchJusoAddresses } from '../../api/jusoApi'
+import { searchJusoAddresses } from '../../api/jusoApi'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
@@ -53,11 +53,15 @@ function estimateCost(estimate) {
 }
 
 function buildMatchingRequestBody({ estimate, address, schedule, isEmergency }) {
+  const fullAddress = [address.address, address.address_detail]
+    .filter(Boolean)
+    .join(' ')
+
   return {
     estimate_id: estimate.estimate_id,
     title: estimateTitle(estimate),
     region_code_id: address.region_code_id,
-    address: address.address,
+    address: fullAddress,
     preferred_date: schedule.preferred_date,
     preferred_time_start: isEmergency ? undefined : schedule.preferred_time_start,
     preferred_time_end: isEmergency ? undefined : schedule.preferred_time_end,
@@ -524,7 +528,7 @@ export function MatchingAddressListPage({ go }) {
     // 백엔드 매칭 요청 스키마 양식에 맞게 찰떡같이 구조를 매핑해 줍니다.
     updateMatchingFlow({
       selectedAddress: {
-        address_id: jusoItem.bdMgtSn || Date.now(), // 건물관리번호를 고유 ID로 활용
+        address_id: jusoItem.bdMgtSn || jusoItem.roadAddr || jusoItem.zipNo, // 건물관리번호를 고유 ID로 활용
         region_code_id: jusoItem.admCd || null,     // 행정구역코드(법정동코드 등)
         address: jusoItem.roadAddr,                 // 전체 도로명 주소
         road_addr_part1: jusoItem.roadAddrPart1 || '',
@@ -538,6 +542,19 @@ export function MatchingAddressListPage({ go }) {
     // 💡 선택이 완료되면 깔끔하게 입력창과 결과 목록을 비워줍니다.
     setSearchResults([])
     setKeyword('')
+  }
+
+  const handleAddressDetailChange = (event) => {
+    const addressDetail = event.target.value
+
+    updateMatchingFlow((current) => ({
+      selectedAddress: current.selectedAddress
+        ? {
+          ...current.selectedAddress,
+          address_detail: addressDetail,
+        }
+        : null,
+    }))
   }
 
   const clearAddress = () => {
@@ -626,13 +643,34 @@ export function MatchingAddressListPage({ go }) {
             </button>
           )}
         </article>
+        {selectedAddress && (
+          <label className="matching-address-detail">
+            <span>상세 주소</span>
+            <input
+              type="text"
+              placeholder="상세 주소 입력 (ex : 202동 301호)"
+              value={selectedAddress.address_detail || ''}
+              onChange={handleAddressDetailChange}
+            />
+          </label>
+        )}
       </div>
 
       {/* 다음 단계 이동 액션 하단바 */}
       <div className="pt-6 w-full">
         <PrimaryButton 
           narrow 
-          onClick={() => selectedAddress ? go(screens.matchingSchedule) : alert('주소를 검색하여 먼저 선택해 주세요!')}
+          onClick={() => {
+            if (!selectedAddress) {
+              alert('주소를 검색하여 먼저 선택해 주세요!')
+              return
+            }
+            if (!selectedAddress.address_detail?.trim()) {
+              alert('상세 주소를 입력해 주세요!')
+              return
+            }
+            go(screens.matchingSchedule)
+          }}
         >
           다음 단계로
         </PrimaryButton>
@@ -982,7 +1020,9 @@ export function MatchingAuctionPage({ go }) {
     setIsSelecting(true)
 
     try {
-      const data = await api.post(`/api/v1/matching-requests/${matchingRequestId}/quotes/${partner.quote_id}/select`)
+      const data = await api.post(`/api/v1/matching-requests/${matchingRequestId}/select-quote`, {
+        quote_id: partner.quote_id,
+      })
       
       flow.updateMatchingFlow({
         selectedQuoteId: data.selected_quote_id || partner.quote_id,

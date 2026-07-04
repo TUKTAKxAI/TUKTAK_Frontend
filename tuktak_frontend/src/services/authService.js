@@ -1,4 +1,5 @@
 import api from "./api";
+import { clearAuthTokens, getRefreshToken, setAuthTokens } from "../api/client";
 
 /**
  * 로그인
@@ -10,6 +11,7 @@ export const login = async (email, password) => {
         password,
     });
 
+    setAuthTokens(response.data);
     return response.data;
 };
 
@@ -61,12 +63,23 @@ export const checkEmailAvailability = async (email) => {
  * 쿠키는 브라우저가 자동 전송
  */
 export const logout = async () => {
-    return api.post("/auth/logout");
+    const refreshToken = getRefreshToken();
+
+    try {
+        return await api.post("/auth/logout", refreshToken ? { refresh_token: refreshToken } : undefined);
+    } finally {
+        clearAuthTokens();
+    }
 };
 
 /**
  * 토큰 재발급
  */
 export const refresh = async () => {
-    return api.post("/auth/refresh");
+    const response = await api.post("/auth/refresh", {
+        refresh_token: getRefreshToken(),
+    });
+
+    setAuthTokens(response.data);
+    return response.data;
 };
