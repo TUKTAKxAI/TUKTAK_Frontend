@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FaCamera, FaFileInvoice, FaSearch } from 'react-icons/fa'
-import { contractorProfile, contractorRequests, contractorScreens } from '../../data/contractorData'
+import { FaSearch } from 'react-icons/fa'
+import { contractorRequests, contractorScreens } from '../../data/contractorData'
 import { fetchContractorMatchingRequests } from '../../services/contractorService'
 import { ContractorPage, RequestCard, StatusBadge } from './ContractorPageShared'
+import { ContractorQuotesPanel } from './ContractorQuotePages'
 
 const regionOptions = ['경기도 김포시', '경기도 고양시', '서울특별시 강남구', '서울특별시 마포구', '인천광역시 서구']
 const serviceOptions = ['도어락 수리', '창호 수리', '에어컨 수리', '문 수리', '도배', '배관 수리']
@@ -40,26 +41,11 @@ function mapRequest(item) {
     desiredDate: formatDate(item.preferred_date),
     time: '시간 협의',
     status: item.target_status || item.matching_status,
-    aiEstimate: {
-      summary: '고객의 AI 견적 기반 매칭 요청입니다.',
-      priceRange: formatBudget(item.budget_min, item.budget_max),
-      expectedTime: '상세 협의',
-      note: `매칭 상태: ${item.matching_status}`,
-    },
-    photos: ['고객 첨부 사진', 'AI 견적 이미지'],
   }
 }
 
 function getRequestKey(item) {
   return item.matchingRequestId || item.id
-}
-
-function matchesPreferred(item) {
-  const regionText = `${item.city} ${item.region}`
-  return (
-    contractorProfile.regions.some((region) => regionText.includes(region)) ||
-    contractorProfile.services.some((service) => item.title.includes(service))
-  )
 }
 
 function matchesTime(item, selectedTime) {
@@ -84,35 +70,19 @@ function RequestEstimatePreview({ item }) {
       <dl>
         <div><dt>요청 일시</dt><dd>{item.desiredDate} {item.time}</dd></div>
         <div><dt>고객 예산</dt><dd>{item.budget}</dd></div>
-        <div><dt>AI 예상 비용</dt><dd>{item.aiEstimate.priceRange}</dd></div>
-        <div><dt>예상 소요시간</dt><dd>{item.aiEstimate.expectedTime}</dd></div>
+        <div><dt>매칭 상태</dt><dd>{item.status}</dd></div>
       </dl>
-      <div className="contractor-ai-summary">
-        <FaFileInvoice />
-        <div>
-          <strong>AI 견적 요약</strong>
-          <p>{item.aiEstimate.summary}</p>
-          <small>{item.aiEstimate.note}</small>
-        </div>
-      </div>
-      <div className="contractor-photo-grid">
-        {item.photos.map((photo) => (
-          <div className="contractor-photo-mock" key={photo}>
-            <FaCamera />
-            <span>{photo}</span>
-          </div>
-        ))}
-      </div>
     </article>
   )
 }
 
 export function ContractorRequestsPage({ go }) {
+  const [activeTab, setActiveTab] = useState('requests')
   const [items, setItems] = useState(contractorRequests)
   const [status, setStatus] = useState('loading')
   const [searchModal, setSearchModal] = useState(null)
-  const [selectedRegions, setSelectedRegions] = useState(contractorProfile.regions)
-  const [selectedServices, setSelectedServices] = useState(contractorProfile.services)
+  const [selectedRegions, setSelectedRegions] = useState([])
+  const [selectedServices, setSelectedServices] = useState([])
   const [selectedTime, setSelectedTime] = useState('all')
   const [activeSearch, setActiveSearch] = useState(null)
 
@@ -122,8 +92,9 @@ export function ContractorRequestsPage({ go }) {
     fetchContractorMatchingRequests({ page: 1, size: 50 })
       .then((data) => {
         if (ignore) return
-        setItems(data.items?.map(mapRequest) ?? [])
-        setStatus('loaded')
+        const nextItems = data.items?.map(mapRequest) ?? []
+        setItems(nextItems.length ? nextItems : contractorRequests)
+        setStatus(nextItems.length ? 'loaded' : 'fallback')
       })
       .catch(() => {
         if (!ignore) {
@@ -137,9 +108,8 @@ export function ContractorRequestsPage({ go }) {
     }
   }, [])
 
-  const preferredItems = useMemo(() => items.filter(matchesPreferred), [items])
   const sortedItems = useMemo(() => {
-    const filtered = items.filter((item) => {
+    return items.filter((item) => {
       if (activeSearch === 'region') {
         return selectedRegions.some((region) => `${item.city} ${item.region}`.includes(region))
       }
@@ -151,8 +121,6 @@ export function ContractorRequestsPage({ go }) {
       }
       return true
     })
-
-    return filtered.toSorted((a, b) => Number(matchesPreferred(b)) - Number(matchesPreferred(a)))
   }, [activeSearch, items, selectedRegions, selectedServices, selectedTime])
 
   const toggleRegion = (region) => {
@@ -178,36 +146,49 @@ export function ContractorRequestsPage({ go }) {
   }
 
   return (
-    <ContractorPage title="시공 요청 목록" go={go} back={() => go(contractorScreens.home)}>
-      {status === 'loading' ? <p className="muted center">시공 요청을 불러오는 중입니다.</p> : null}
-      {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 요청을 표시합니다.</p> : null}
-
-      <section className="contractor-preferred-panel">
-        <div>
-          <small>내 작업 조건과 가까운 요청</small>
-          <strong>{preferredItems.length}건</strong>
-        </div>
-        <button type="button" onClick={() => setSearchModal('menu')}>
-          <FaSearch /> 검색하기
+    <ContractorPage title="시공 요청" go={go} back={() => go(contractorScreens.home)}>
+      <div className="contractor-filter">
+        <button className={activeTab === 'requests' ? 'active' : ''} type="button" onClick={() => setActiveTab('requests')}>
+          받은 요청
         </button>
-      </section>
-
-      {activeSearch ? (
-        <button className="contractor-search-reset" type="button" onClick={clearSearch}>
-          검색 조건 해제
+        <button className={activeTab === 'quotes' ? 'active' : ''} type="button" onClick={() => setActiveTab('quotes')}>
+          보낸 견적
         </button>
-      ) : null}
-
-      <div className="contractor-list">
-        {sortedItems.map((item) => (
-          <RequestCard
-            key={item.id}
-            item={item}
-            onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: getRequestKey(item) })}
-          />
-        ))}
-        {sortedItems.length === 0 ? <p className="contractor-empty-message">검색 조건에 맞는 요청이 없습니다.</p> : null}
       </div>
+
+      {activeTab === 'quotes' ? <ContractorQuotesPanel /> : (
+        <>
+          {status === 'loading' ? <p className="muted center">시공 요청을 불러오는 중입니다.</p> : null}
+          {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 요청을 표시합니다.</p> : null}
+
+          <section className="contractor-preferred-panel">
+            <div>
+              <small>조회된 시공 요청</small>
+              <strong>{items.length}건</strong>
+            </div>
+            <button type="button" onClick={() => setSearchModal('menu')}>
+              <FaSearch /> 검색하기
+            </button>
+          </section>
+
+          {activeSearch ? (
+            <button className="contractor-search-reset" type="button" onClick={clearSearch}>
+              검색 조건 해제
+            </button>
+          ) : null}
+
+          <div className="contractor-list">
+            {sortedItems.map((item) => (
+              <RequestCard
+                key={item.id}
+                item={item}
+                onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: getRequestKey(item) })}
+              />
+            ))}
+            {sortedItems.length === 0 ? <p className="contractor-empty-message">검색 조건에 맞는 요청이 없습니다.</p> : null}
+          </div>
+        </>
+      )}
 
       {searchModal ? (
         <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">

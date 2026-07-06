@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { FaTools } from 'react-icons/fa'
-import { contractorChats, contractorProfile, contractorScreens, contractorWorkOrders } from '../../data/contractorData'
+import { contractorScreens, contractorWorkOrders } from '../../data/contractorData'
 import {
+  completeContractorWorkOrder,
   fetchContractorWorkOrder,
   fetchContractorWorkOrders,
   startContractorWorkOrder,
 } from '../../services/contractorService'
 import { ContractorPage, StatusBadge } from './ContractorPageShared'
-
-const workProgressStorageKey = 'tuktak.contractor.workProgress.v2'
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -43,7 +42,6 @@ function statusLabel(status) {
     CREATED: '시공 시작 대기중',
     SCHEDULED: '시공 시작 대기중',
     IN_PROGRESS: '시공 진행중',
-    PAYMENT_REQUESTED: '결제요청완료',
     COMPLETED: '완료됨',
     CANCELLED: '취소됨',
     진행중: '시공 시작 대기중',
@@ -72,47 +70,6 @@ function mapWorkOrder(item) {
   }
 }
 
-function readWorkProgress() {
-  try {
-    return JSON.parse(localStorage.getItem(workProgressStorageKey) || '{}')
-  } catch {
-    return {}
-  }
-}
-
-function getWorkProgressKey(item) {
-  return item?.workOrderId || item?.id
-}
-
-function applyStoredWorkProgress(item) {
-  if (!item) return item
-  const stored = readWorkProgress()[getWorkProgressKey(item)]
-  if (!stored) return item
-
-  return {
-    ...item,
-    ...stored,
-  }
-}
-
-function saveWorkProgress(item, patch) {
-  const key = getWorkProgressKey(item)
-  if (!key) return
-
-  const current = readWorkProgress()
-  localStorage.setItem(workProgressStorageKey, JSON.stringify({
-    ...current,
-    [key]: {
-      ...current[key],
-      ...patch,
-    },
-  }))
-}
-
-function clearWorkProgress() {
-  localStorage.removeItem(workProgressStorageKey)
-}
-
 function statusTone(status) {
   return status === '완료됨' || status === '취소됨' ? 'gray' : 'blue'
 }
@@ -122,22 +79,15 @@ function statusHelper(status) {
     매칭대기중: '고객이 파트너 견적을 비교하고 있습니다.',
     매칭완료: '고객이 견적을 선택했고 시공 일정 확정을 기다리고 있습니다.',
     '시공 시작 대기중': '예약된 일정에 맞춰 시공 시작 처리를 진행하면 됩니다.',
-    '시공 진행중': '시공이 시작되었습니다. 완료 후 결제 요청을 진행할 수 있습니다.',
-    결제요청완료: '고객에게 결제 요청 메시지를 보낸 상태입니다.',
-    완료됨: '시공과 결제까지 모두 완료된 작업입니다.',
+    '시공 진행중': '시공이 시작되었습니다. 완료 처리를 진행할 수 있습니다.',
+    완료됨: '시공이 완료된 작업입니다.',
   }
   return helpers[status] || '작업 상태를 확인해 주세요.'
 }
 
 export function ContractorRecordsPage({ go }) {
-  const [items, setItems] = useState(() => contractorWorkOrders.map(mapWorkOrder).map(applyStoredWorkProgress))
+  const [items, setItems] = useState(() => contractorWorkOrders.map(mapWorkOrder))
   const [status, setStatus] = useState('loading')
-
-  const resetMockProgress = () => {
-    clearWorkProgress()
-    setItems(contractorWorkOrders.map(mapWorkOrder))
-    setStatus('fallback')
-  }
 
   useEffect(() => {
     let ignore = false
@@ -145,12 +95,13 @@ export function ContractorRecordsPage({ go }) {
     fetchContractorWorkOrders({ page: 1, size: 50 })
       .then((data) => {
         if (ignore) return
-        setItems(data.items?.map(mapWorkOrder).map(applyStoredWorkProgress) ?? [])
-        setStatus('loaded')
+        const nextItems = data.items?.map(mapWorkOrder) ?? []
+        setItems(nextItems.length ? nextItems : contractorWorkOrders.map(mapWorkOrder))
+        setStatus(nextItems.length ? 'loaded' : 'fallback')
       })
       .catch(() => {
         if (!ignore) {
-          setItems(contractorWorkOrders.map(mapWorkOrder).map(applyStoredWorkProgress))
+          setItems(contractorWorkOrders.map(mapWorkOrder))
           setStatus('fallback')
         }
       })
@@ -165,7 +116,6 @@ export function ContractorRecordsPage({ go }) {
       title="시공 기록"
       go={go}
       back={() => go(contractorScreens.home)}
-      action={<button className="contractor-page-text-action" type="button" onClick={resetMockProgress}>테스트 초기화</button>}
     >
       {status === 'loading' ? <p className="muted center">시공 기록을 불러오는 중입니다.</p> : null}
       {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 기록을 표시합니다.</p> : null}
@@ -188,10 +138,9 @@ export function ContractorRecordsPage({ go }) {
 }
 
 export function ContractorRecordDetailPage({ go, routeState = {} }) {
-  const [item, setItem] = useState(() => applyStoredWorkProgress(routeState.workOrder || (!routeState.workOrderId ? mapWorkOrder(contractorWorkOrders[0]) : null)))
+  const [item, setItem] = useState(() => routeState.workOrder || (!routeState.workOrderId ? mapWorkOrder(contractorWorkOrders[0]) : null))
   const [actionStatus, setActionStatus] = useState('')
   const [confirmStart, setConfirmStart] = useState(false)
-  const [confirmPaymentRequest, setConfirmPaymentRequest] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState(false)
 
   useEffect(() => {
@@ -200,105 +149,58 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
     if (!stateWorkOrderId) return
     if (stateWorkOrderId) {
       fetchContractorWorkOrder(stateWorkOrderId)
-        .then((data) => setItem(applyStoredWorkProgress(mapWorkOrder(data))))
-        .catch(() => setItem(applyStoredWorkProgress(stateItem || mapWorkOrder(contractorWorkOrders[0]))))
+        .then((data) => setItem(mapWorkOrder(data)))
+        .catch(() => setItem(stateItem || mapWorkOrder(contractorWorkOrders[0])))
     }
   }, [routeState.workOrder, routeState.workOrderId])
 
   const startWork = async () => {
     if (!item) return
-    setActionStatus('submitting')
-    const startedAt = item.startedAt || new Date().toISOString()
-    const nextItem = {
-      ...item,
-      rawStatus: 'IN_PROGRESS',
-      status: statusLabel('IN_PROGRESS'),
-      startedAt,
+    if (!item.workOrderId) {
+      setActionStatus('error')
+      setConfirmStart(false)
+      return
     }
+    setActionStatus('submitting')
     try {
-      if (item.workOrderId) {
-        await startContractorWorkOrder(item.workOrderId)
+      const data = await startContractorWorkOrder(item.workOrderId)
+      const nextItem = data?.work_order ? mapWorkOrder(data.work_order) : {
+        ...item,
+        rawStatus: 'IN_PROGRESS',
+        status: statusLabel('IN_PROGRESS'),
+        startedAt: item.startedAt || new Date().toISOString(),
       }
-      saveWorkProgress(item, {
-        rawStatus: nextItem.rawStatus,
-        status: nextItem.status,
-        startedAt: nextItem.startedAt,
-      })
       setItem(nextItem)
       setActionStatus('done')
       setConfirmStart(false)
     } catch {
-      if (!item.workOrderId) {
-        saveWorkProgress(item, {
-          rawStatus: nextItem.rawStatus,
-          status: nextItem.status,
-          startedAt: nextItem.startedAt,
-        })
-        setItem(nextItem)
-        setActionStatus('done')
-        setConfirmStart(false)
-        return
-      }
       setActionStatus('error')
       setConfirmStart(false)
     }
   }
 
-  const completeAndRequestPayment = () => {
+  const completeWork = async () => {
     if (!item) return
-    const autoMessage = `${contractorProfile.name} 시공자님이 결제를 요청했어요.`
-    const nextItem = {
-      ...item,
-      rawStatus: 'PAYMENT_REQUESTED',
-      status: '결제요청완료',
-      paymentRequested: true,
-      paymentAutoMessage: autoMessage,
+    if (!item.workOrderId) {
+      setActionStatus('error')
+      setConfirmComplete(false)
+      return
     }
-
-    saveWorkProgress(item, {
-      rawStatus: nextItem.rawStatus,
-      status: nextItem.status,
-      startedAt: nextItem.startedAt,
-      paymentRequested: true,
-      paymentAutoMessage: autoMessage,
-    })
-    setItem(nextItem)
-    setConfirmPaymentRequest(false)
-  }
-
-  const openPaymentChat = () => {
-    const autoMessage = item.paymentAutoMessage || `${contractorProfile.name} 시공자님이 결제를 요청했어요.`
-
-    go(contractorScreens.chatRoom, {
-      chat: {
-        id: item.id || contractorChats[0].id,
-        name: item.customerName ? `${item.customerName}님` : contractorChats[0].name,
-        preview: autoMessage,
-        time: '방금 전',
-      },
-      autoMessage,
-    })
-  }
-
-  const completeWork = () => {
-    if (!item) return
-    const nextItem = {
-      ...item,
-      rawStatus: 'COMPLETED',
-      status: statusLabel('COMPLETED'),
-      completed: true,
+    setActionStatus('submitting')
+    try {
+      const data = await completeContractorWorkOrder(item.workOrderId)
+      const nextItem = data?.work_order ? mapWorkOrder(data.work_order) : {
+        ...item,
+        rawStatus: 'COMPLETED',
+        status: statusLabel('COMPLETED'),
+      }
+      setItem(nextItem)
+      setActionStatus('done')
+      setConfirmComplete(false)
+    } catch {
+      setActionStatus('error')
+      setConfirmComplete(false)
     }
-
-    saveWorkProgress(item, {
-      rawStatus: nextItem.rawStatus,
-      status: nextItem.status,
-      startedAt: nextItem.startedAt,
-      paymentRequested: nextItem.paymentRequested,
-      paymentAutoMessage: nextItem.paymentAutoMessage,
-      completed: true,
-    })
-    setItem(nextItem)
-    setConfirmComplete(false)
   }
 
   if (!item) {
@@ -321,25 +223,7 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
           {item.startedAt ? <div><dt>시공 시작시간</dt><dd>{formatStartedAt(item.startedAt)}</dd></div> : null}
           <div><dt>금액</dt><dd>{item.amount}</dd></div>
         </dl>
-        {item.completed || item.status === '완료됨' ? null : item.paymentRequested || item.status === '결제요청완료' ? (
-          <>
-            <div className="contractor-bottom-actions single">
-              <button type="button" disabled>
-                결제 요청 완료
-              </button>
-            </div>
-            <div className="contractor-bottom-actions single">
-              <button type="button" onClick={openPaymentChat}>
-                1:1 채팅으로 진입
-              </button>
-            </div>
-            <div className="contractor-bottom-actions single">
-              <button type="button" onClick={() => setConfirmComplete(true)}>
-                완료
-              </button>
-            </div>
-          </>
-        ) : item.startedAt ? (
+        {item.status === '완료됨' ? null : item.startedAt || item.rawStatus === 'IN_PROGRESS' ? (
           <>
             <div className="contractor-bottom-actions single">
               <button type="button" disabled>
@@ -347,8 +231,8 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
               </button>
             </div>
             <div className="contractor-bottom-actions single">
-              <button type="button" disabled={actionStatus === 'submitting'} onClick={() => setConfirmPaymentRequest(true)}>
-                시공완료 / 결제 요청
+              <button type="button" disabled={actionStatus === 'submitting'} onClick={() => setConfirmComplete(true)}>
+                시공 완료
               </button>
             </div>
           </>
@@ -375,24 +259,11 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
         </div>
       ) : null}
 
-      {confirmPaymentRequest ? (
-        <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="contractor-modal">
-            <h2>시공완료와 결제 요청을 처리할까요?</h2>
-            <p>상태가 결제요청완료로 변경되고 채팅 진입 버튼이 표시됩니다.</p>
-            <div className="contractor-bottom-actions">
-              <button type="button" onClick={() => setConfirmPaymentRequest(false)}>닫기</button>
-              <button type="button" onClick={completeAndRequestPayment}>처리하기</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {confirmComplete ? (
         <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">
           <div className="contractor-modal">
             <h2>작업을 완료할까요?</h2>
-            <p>완료 후에는 기록만 확인할 수 있고 작업 버튼은 사라집니다.</p>
+            <p>작업 상태가 완료로 변경됩니다.</p>
             <div className="contractor-bottom-actions">
               <button type="button" onClick={() => setConfirmComplete(false)}>닫기</button>
               <button type="button" onClick={completeWork}>완료하기</button>
@@ -405,73 +276,14 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
 }
 
 export function ContractorPaymentRequestPage({ go, routeState = {} }) {
-  const item = applyStoredWorkProgress(routeState.workOrder || mapWorkOrder(contractorWorkOrders[0]))
-  const [form, setForm] = useState({ extraAmount: '', memo: '' })
-  const [confirmPayment, setConfirmPayment] = useState(false)
-
-  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
-
-  const requestPayment = () => {
-    const extraAmountText = form.extraAmount ? ` 추가비용 ${formatWon(String(form.extraAmount).replace(/[^0-9]/g, ''))}` : ''
-    const memoText = form.memo.trim() ? ` (${form.memo.trim()})` : ''
-    const autoMessage = `${contractorProfile.name} 시공자님이 결제를 요청했어요.${extraAmountText}${memoText}`
-    saveWorkProgress(item, {
-      rawStatus: 'PAYMENT_REQUESTED',
-      status: '결제요청완료',
-      startedAt: item.startedAt,
-    })
-
-    go(contractorScreens.chatRoom, {
-      chat: {
-        id: item.id || contractorChats[0].id,
-        name: item.customerName ? `${item.customerName}님` : contractorChats[0].name,
-        preview: autoMessage,
-        time: '방금 전',
-      },
-      autoMessage,
-    })
-  }
+  const item = routeState.workOrder || null
 
   return (
     <ContractorPage title="결제 요청" go={go} back={() => go(contractorScreens.recordDetail, { workOrder: item })}>
       <article className="contractor-detail-card contractor-work-detail-card">
-        <StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge>
-        <h1>{item.title}</h1>
-        <p>{item.region}</p>
-        <dl>
-          <div><dt>기존 금액</dt><dd>{item.amount}</dd></div>
-          <div><dt>일정</dt><dd>{item.date} {item.time}</dd></div>
-          {item.startedAt ? <div><dt>시공 시작시간</dt><dd>{formatStartedAt(item.startedAt)}</dd></div> : null}
-        </dl>
+        <h1>결제 요청 API가 연결되지 않았습니다.</h1>
+        <p>현재 시공 기록 화면은 백엔드 work-orders 조회, 시작, 완료 API만 사용합니다.</p>
       </article>
-
-      <div className="contractor-form compact">
-        <label>
-          <span>추가비용</span>
-          <input value={form.extraAmount} onChange={(event) => update('extraAmount', event.target.value)} placeholder="0" />
-        </label>
-        <label>
-          <span>추가 안내</span>
-          <textarea value={form.memo} onChange={(event) => update('memo', event.target.value)} placeholder="추가 작업 내용이나 결제 안내를 입력해주세요." />
-        </label>
-      </div>
-
-      <div className="contractor-bottom-actions single">
-        <button type="button" onClick={() => setConfirmPayment(true)}>결제 요청하기</button>
-      </div>
-
-      {confirmPayment ? (
-        <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="contractor-modal">
-            <h2>결제를 요청할까요?</h2>
-            <p>확인하면 고객 채팅방에 결제 요청 메시지가 자동으로 전송됩니다.</p>
-            <div className="contractor-bottom-actions">
-              <button type="button" onClick={() => setConfirmPayment(false)}>닫기</button>
-              <button type="button" onClick={requestPayment}>요청하기</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </ContractorPage>
   )
 }
