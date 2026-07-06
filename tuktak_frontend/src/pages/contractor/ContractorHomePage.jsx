@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { FaBell, FaBriefcase, FaClipboardList, FaComments, FaStar, FaTools } from 'react-icons/fa'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { contractorActiveWork, contractorNotifications, contractorProfile, contractorScreens } from '../../data/contractorData'
+import { contractorActiveWork, contractorNotifications, contractorProfile, contractorScreens, contractorWorkOrders } from '../../data/contractorData'
 import {
   fetchContractorMe,
   fetchContractorWorkOrders,
   updateContractorAlertSettings,
 } from '../../services/contractorService'
-import { ContractorPage, MenuTile } from './ContractorPageShared'
+import { ContractorPage, MenuTile, StatusBadge } from './ContractorPageShared'
 import './ContractorPages.css'
+
+const workProgressStorageKey = 'tuktak.contractor.workProgress.v2'
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -19,25 +21,86 @@ function formatWon(value) {
   return `${Number(value).toLocaleString('ko-KR')}원`
 }
 
-function mapActiveWork(item) {
-  return {
-    title: item.matching_request_title,
-    price: formatWon(item.final_amount),
-    date: formatDate(item.scheduled_date),
-    visitTime: item.scheduled_start_time || '시간 협의',
-    address: item.contractor_name ? `담당 ${item.contractor_name}` : '주소 확인 필요',
-    duration: '상세에서 확인',
-    customer: {
-      name: item.customer_name || '고객',
-      phone: '연락처는 작업 상세에서 확인',
-    },
-    status: item.work_order_status,
+function statusLabel(status) {
+  const labels = {
+    REQUESTED: '매칭대기중',
+    RECEIVING_QUOTES: '매칭대기중',
+    NOTIFIED: '매칭대기중',
+    VIEWED: '매칭대기중',
+    QUOTED: '매칭대기중',
+    SELECTED: '매칭완료',
+    CREATED: '시공 시작 대기중',
+    SCHEDULED: '시공 시작 대기중',
+    IN_PROGRESS: '시공 진행중',
+    PAYMENT_REQUESTED: '결제요청완료',
+    COMPLETED: '완료됨',
+    CANCELLED: '취소됨',
+    진행중: '시공 시작 대기중',
+    완료: '완료됨',
+    완료됨: '완료됨',
   }
+  return labels[status] || status
+}
+
+function readWorkProgress() {
+  try {
+    return JSON.parse(localStorage.getItem(workProgressStorageKey) || '{}')
+  } catch {
+    return {}
+  }
+}
+
+function getWorkProgressKey(item) {
+  return item?.workOrderId || item?.id
+}
+
+function applyStoredWorkProgress(item) {
+  if (!item) return item
+  const stored = readWorkProgress()[getWorkProgressKey(item)]
+  return stored ? { ...item, ...stored } : item
+}
+
+function mapWorkOrder(item) {
+  const rawStatus = item.work_order_status || item.rawStatus || item.status
+
+  return {
+    id: String(item.work_order_id || item.workOrderId || item.id),
+    workOrderId: item.work_order_id || item.workOrderId,
+    title: item.matching_request_title || item.title,
+    region: item.region || (item.contractor_name ? `담당 ${item.contractor_name}` : '시공 주소 확인 필요'),
+    date: formatDate(item.scheduled_date || item.date),
+    time: item.scheduled_start_time || item.time || '시간 협의',
+    status: statusLabel(rawStatus),
+    rawStatus,
+    amount: item.amount || formatWon(item.final_amount),
+    customerName: item.customer_name,
+  }
+}
+
+function findCurrentWork(items) {
+  return items.find((item) => item.status !== '완료됨' && item.status !== '취소됨') || null
+}
+
+function mapActiveWork(item) {
+  if (!item) return null
+
+  return {
+    ...item,
+    price: item.amount,
+    visitTime: item.time || '시간 협의',
+    address: item.region,
+    workOrder: item,
+  }
+}
+
+function getInitialActiveWork() {
+  const current = findCurrentWork(contractorWorkOrders.map(mapWorkOrder).map(applyStoredWorkProgress))
+  return mapActiveWork(current)
 }
 
 export function ContractorHomePage({ go }) {
   const [notificationOn, setNotificationOn] = useState(contractorProfile.notificationEnabled)
-  const [activeWork, setActiveWork] = useState(contractorActiveWork)
+  const [activeWork, setActiveWork] = useState(getInitialActiveWork)
 
   useEffect(() => {
     let ignore = false
@@ -48,9 +111,11 @@ export function ContractorHomePage({ go }) {
       })
       .catch(() => {})
 
-    fetchContractorWorkOrders({ page: 1, size: 1 })
+    fetchContractorWorkOrders({ page: 1, size: 50 })
       .then((data) => {
-        if (!ignore && data.items?.[0]) setActiveWork(mapActiveWork(data.items[0]))
+        if (ignore) return
+        const current = findCurrentWork(data.items?.map(mapWorkOrder).map(applyStoredWorkProgress) ?? [])
+        setActiveWork(mapActiveWork(current))
       })
       .catch(() => {})
 
@@ -67,14 +132,37 @@ export function ContractorHomePage({ go }) {
 
   return (
     <ContractorPage go={go}>
-      <button className="contractor-active-card" type="button" onClick={() => go(contractorScreens.activeWork)}>
+      <button
+        className="contractor-active-card"
+        type="button"
+        onClick={() => {
+          if (activeWork?.workOrder) {
+            go(contractorScreens.recordDetail, { workOrder: activeWork.workOrder, workOrderId: activeWork.workOrder.workOrderId })
+            return
+          }
+          go(contractorScreens.records)
+        }}
+      >
         <FaBriefcase />
         <div>
-          <small>진행중인 시공</small>
-          <h1>{activeWork.title}</h1>
-          <p>{activeWork.date} · {activeWork.visitTime}</p>
-          <p>{activeWork.address}</p>
-          <span>자세한 정보를 클릭해서 보기</span>
+          <div className="contractor-active-meta">
+            <small>진행중인 시공</small>
+            {activeWork ? <StatusBadge tone={activeWork.status === '완료됨' ? 'gray' : 'blue'}>{activeWork.status}</StatusBadge> : null}
+          </div>
+          {activeWork ? (
+            <>
+              <h1>{activeWork.title}</h1>
+              <p>{activeWork.date} · {activeWork.visitTime}</p>
+              <p>{activeWork.address}</p>
+              <span>시공 상세작업으로 이동</span>
+            </>
+          ) : (
+            <>
+              <h1>현재 진행중인 시공이 없습니다</h1>
+              <p>시공 기록에서 완료 전 작업을 확인할 수 있습니다.</p>
+              <span>시공 기록으로 이동</span>
+            </>
+          )}
         </div>
       </button>
 

@@ -34,6 +34,13 @@ export function clearAuthTokens() {
   storage.removeItem(REFRESH_TOKEN_KEY)
 }
 
+export function clearLocalTestState() {
+  if (typeof window === 'undefined') return
+
+  window.localStorage.clear()
+  window.sessionStorage?.clear()
+}
+
 function getBaseURL() {
   const baseURL = RAW_API_BASE_URL.replace(/\/$/, '')
   return baseURL.endsWith(API_PREFIX) ? baseURL : `${baseURL}${API_PREFIX}`

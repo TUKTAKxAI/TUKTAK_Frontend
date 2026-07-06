@@ -1,8 +1,17 @@
-import { useEffect, useState } from 'react'
-import { FaCamera, FaFileInvoice } from 'react-icons/fa'
-import { contractorRequests, contractorScreens } from '../../data/contractorData'
+import { useEffect, useMemo, useState } from 'react'
+import { FaCamera, FaFileInvoice, FaSearch } from 'react-icons/fa'
+import { contractorProfile, contractorRequests, contractorScreens } from '../../data/contractorData'
 import { fetchContractorMatchingRequests } from '../../services/contractorService'
 import { ContractorPage, RequestCard, StatusBadge } from './ContractorPageShared'
+
+const regionOptions = ['경기도 김포시', '경기도 고양시', '서울특별시 강남구', '서울특별시 마포구', '인천광역시 서구']
+const serviceOptions = ['도어락 수리', '창호 수리', '에어컨 수리', '문 수리', '도배', '배관 수리']
+const timeOptions = [
+  { label: '전체 시간', value: 'all' },
+  { label: '오전 09:00 - 12:00', value: 'morning' },
+  { label: '오후 12:00 - 18:00', value: 'afternoon' },
+  { label: '저녁 18:00 - 21:00', value: 'evening' },
+]
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -41,13 +50,34 @@ function mapRequest(item) {
   }
 }
 
+function getRequestKey(item) {
+  return item.matchingRequestId || item.id
+}
+
+function matchesPreferred(item) {
+  const regionText = `${item.city} ${item.region}`
+  return (
+    contractorProfile.regions.some((region) => regionText.includes(region)) ||
+    contractorProfile.services.some((service) => item.title.includes(service))
+  )
+}
+
+function matchesTime(item, selectedTime) {
+  if (selectedTime === 'all') return true
+  const timeText = item.time || ''
+  if (selectedTime === 'morning') return /09|10|11|12/.test(timeText)
+  if (selectedTime === 'afternoon') return /12|13|14|15|16|17|18/.test(timeText)
+  if (selectedTime === 'evening') return /18|19|20|21/.test(timeText)
+  return true
+}
+
 function RequestEstimatePreview({ item }) {
   if (!item) {
     return <p className="muted center">요청 정보를 불러오지 못했습니다.</p>
   }
 
   return (
-    <article className="contractor-detail-card">
+    <article className="contractor-detail-card contractor-request-detail-card">
       <StatusBadge>{item.status}</StatusBadge>
       <h1>{item.title}</h1>
       <p>{item.region}</p>
@@ -80,6 +110,11 @@ function RequestEstimatePreview({ item }) {
 export function ContractorRequestsPage({ go }) {
   const [items, setItems] = useState(contractorRequests)
   const [status, setStatus] = useState('loading')
+  const [searchModal, setSearchModal] = useState(null)
+  const [selectedRegions, setSelectedRegions] = useState(contractorProfile.regions)
+  const [selectedServices, setSelectedServices] = useState(contractorProfile.services)
+  const [selectedTime, setSelectedTime] = useState('all')
+  const [activeSearch, setActiveSearch] = useState(null)
 
   useEffect(() => {
     let ignore = false
@@ -102,19 +137,154 @@ export function ContractorRequestsPage({ go }) {
     }
   }, [])
 
+  const preferredItems = useMemo(() => items.filter(matchesPreferred), [items])
+  const sortedItems = useMemo(() => {
+    const filtered = items.filter((item) => {
+      if (activeSearch === 'region') {
+        return selectedRegions.some((region) => `${item.city} ${item.region}`.includes(region))
+      }
+      if (activeSearch === 'service') {
+        return selectedServices.some((service) => item.title.includes(service))
+      }
+      if (activeSearch === 'time') {
+        return matchesTime(item, selectedTime)
+      }
+      return true
+    })
+
+    return filtered.toSorted((a, b) => Number(matchesPreferred(b)) - Number(matchesPreferred(a)))
+  }, [activeSearch, items, selectedRegions, selectedServices, selectedTime])
+
+  const toggleRegion = (region) => {
+    setSelectedRegions((current) => (
+      current.includes(region) ? current.filter((item) => item !== region) : [...current, region]
+    ))
+  }
+
+  const toggleService = (service) => {
+    setSelectedServices((current) => (
+      current.includes(service) ? current.filter((item) => item !== service) : [...current, service]
+    ))
+  }
+
+  const applySearch = (type) => {
+    setActiveSearch(type)
+    setSearchModal(null)
+  }
+
+  const clearSearch = () => {
+    setActiveSearch(null)
+    setSearchModal(null)
+  }
+
   return (
     <ContractorPage title="시공 요청 목록" go={go} back={() => go(contractorScreens.home)}>
       {status === 'loading' ? <p className="muted center">시공 요청을 불러오는 중입니다.</p> : null}
       {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 요청을 표시합니다.</p> : null}
+
+      <section className="contractor-preferred-panel">
+        <div>
+          <small>내 작업 조건과 가까운 요청</small>
+          <strong>{preferredItems.length}건</strong>
+        </div>
+        <button type="button" onClick={() => setSearchModal('menu')}>
+          <FaSearch /> 검색하기
+        </button>
+      </section>
+
+      {activeSearch ? (
+        <button className="contractor-search-reset" type="button" onClick={clearSearch}>
+          검색 조건 해제
+        </button>
+      ) : null}
+
       <div className="contractor-list">
-        {items.map((item) => (
+        {sortedItems.map((item) => (
           <RequestCard
             key={item.id}
             item={item}
-            onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: item.matchingRequestId })}
+            onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: getRequestKey(item) })}
           />
         ))}
+        {sortedItems.length === 0 ? <p className="contractor-empty-message">검색 조건에 맞는 요청이 없습니다.</p> : null}
       </div>
+
+      {searchModal ? (
+        <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="contractor-modal contractor-search-modal">
+            {searchModal === 'menu' ? (
+              <>
+                <h2>요청 검색</h2>
+                <p>원하는 기준으로 시공 요청을 좁혀볼 수 있어요.</p>
+                <div className="contractor-search-options">
+                  <button type="button" onClick={() => setSearchModal('region')}>내 작업지역으로 검색하기</button>
+                  <button type="button" onClick={() => setSearchModal('service')}>내 전문분야로 검색하기</button>
+                  <button type="button" onClick={() => setSearchModal('time')}>시간으로 검색하기</button>
+                </div>
+              </>
+            ) : null}
+
+            {searchModal === 'region' ? (
+              <>
+                <h2>작업지역 선택</h2>
+                <p>기본 설정 지역을 먼저 선택해두었습니다.</p>
+                <div className="contractor-check-list">
+                  {regionOptions.map((region) => (
+                    <label className="contractor-checkbox-row" key={region}>
+                      <input type="checkbox" checked={selectedRegions.includes(region)} onChange={() => toggleRegion(region)} />
+                      <span>{region}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="contractor-bottom-actions">
+                  <button type="button" onClick={() => setSearchModal('menu')}>뒤로</button>
+                  <button type="button" onClick={() => applySearch('region')}>검색하기</button>
+                </div>
+              </>
+            ) : null}
+
+            {searchModal === 'service' ? (
+              <>
+                <h2>전문분야 선택</h2>
+                <p>내 전문분야를 기준으로 요청을 찾아볼게요.</p>
+                <div className="contractor-check-list">
+                  {serviceOptions.map((service) => (
+                    <label className="contractor-checkbox-row" key={service}>
+                      <input type="checkbox" checked={selectedServices.includes(service)} onChange={() => toggleService(service)} />
+                      <span>{service}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="contractor-bottom-actions">
+                  <button type="button" onClick={() => setSearchModal('menu')}>뒤로</button>
+                  <button type="button" onClick={() => applySearch('service')}>검색하기</button>
+                </div>
+              </>
+            ) : null}
+
+            {searchModal === 'time' ? (
+              <>
+                <h2>시간대 선택</h2>
+                <p>방문 가능한 시간대에 맞는 요청을 찾아보세요.</p>
+                <label className="contractor-sort-select">
+                  <span>시간</span>
+                  <select value={selectedTime} onChange={(event) => setSelectedTime(event.target.value)}>
+                    {timeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="contractor-bottom-actions">
+                  <button type="button" onClick={() => setSearchModal('menu')}>뒤로</button>
+                  <button type="button" onClick={() => applySearch('time')}>검색하기</button>
+                </div>
+              </>
+            ) : null}
+
+            <button className="contractor-modal-close" type="button" onClick={() => setSearchModal(null)}>닫기</button>
+          </div>
+        </div>
+      ) : null}
     </ContractorPage>
   )
 }
@@ -148,8 +318,8 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
         <button type="button" onClick={() => go(contractorScreens.requests)}>닫기</button>
         <button
           type="button"
-          disabled={!item?.matchingRequestId || item?.quoteId}
-          onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: item.matchingRequestId })}
+          disabled={!item || item?.quoteId}
+          onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: getRequestKey(item) })}
         >
           {item?.quoteId ? '견적 전송 완료' : '견적서 작성하기'}
         </button>

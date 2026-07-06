@@ -75,6 +75,7 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
       return
     }
 
+    const isMockRequest = !/^\d+$/.test(String(matchingRequestId))
     setSubmitStatus('submitting')
 
     try {
@@ -91,6 +92,10 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
       })
       go(contractorScreens.quoteDone)
     } catch {
+      if (isMockRequest) {
+        go(contractorScreens.quoteDone)
+        return
+      }
       setSubmitStatus('error')
       setModalType(null)
     }

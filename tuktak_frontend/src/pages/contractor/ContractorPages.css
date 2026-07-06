@@ -44,6 +44,16 @@
   flex: 0 0 auto;
 }
 
+.contractor-page-text-action {
+  min-height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: #e8f0ff;
+  color: #2461dc;
+  padding: 0 12px;
+  font-weight: 900;
+}
+
 .contractor-topbar {
   display: grid;
   grid-template-columns: 44px 1fr 44px;
@@ -111,6 +121,13 @@
 .contractor-active-card span,
 .contractor-line-card small {
   color: #6b7280;
+}
+
+.contractor-active-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .contractor-active-card h1,
@@ -193,11 +210,118 @@
   gap: 13px;
 }
 
+.contractor-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  margin-bottom: 14px;
+  padding: 0 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 12px;
+  background: #fff;
+  color: #6b7280;
+}
+
+.contractor-search-bar input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.contractor-empty-message {
+  margin: 18px 0;
+  color: #6b7280;
+  text-align: center;
+  font-weight: 800;
+}
+
+.contractor-sort-select {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin: -2px 0 14px;
+  color: #4b5563;
+  font-weight: 900;
+}
+
+.contractor-sort-select select {
+  min-height: 44px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 12px;
+  background: #fff;
+  color: #111827;
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.contractor-preferred-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.contractor-preferred-panel,
+.contractor-request-card,
+.contractor-work-card,
+.contractor-request-detail-card,
+.contractor-work-detail-card {
+  border-color: #d8dee8;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgb(15 23 42 / 5%);
+}
+
+.contractor-preferred-panel small {
+  display: block;
+  margin-bottom: 5px;
+  color: #6b7280;
+  font-weight: 800;
+}
+
+.contractor-preferred-panel strong {
+  color: #2461dc;
+  font-size: 24px;
+}
+
+.contractor-preferred-panel button,
+.contractor-search-reset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: #2461dc;
+  color: #fff;
+  padding: 0 14px;
+  font-weight: 900;
+}
+
+.contractor-search-reset {
+  width: 100%;
+  margin: 0 0 14px;
+  background: #eef0f2;
+  color: #4b5563;
+}
+
 .contractor-request-card {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
-  padding: 16px 14px;
+  gap: 14px;
+  padding: 18px 16px;
 }
 
 .contractor-request-card.simple {
@@ -205,12 +329,21 @@
 }
 
 .contractor-request-card h2 {
-  margin: 8px 0 6px;
-  font-size: 30px;
+  margin: 8px 0 8px;
+  color: #1f2937;
+  font-size: 26px;
+  line-height: 1.15;
 }
 
 .contractor-region {
-  font-size: 20px;
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2461dc;
+  padding: 5px 9px;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .contractor-card-side {
@@ -242,7 +375,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 11px 13px;
+  align-self: center;
+  border-radius: 10px;
 }
 
 .contractor-card-actions {
@@ -265,8 +400,30 @@
   text-align: left;
 }
 
+.contractor-work-card {
+  grid-template-columns: 38px 1fr auto;
+  align-items: start;
+  padding: 16px;
+}
+
+.contractor-work-card p {
+  margin: 5px 0;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.contractor-work-card small {
+  display: block;
+  line-height: 1.45;
+}
+
 .contractor-line-card.clickable {
   cursor: pointer;
+}
+
+.contractor-line-card.unread {
+  border-color: #2461dc;
+  box-shadow: 0 8px 20px rgb(36 97 220 / 10%);
 }
 
 .contractor-line-card > svg {
@@ -297,26 +454,64 @@
   padding: 22px;
 }
 
+.contractor-request-detail-card,
+.contractor-work-detail-card {
+  padding: 20px 18px;
+}
+
+.contractor-request-detail-card > .contractor-status,
+.contractor-work-detail-card > .contractor-status {
+  display: inline-flex;
+  margin-bottom: 10px;
+}
+
+.contractor-request-detail-card > p,
+.contractor-work-detail-card > p:not(.contractor-status-helper) {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-weight: 800;
+}
+
 .contractor-detail-card dl {
   display: grid;
-  gap: 12px;
-  margin: 18px 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
 }
 
 .contractor-detail-card dl div {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
+  display: grid;
+  gap: 6px;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid #e4e8ef;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
 .contractor-detail-card dt {
-  color: #6b7280;
+  color: #7f8794;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .contractor-detail-card dd {
   margin: 0;
+  color: #1f2937;
+  font-weight: 900;
+  text-align: left;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.contractor-status-helper {
+  margin: 14px 0 0;
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #4b5563;
+  line-height: 1.45;
   font-weight: 800;
-  text-align: right;
 }
 
 .contractor-hero-icon {
@@ -329,9 +524,10 @@
   grid-template-columns: 42px 1fr;
   gap: 12px;
   margin-top: 18px;
-  padding: 14px;
-  border-radius: 10px;
-  background: #e8f0ff;
+  padding: 15px;
+  border: 1px solid #d8e6ff;
+  border-radius: 14px;
+  background: #f8fbff;
 }
 
 .contractor-ai-summary > svg {
@@ -357,8 +553,8 @@
 
 .contractor-photo-mock {
   aspect-ratio: 1 / 1;
-  border: 1.5px dashed #9ca3af;
-  border-radius: 10px;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 14px;
   background: #f6f7f9;
   color: #6b7280;
   display: grid;
@@ -405,21 +601,48 @@
   font-size: 16px;
 }
 
+.contractor-form.compact {
+  gap: 18px;
+  padding-top: 24px;
+}
+
+.contractor-form.compact label {
+  font-size: 20px;
+}
+
+.contractor-form.compact input,
+.contractor-form.compact textarea {
+  min-height: 58px;
+  font-size: 18px;
+}
+
 .contractor-bottom-actions,
 .contractor-button-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 28px;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.contractor-bottom-actions.single {
+  grid-template-columns: 1fr;
 }
 
 .contractor-bottom-actions button,
 .contractor-button-row button {
-  min-height: 58px;
+  min-height: 52px;
   border-radius: 12px;
-  border: 1.5px solid #aaa;
-  font-weight: 800;
-  font-size: 18px;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  color: #4b5563;
+  font-weight: 900;
+  font-size: 16px;
+}
+
+.contractor-bottom-actions button:disabled,
+.contractor-button-row button:disabled {
+  background: #eef0f2;
+  color: #8b94a3;
 }
 
 .contractor-bottom-actions.sticky {
@@ -467,6 +690,25 @@
   padding-top: 40px;
 }
 
+.contractor-chat-summary {
+  margin-bottom: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1.5px solid #d1d5db;
+}
+
+.contractor-chat-summary strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.contractor-chat-summary p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
 .contractor-chat-room p {
   max-width: 78%;
   border-radius: 18px;
@@ -481,6 +723,59 @@
   justify-self: end;
   background: #2461dc;
   color: #fff;
+}
+
+.contractor-chat-compose {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.contractor-chat-compose input {
+  min-height: 50px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 14px;
+  padding: 0 14px;
+  font-size: 15px;
+}
+
+.contractor-chat-compose button {
+  border: 0;
+  border-radius: 14px;
+  background: #2461dc;
+  color: #fff;
+  font-size: 18px;
+}
+
+.contractor-chat-compose button:disabled {
+  background: #cbd5e1;
+}
+
+.contractor-review-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.contractor-review-summary > div {
+  padding: 16px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.contractor-review-summary small {
+  display: block;
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-weight: 800;
+}
+
+.contractor-review-summary strong {
+  font-size: 28px;
+  color: #2461dc;
 }
 
 .contractor-review-card {
@@ -772,6 +1067,43 @@
 .contractor-modal p {
   margin: 0;
   color: #4b5563;
+}
+
+.contractor-search-modal {
+  display: grid;
+  gap: 16px;
+}
+
+.contractor-search-options {
+  display: grid;
+  gap: 10px;
+}
+
+.contractor-search-options button {
+  min-height: 52px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 12px;
+  background: #fff;
+  color: #111827;
+  font-weight: 900;
+  text-align: left;
+  padding: 0 14px;
+}
+
+.contractor-check-list {
+  display: grid;
+  gap: 4px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.contractor-modal-close {
+  min-height: 44px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #4b5563;
+  font-weight: 900;
 }
 
 .contractor-bottom-nav button span {

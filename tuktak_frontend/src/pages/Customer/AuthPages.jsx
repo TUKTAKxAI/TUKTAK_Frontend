@@ -14,6 +14,7 @@ import {
   checkEmailAvailability,
 } from '../../services/authService'
 import { searchJusoAddresses } from '../../api/jusoApi'
+import { clearLocalTestState } from '../../api/client'
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export function AuthPages({
@@ -314,6 +315,13 @@ export function AuthPages({
     setShowAddressModal(false);
   };
 
+  const resetLocalTestState = () => {
+    clearLocalTestState();
+    setLoginData({ email: '', password: '' });
+    resetSignupForm();
+    alert("로컬 테스트 데이터가 초기화되었습니다.");
+  };
+
   const searchAddress = async () => {
     if (addressKeyword.trim().length < 2) {
       alert("주소를 2글자 이상 입력해주세요.");
@@ -432,6 +440,14 @@ export function AuthPages({
           }}
         >
           회원가입 | 아이디 찾기 | 비밀번호 찾기
+        </button>
+
+        <button
+          className="link-row"
+          type="button"
+          onClick={resetLocalTestState}
+        >
+          테스트 데이터 초기화
         </button>
       </section>
     )
