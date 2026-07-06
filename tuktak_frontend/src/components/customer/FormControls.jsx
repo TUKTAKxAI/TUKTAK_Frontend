@@ -9,9 +9,14 @@ export function Field({ placeholder, action, type = 'text', compact }) {
   )
 }
 
-export function PrimaryButton({ children, onClick, narrow, orange, ghost }) {
+export function PrimaryButton({ children, onClick, narrow, orange, ghost, disabled, style }) {
   return (
-    <button className={`primary-button ${narrow ? 'narrow' : ''} ${orange ? 'orange' : ''} ${ghost ? 'ghost' : ''}`} onClick={onClick}>
+    <button
+      className={`primary-button ${narrow ? 'narrow' : ''} ${orange ? 'orange' : ''} ${ghost ? 'ghost' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+      style={style}
+    >
       {children}
     </button>
   )

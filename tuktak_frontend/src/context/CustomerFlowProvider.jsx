@@ -1,8 +1,13 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { createMatchingRequest } from '../api/matchingApi'
+import { CustomerFlowContext } from './CustomerFlowContext'
 import { chatThreads, initialMessages, screens } from '../data/customerData'
+import { mockMatchingRequest, useMatchingMocks } from '../data/matchingMockData'
 import { screenPaths } from '../routes/customerRoutes'
 
-const CustomerFlowContext = createContext(null)
+function getEstimateTitle(estimate) {
+  return estimate?.repair_task_name || estimate?.object_label || estimate?.main_category || estimate?.title || '거실 몰딩 시공'
+}
 
 export function CustomerFlowProvider({ children }) {
   const [userType, setUserType] = useState('customer')
@@ -11,6 +16,22 @@ export function CustomerFlowProvider({ children }) {
   const [chatText, setChatText] = useState('')
   const [messagesByThread, setMessagesByThread] = useState(initialMessages)
   const [showUrgentModal, setShowUrgentModal] = useState(false)
+  const [matchingFlow, setMatchingFlow] = useState({
+    selectedEstimate: null,
+    selectedAddress: null,
+    schedule: {
+      preferred_date: '2026-06-23',
+      preferred_time_start: '15:00',
+      preferred_time_end: '18:00',
+    },
+    isEmergency: false,
+    matchingRequestId: null,
+    selectedQuoteId: null,
+    selectedQuote: null,
+    workOrderId: null,
+    currentMatchingId: null,
+    matchingHistory: [],
+  })
 
   const activeMessages = messagesByThread[activeThread] || []
   const activePartner = useMemo(
@@ -33,6 +54,58 @@ export function CustomerFlowProvider({ children }) {
     navigate(screenPaths[screens.chatRoom])
   }
 
+  const updateMatchingFlow = (nextValue) => {
+    setMatchingFlow((current) => ({
+      ...current,
+      ...(typeof nextValue === 'function' ? nextValue(current) : nextValue),
+    }))
+  }
+
+  const submitMatchingRequest = async (isEmergency = false) => {
+    const estimate = matchingFlow.selectedEstimate
+    const address = matchingFlow.selectedAddress
+    if (!estimate?.estimate_id) throw new Error('AI 견적서를 먼저 선택해주세요.')
+    if (!address?.region_code_id || !address?.address) throw new Error('매칭 요청에 사용할 주소 정보가 필요합니다.')
+    if (!address?.address_detail?.trim()) throw new Error('상세 주소를 입력해주세요.')
+
+    const schedule = isEmergency ? {
+      preferred_date: new Date().toISOString().slice(0, 10),
+      preferred_time_start: null,
+      preferred_time_end: null,
+    } : matchingFlow.schedule
+    let data
+    try {
+      data = await createMatchingRequest({
+        estimate_id: estimate.estimate_id,
+        title: getEstimateTitle(estimate),
+        region_code_id: address.region_code_id,
+        address: address.address,
+        preferred_date: schedule.preferred_date,
+        preferred_time_start: isEmergency ? undefined : schedule.preferred_time_start,
+        preferred_time_end: isEmergency ? undefined : schedule.preferred_time_end,
+        budget_min: estimate.min_price,
+        budget_max: estimate.max_price,
+        request_message: '',
+        privacy_settings: {},
+        is_emergency: isEmergency,
+      })
+    } catch (error) {
+      if (!useMatchingMocks) throw error
+      data = mockMatchingRequest
+    }
+
+    updateMatchingFlow({
+      isEmergency,
+      schedule,
+      matchingRequestId: data.matching_request_id,
+      matchingStatus: data.matching_status,
+      matchedContractorCount: data.matched_contractor_count,
+      matchingExpiresAt: data.expires_at,
+    })
+
+    return data
+  }
+
   const value = {
     userType,
     setUserType,
@@ -50,15 +123,11 @@ export function CustomerFlowProvider({ children }) {
     openThread,
     showUrgentModal,
     setShowUrgentModal,
+    matchingFlow,
+    setMatchingFlow,
+    updateMatchingFlow,
+    submitMatchingRequest,
   }
 
   return <CustomerFlowContext.Provider value={value}>{children}</CustomerFlowContext.Provider>
-}
-
-export function useCustomerFlow() {
-  const context = useContext(CustomerFlowContext)
-  if (!context) {
-    throw new Error('useCustomerFlow must be used inside CustomerFlowProvider')
-  }
-  return context
 }

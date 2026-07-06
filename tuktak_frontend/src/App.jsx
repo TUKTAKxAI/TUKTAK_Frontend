@@ -1,7 +1,28 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
-import { useCustomerFlow } from './context/CustomerFlowProvider'
+import { useCustomerFlow } from './context/CustomerFlowContext'
+import { contractorScreens } from './data/contractorData'
 import { chatThreads, publicScreens, screens } from './data/customerData'
+import {
+  ContractorActiveWorkPage,
+  ContractorAiEstimatePage,
+  ContractorChatRoomPage,
+  ContractorChatsPage,
+  ContractorHomePage,
+  ContractorMyInfoPage,
+  ContractorMyRegionsPage,
+  ContractorMyServicesPage,
+  ContractorMypagePage,
+  ContractorNotificationsPage,
+  ContractorQuoteDonePage,
+  ContractorQuoteFormPage,
+  ContractorQuotesPage,
+  ContractorRecordDetailPage,
+  ContractorRecordsPage,
+  ContractorRequestDetailPage,
+  ContractorRequestsPage,
+  ContractorReviewsPage,
+} from './pages/contractor'
 import { AuthPages } from './pages/Customer/AuthPages'
 import { ChatListPage, ChatRoomPage } from './pages/Customer/ChatPage'
 import {
@@ -29,6 +50,7 @@ import {
 } from './pages/Customer/MatchingPages'
 import { MatchHistoryPage, MyPage, MyReviewsPage, ProfilePage } from './pages/Customer/MyPages'
 import { MyRiskListPage, RiskDonePage, RiskHomePage, RiskLoadingPage, RiskOutputPage, RiskSelectPage } from './pages/Customer/RiskPages'
+import { contractorRouteScreens, contractorScreenPaths } from './routes/contractorRoutes'
 import { routeScreens, screenPaths } from './routes/customerRoutes'
 import './App.css'
 
@@ -61,14 +83,57 @@ function PublicRoute({ screen }) {
 
 function CustomerLayout({ screen, children }) {
   const { go } = useScreenNavigator()
+  const fixedListScreens = [screens.matchHistory, screens.myEstimateList, screens.myRiskList, screens.myReviews]
 
   return (
     <>
-      <div className="scroll-area app-flow">{children}</div>
+      <div className={`scroll-area app-flow ${fixedListScreens.includes(screen) ? 'history-layout-scroll' : ''}`}>{children}</div>
       <BottomNav current={screen} go={go} />
       <UrgentDialog />
     </>
   )
+}
+
+function useContractorNavigator() {
+  const navigate = useNavigate()
+  const go = (screen) => navigate(contractorScreenPaths[screen] || contractorScreenPaths[contractorScreens.home])
+
+  return { go }
+}
+
+function ContractorLayout({ children }) {
+  return (
+    <>
+      <div className="scroll-area app-flow">{children}</div>
+    </>
+  )
+}
+
+function ContractorRoute({ screen }) {
+  const { go } = useContractorNavigator()
+
+  const pages = {
+    [contractorScreens.home]: <ContractorHomePage go={go} />,
+    [contractorScreens.notifications]: <ContractorNotificationsPage go={go} />,
+    [contractorScreens.activeWork]: <ContractorActiveWorkPage go={go} />,
+    [contractorScreens.requests]: <ContractorRequestsPage go={go} />,
+    [contractorScreens.requestDetail]: <ContractorRequestDetailPage go={go} />,
+    [contractorScreens.aiEstimate]: <ContractorAiEstimatePage go={go} />,
+    [contractorScreens.quoteForm]: <ContractorQuoteFormPage go={go} />,
+    [contractorScreens.quoteDone]: <ContractorQuoteDonePage go={go} />,
+    [contractorScreens.quotes]: <ContractorQuotesPage go={go} />,
+    [contractorScreens.records]: <ContractorRecordsPage go={go} />,
+    [contractorScreens.recordDetail]: <ContractorRecordDetailPage go={go} />,
+    [contractorScreens.chats]: <ContractorChatsPage go={go} />,
+    [contractorScreens.chatRoom]: <ContractorChatRoomPage go={go} />,
+    [contractorScreens.reviews]: <ContractorReviewsPage go={go} />,
+    [contractorScreens.mypage]: <ContractorMypagePage go={go} />,
+    [contractorScreens.myInfo]: <ContractorMyInfoPage go={go} />,
+    [contractorScreens.myServices]: <ContractorMyServicesPage go={go} />,
+    [contractorScreens.myRegions]: <ContractorMyRegionsPage go={go} />,
+  }
+
+  return <ContractorLayout>{pages[screen] || <Navigate to={contractorScreenPaths[contractorScreens.home]} replace />}</ContractorLayout>
 }
 
 function UrgentDialog() {
@@ -80,9 +145,18 @@ function UrgentDialog() {
   return (
     <UrgentModal
       close={() => flow.setShowUrgentModal(false)}
-      confirm={() => {
-        flow.setShowUrgentModal(false)
-        go(screens.matchingProgress)
+      confirm={async () => {
+        try {
+          await flow.submitMatchingRequest(true)
+          flow.setShowUrgentModal(false)
+          go(screens.matchingProgress)
+        } catch {
+          flow.updateMatchingFlow({
+            matchingStatus: '매칭 요청 실패',
+            matchingError: '긴급 매칭 요청에 실패했습니다. AI 견적서와 주소 정보를 확인해주세요.',
+          })
+          flow.setShowUrgentModal(false)
+        }
       }}
     />
   )
@@ -99,7 +173,7 @@ function CustomerRoute({ screen }) {
     [screens.estimateLoading]: <EstimateLoadingPage go={go} />,
     [screens.estimateDone]: <EstimateDonePage go={go} />,
     [screens.estimateOutput]: <EstimateOutputPage go={go} />,
-    [screens.myEstimateList]: <MyEstimateListPage go={go} />,
+    [screens.myEstimateList]: <MyEstimateListPage go={go} back={back} />,
     [screens.matchingHome]: <MatchingHomePage go={go} />,
     [screens.matchingEstimateSelect]: <MatchingEstimateSelectPage go={go} />,
     [screens.matchingAddressList]: <MatchingAddressListPage go={go} />,
@@ -115,7 +189,7 @@ function CustomerRoute({ screen }) {
     [screens.riskLoading]: <RiskLoadingPage go={go} />,
     [screens.riskDone]: <RiskDonePage go={go} />,
     [screens.riskOutput]: <RiskOutputPage go={go} />,
-    [screens.myRiskList]: <MyRiskListPage go={go} />,
+    [screens.myRiskList]: <MyRiskListPage go={go} back={back} />,
     [screens.chatList]: (
       <ChatListPage
         threads={chatThreads}
@@ -133,10 +207,10 @@ function CustomerRoute({ screen }) {
         back={back}
       />
     ),
-    [screens.mypage]: <MyPage go={go} />,
-    [screens.myReviews]: <MyReviewsPage go={go} />,
-    [screens.profile]: <ProfilePage go={go} />,
-    [screens.matchHistory]: <MatchHistoryPage go={go} />,
+    [screens.mypage]: <MyPage go={go} back={back} />,
+    [screens.myReviews]: <MyReviewsPage go={go} back={back} />,
+    [screens.profile]: <ProfilePage go={go} back={back} />,
+    [screens.matchHistory]: <MatchHistoryPage go={go} back={back} />,
     [screens.reviewWrite]: <ReviewWritePage go={go} />,
   }
 
@@ -154,6 +228,13 @@ function App() {
               key={screen}
               path={path}
               element={publicScreens.includes(screen) ? <PublicRoute screen={screen} /> : <CustomerRoute screen={screen} />}
+            />
+          ))}
+          {contractorRouteScreens.map(({ screen, path }) => (
+            <Route
+              key={screen}
+              path={path}
+              element={<ContractorRoute screen={screen} />}
             />
           ))}
           <Route path="*" element={<Navigate to={screenPaths[screens.login]} replace />} />

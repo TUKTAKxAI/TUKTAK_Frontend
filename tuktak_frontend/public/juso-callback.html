@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>주소 선택 완료</title>
+  </head>
+  <body>
+    <script>
+      const rawHash = window.location.hash.replace(/^#/, '')
+      const params = new URLSearchParams(window.location.search || rawHash)
+      const payload = Object.fromEntries(params.entries())
+
+      if (window.opener) {
+        window.opener.postMessage(
+          {
+            type: 'TUKTAK_JUSO_SELECTED',
+            payload,
+          },
+          window.location.origin,
+        )
+      }
+
+      window.close()
+    </script>
+    <p>주소 선택이 완료되었습니다. 창이 닫히지 않으면 직접 닫아주세요.</p>
+  </body>
+</html>
