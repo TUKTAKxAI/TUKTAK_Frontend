@@ -16,7 +16,6 @@ import {
   ContractorMyRegionsPage,
   ContractorMyServicesPage,
   ContractorMypagePage,
-  ContractorNotificationsPage,
   ContractorQuoteDonePage,
   ContractorQuoteFormPage,
   ContractorQuotesPage,
@@ -129,7 +128,6 @@ function ContractorRoute({ screen }) {
 
   const pages = {
     [contractorScreens.home]: <ContractorHomePage go={go} />,
-    [contractorScreens.notifications]: <ContractorNotificationsPage go={go} />,
     [contractorScreens.activeWork]: <ContractorActiveWorkPage go={go} />,
     [contractorScreens.requests]: <ContractorRequestsPage go={go} />,
     [contractorScreens.requestDetail]: <ContractorRequestDetailPage go={go} routeState={routeState} />,
