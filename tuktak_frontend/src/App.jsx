@@ -78,7 +78,10 @@ function PublicRoute({ screen }) {
   const { go, back, setScreen } = useScreenNavigator()
 
   if (loading) return null
-  if (isLogin) return <Navigate to={screenPaths[screens.home]} replace />
+
+  if (isLogin && screen !== screens.welcome) {
+    return <Navigate to={screenPaths[screens.home]} replace />
+  }
 
   return (
     <AuthPages
