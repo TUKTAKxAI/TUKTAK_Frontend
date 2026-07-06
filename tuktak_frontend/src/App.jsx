@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
 import { useAuth } from './context/authContext'
 import { useCustomerFlow } from './context/CustomerFlowContext'
 import { CustomerNotificationProvider } from './context/CustomerNotificationProvider'
 import { chatThreads, publicScreens, screens } from './data/customerData'
+import { contractorScreens } from './data/contractorData'
 import {
   ContractorActiveWorkPage,
   ContractorAiEstimatePage,
@@ -58,7 +59,13 @@ import './App.css'
 
 function useScreenNavigator() {
   const navigate = useNavigate()
-  const go = (screen) => navigate(screenPaths[screen] || screenPaths[screens.home])
+  const go = (screen) => {
+    if (typeof screen === 'string' && screen.startsWith('/')) {
+      navigate(screen)
+      return
+    }
+    navigate(screenPaths[screen] || screenPaths[screens.home])
+  }
   const back = () => navigate(-1)
   const setScreen = go
 
@@ -265,6 +272,13 @@ function App() {
                 key={screen}
                 path={path}
                 element={publicScreens.includes(screen) ? <PublicRoute screen={screen} /> : <CustomerRoute screen={screen} />}
+              />
+            ))}
+            {contractorRouteScreens.map(({ screen, path }) => (
+              <Route
+                key={screen}
+                path={path}
+                element={<ContractorRoute screen={screen} />}
               />
             ))}
             <Route path="*" element={<Navigate to={initialPath} replace />} />
