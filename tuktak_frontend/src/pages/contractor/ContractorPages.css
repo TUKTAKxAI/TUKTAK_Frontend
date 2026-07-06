@@ -829,6 +829,20 @@
   line-height: 1.45;
 }
 
+.contractor-account-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+
+.contractor-account-actions button {
+  border: 0;
+  background: transparent;
+  color: #8b95a3;
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .contractor-split-selector {
   display: grid;
   grid-template-columns: 112px 1fr;

@@ -4,6 +4,13 @@ export function fetchContractorMe() {
   return apiRequest('/contractors/me').then((data) => data.contractor)
 }
 
+export function updateContractorMe(payload) {
+  return apiRequest('/contractors/me', {
+    method: 'PATCH',
+    body: payload,
+  })
+}
+
 export function updateContractorAlertSettings(matchingAlertEnabled) {
   return apiRequest('/contractors/me/alert-settings', {
     method: 'PATCH',

@@ -11,9 +11,10 @@ import {
   fetchContractorServices,
   fetchReferenceCodes,
   fetchServiceTasks,
+  updateContractorMe,
   updateContractorServices,
 } from '../../services/contractorService'
-import { checkEmailAvailability } from '../../services/authService'
+import { logout } from '../../services/authService'
 import { getMe, updateMe } from '../../services/userService'
 import { ContractorPage, MenuTile } from './ContractorPageShared'
 import mypageInfoIcon from '../../assets/figma/contractor-mypage-info.png'
@@ -25,13 +26,15 @@ const fallbackUserInfo = {
   businessName: contractorProfile.businessName,
   email: contractorProfile.email,
   phone: contractorProfile.phone,
+  contactPhone: contractorProfile.phone,
 }
 
 const infoFields = [
   { key: 'name', label: '이름', locked: true },
   { key: 'businessName', label: '업체명', locked: true },
-  { key: 'email', label: '이메일' },
+  { key: 'email', label: '이메일', locked: true },
   { key: 'phone', label: '휴대폰번호' },
+  { key: 'contactPhone', label: '시공자 연락처' },
 ]
 
 // 사용자/시공자 API 응답을 마이페이지 표시값으로 정리
@@ -41,7 +44,12 @@ function normalizeUserInfo(user = {}, contractor = {}) {
     businessName: user.businessName || contractor.business_name || fallbackUserInfo.businessName,
     email: user.email || fallbackUserInfo.email,
     phone: user.phone || contractor.contact_phone || fallbackUserInfo.phone,
+    contactPhone: contractor.contact_phone || user.phone || fallbackUserInfo.contactPhone,
   }
+}
+
+function formatInfoValue(key, value) {
+  return value || '-'
 }
 
 const getOptionKey = (option) => (typeof option === 'object' ? option.id : option)
@@ -204,13 +212,10 @@ export function ContractorMyInfoPage({ go }) {
   const [editingKey, setEditingKey] = useState(null)
   const [originalValues, setOriginalValues] = useState(fallbackUserInfo)
   const [draftValues, setDraftValues] = useState(fallbackUserInfo)
-  const [emailCheckStatus, setEmailCheckStatus] = useState('idle')
-  const [emailCheckMessage, setEmailCheckMessage] = useState('')
   const [infoMessage, setInfoMessage] = useState('')
   const [isSavingInfo, setIsSavingInfo] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const editingField = useMemo(() => infoFields.find((field) => field.key === editingKey), [editingKey])
-  const isEditingEmail = editingKey === 'email'
-  const isEmailChanged = draftValues.email !== originalValues.email
 
   // 내 정보 화면 진입 시 이름/업체명/이메일/전화번호 조회
   useEffect(() => {
@@ -240,93 +245,58 @@ export function ContractorMyInfoPage({ go }) {
   const startEdit = (key) => {
     if (infoFields.find((field) => field.key === key)?.locked) return
     setEditingKey(key)
-    setEmailCheckStatus('idle')
-    setEmailCheckMessage('')
     setInfoMessage('')
   }
 
   const closeEdit = () => {
     setEditingKey(null)
-    setEmailCheckStatus('idle')
-    setEmailCheckMessage('')
     setInfoMessage('')
   }
 
   const handleDraftChange = (key, value) => {
     setDraftValues((current) => ({ ...current, [key]: value }))
-    if (key === 'email') {
-      setEmailCheckStatus('idle')
-      setEmailCheckMessage('')
-    }
   }
 
-  // 이메일은 저장 전 중복확인 API를 먼저 호출
-  const checkEmail = async () => {
-    const email = draftValues.email.trim()
-
-    if (!email) {
-      setEmailCheckStatus('error')
-      setEmailCheckMessage('이메일을 입력해주세요.')
-      return
-    }
-
-    if (email === originalValues.email) {
-      setEmailCheckStatus('success')
-      setEmailCheckMessage('현재 사용 중인 이메일이에요.')
-      return
-    }
-
-    try {
-      setEmailCheckStatus('checking')
-      const result = await checkEmailAvailability(email)
-      if (result.available) {
-        setEmailCheckStatus('success')
-        setEmailCheckMessage('사용 가능한 이메일이에요.')
-      } else {
-        setEmailCheckStatus('error')
-        setEmailCheckMessage('이미 사용 중인 이메일이에요.')
-      }
-    } catch {
-      setEmailCheckStatus('error')
-      setEmailCheckMessage('중복확인에 실패했어요. 잠시 후 다시 시도해주세요.')
-    }
-  }
-
-  // 전화번호는 저장하고, 이메일 저장은 백엔드 API 추가 후 연결
+  // 명세서 기준으로 휴대폰번호는 users/me, 시공자 정보는 contractors/me로 저장
   const completeEdit = async () => {
-    if (isEditingEmail && isEmailChanged && emailCheckStatus !== 'success') {
-      setEmailCheckStatus('error')
-      setEmailCheckMessage('이메일 중복확인을 먼저 해주세요.')
-      return
-    }
-
-    if (isEditingEmail && isEmailChanged) {
-      setInfoMessage('이메일 저장 API가 준비되면 저장까지 연결할 수 있어요.')
-      return
-    }
-
-    if (isEditingEmail) {
-      closeEdit()
-      return
-    }
-
     try {
       setIsSavingInfo(true)
-      const formData = new FormData()
-      formData.append(editingKey, draftValues[editingKey])
-      const response = await updateMe(formData)
-      const updatedUserInfo = normalizeUserInfo({
-        ...originalValues,
-        ...(response.data?.user || {}),
-        [editingKey]: draftValues[editingKey],
-      })
-      setOriginalValues(updatedUserInfo)
-      setDraftValues(updatedUserInfo)
+
+      if (editingKey === 'phone') {
+        const formData = new FormData()
+        formData.append('phone', draftValues.phone)
+        const response = await updateMe(formData)
+        const updatedUserInfo = normalizeUserInfo(
+          { ...originalValues, ...(response.data?.user || {}), phone: draftValues.phone },
+          { contact_phone: originalValues.contactPhone },
+        )
+        setOriginalValues(updatedUserInfo)
+        setDraftValues(updatedUserInfo)
+      }
+
+      if (editingKey === 'contactPhone') {
+        await updateContractorMe({ contact_phone: draftValues.contactPhone })
+        const nextValues = { ...originalValues, contactPhone: draftValues.contactPhone }
+        setOriginalValues(nextValues)
+        setDraftValues(nextValues)
+      }
+
       closeEdit()
     } catch {
       setInfoMessage('저장에 실패했어요. 잠시 후 다시 시도해주세요.')
     } finally {
       setIsSavingInfo(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      await logout()
+      window.location.assign('/login')
+    } catch {
+      setInfoMessage('로그아웃에 실패했어요. 잠시 후 다시 시도해주세요.')
+      setIsLoggingOut(false)
     }
   }
 
@@ -342,7 +312,7 @@ export function ContractorMyInfoPage({ go }) {
             disabled={field.locked}
           >
             <span>{field.label}</span>
-            <strong>{draftValues[field.key]}</strong>
+            <strong>{formatInfoValue(field.key, draftValues[field.key])}</strong>
             {field.locked ? null : <FaChevronRight />}
           </button>
         ))}
@@ -357,16 +327,6 @@ export function ContractorMyInfoPage({ go }) {
               onChange={(event) => handleDraftChange(editingField.key, event.target.value)}
             />
           </label>
-          {isEditingEmail ? (
-            <div className="contractor-email-check-row">
-              {emailCheckMessage ? (
-                <p className={`contractor-email-check-message ${emailCheckStatus}`}>{emailCheckMessage}</p>
-              ) : null}
-              <button type="button" onClick={checkEmail} disabled={emailCheckStatus === 'checking'}>
-                {emailCheckStatus === 'checking' ? '확인중' : '중복확인'}
-              </button>
-            </div>
-          ) : null}
           {infoMessage ? <p className="contractor-helper-message">{infoMessage}</p> : null}
           <div className="contractor-bottom-actions">
             <button type="button" onClick={closeEdit}>취소</button>
@@ -376,6 +336,14 @@ export function ContractorMyInfoPage({ go }) {
           </div>
         </div>
       ) : null}
+
+      {infoMessage && !editingField ? <p className="contractor-helper-message">{infoMessage}</p> : null}
+
+      <div className="contractor-account-actions">
+        <button type="button" onClick={handleLogout} disabled={isLoggingOut}>
+          {isLoggingOut ? '로그아웃 중' : '로그아웃'}
+        </button>
+      </div>
     </ContractorPage>
   )
 }
