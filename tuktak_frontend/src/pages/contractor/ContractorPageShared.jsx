@@ -7,6 +7,20 @@ export function StatusBadge({ children, tone = 'blue' }) {
   return <span className={`contractor-status ${tone}`}>{children}</span>
 }
 
+export function InfoModal({ title, message, confirmText = '확인', onConfirm }) {
+  return (
+    <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">
+      <div className="contractor-modal">
+        <h2>{title}</h2>
+        <p>{message}</p>
+        <div className="contractor-bottom-actions single">
+          <button type="button" onClick={onConfirm}>{confirmText}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ContractorPage({ title, children, go, back, action }) {
   const headerGo = (screen) => {
     go?.(screen === screens.mypage ? contractorScreens.mypage : screen)

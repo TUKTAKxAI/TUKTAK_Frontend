@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { FaTools } from 'react-icons/fa'
-import { contractorScreens, contractorWorkOrders } from '../../data/contractorData'
+import { contractorScreens } from '../../data/contractorData'
 import {
   completeContractorWorkOrder,
   fetchContractorWorkOrder,
   fetchContractorWorkOrders,
   startContractorWorkOrder,
 } from '../../services/contractorService'
-import { ContractorPage, StatusBadge } from './ContractorPageShared'
+import { ContractorPage, InfoModal, StatusBadge } from './ContractorPageShared'
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -86,7 +86,7 @@ function statusHelper(status) {
 }
 
 export function ContractorRecordsPage({ go }) {
-  const [items, setItems] = useState(() => contractorWorkOrders.map(mapWorkOrder))
+  const [items, setItems] = useState([])
   const [status, setStatus] = useState('loading')
 
   useEffect(() => {
@@ -96,13 +96,13 @@ export function ContractorRecordsPage({ go }) {
       .then((data) => {
         if (ignore) return
         const nextItems = data.items?.map(mapWorkOrder) ?? []
-        setItems(nextItems.length ? nextItems : contractorWorkOrders.map(mapWorkOrder))
-        setStatus(nextItems.length ? 'loaded' : 'fallback')
+        setItems(nextItems)
+        setStatus(nextItems.length ? 'loaded' : 'empty')
       })
       .catch(() => {
         if (!ignore) {
-          setItems(contractorWorkOrders.map(mapWorkOrder))
-          setStatus('fallback')
+          setItems([])
+          setStatus('error')
         }
       })
 
@@ -118,7 +118,6 @@ export function ContractorRecordsPage({ go }) {
       back={() => go(contractorScreens.home)}
     >
       {status === 'loading' ? <p className="muted center">시공 기록을 불러오는 중입니다.</p> : null}
-      {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 기록을 표시합니다.</p> : null}
       <div className="contractor-list">
         {items.map((item) => (
           <button className="contractor-line-card contractor-work-card clickable" type="button" key={item.id} onClick={() => go(contractorScreens.recordDetail, { workOrder: item, workOrderId: item.workOrderId })}>
@@ -133,12 +132,26 @@ export function ContractorRecordsPage({ go }) {
           </button>
         ))}
       </div>
+      {status === 'empty' ? (
+        <InfoModal
+          title="시공 기록이 없습니다"
+          message="고객이 견적을 선택하면 시공 기록에서 작업을 관리할 수 있습니다."
+          onConfirm={() => go(contractorScreens.home)}
+        />
+      ) : null}
+      {status === 'error' ? (
+        <InfoModal
+          title="시공 기록을 불러오지 못했습니다"
+          message="서버 연결 또는 로그인 상태를 확인한 뒤 다시 시도해주세요."
+          onConfirm={() => go(contractorScreens.home)}
+        />
+      ) : null}
     </ContractorPage>
   )
 }
 
 export function ContractorRecordDetailPage({ go, routeState = {} }) {
-  const [item, setItem] = useState(() => routeState.workOrder || (!routeState.workOrderId ? mapWorkOrder(contractorWorkOrders[0]) : null))
+  const [item, setItem] = useState(() => routeState.workOrder || null)
   const [actionStatus, setActionStatus] = useState('')
   const [confirmStart, setConfirmStart] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState(false)
@@ -150,7 +163,7 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
     if (stateWorkOrderId) {
       fetchContractorWorkOrder(stateWorkOrderId)
         .then((data) => setItem(mapWorkOrder(data)))
-        .catch(() => setItem(stateItem || mapWorkOrder(contractorWorkOrders[0])))
+        .catch(() => setItem(stateItem || null))
     }
   }, [routeState.workOrder, routeState.workOrderId])
 
@@ -207,6 +220,11 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
     return (
       <ContractorPage title="작업 상세" go={go} back={() => go(contractorScreens.records)}>
         <p className="muted center">작업 정보를 불러오는 중입니다.</p>
+        <InfoModal
+          title="작업 정보를 찾을 수 없습니다"
+          message="시공 기록에서 다시 확인해주세요."
+          onConfirm={() => go(contractorScreens.records)}
+        />
       </ContractorPage>
     )
   }

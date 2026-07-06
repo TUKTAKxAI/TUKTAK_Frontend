@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FaCheckCircle, FaFileInvoice } from 'react-icons/fa'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { contractorQuotes, contractorScreens } from '../../data/contractorData'
+import { contractorScreens } from '../../data/contractorData'
 import { deleteContractorQuote, fetchContractorQuotes, submitContractorQuote } from '../../services/contractorService'
-import { ContractorPage, StatusBadge } from './ContractorPageShared'
+import { ContractorPage, InfoModal, StatusBadge } from './ContractorPageShared'
 
 const quoteFilters = ['전체', '선택 대기', '선택 완료', '미선택']
 
@@ -36,17 +36,8 @@ function normalizeDateTime(value) {
   return normalized.includes('T') ? normalized : `${normalized}T00:00:00`
 }
 
-function createInitialQuoteForm(request, matchingRequestId) {
-  const baseForm = { amount: '', scope: '', duration: '1시간', visits: '1회', availableDate: '', arrivalTime: '09:00', asPeriod: '3개월', validUntil: '', memo: '' }
-  const isMockRequest = matchingRequestId && !/^\d+$/.test(String(matchingRequestId))
-
-  if (!isMockRequest) return baseForm
-
-  return {
-    ...baseForm,
-    amount: request?.budget?.match(/[\d,]+/)?.[0] || '100,000',
-    scope: request?.title ? `${request.title} 작업` : '현장 확인 후 수리',
-  }
+function createInitialQuoteForm() {
+  return { amount: '', scope: '', duration: '1시간', visits: '1회', availableDate: '', arrivalTime: '09:00', asPeriod: '3개월', validUntil: '', memo: '' }
 }
 
 function mapQuote(item) {
@@ -58,18 +49,6 @@ function mapQuote(item) {
     status: item.quote_status === 'SENT' ? '선택 대기' : item.quote_status === 'SELECTED' ? '선택 완료' : item.quote_status === 'NOT_SELECTED' ? '미선택' : item.quote_status,
     validUntil: formatDate(item.valid_until),
     canDelete: item.quote_status === 'SENT',
-  }
-}
-
-function normalizeQuote(item) {
-  const rawStatus = item.rawStatus ||
-    (item.status === '전송완료' || item.status === '선택대기' || item.status === '선택 대기' ? 'SENT' : item.status === '선택완료' || item.status === '선택 완료' ? 'SELECTED' : item.status === '미선택' ? 'NOT_SELECTED' : item.status)
-
-  return {
-    ...item,
-    rawStatus,
-    status: rawStatus === 'SENT' ? '선택 대기' : rawStatus === 'SELECTED' ? '선택 완료' : rawStatus === 'NOT_SELECTED' ? '미선택' : item.status,
-    canDelete: item.canDelete ?? rawStatus === 'SENT',
   }
 }
 
@@ -90,7 +69,7 @@ function ConfirmModal({ title, message, cancelText = '닫기', confirmText = '�
 
 export function ContractorQuoteFormPage({ go, routeState = {} }) {
   const matchingRequestId = routeState.matchingRequestId || routeState.request?.matchingRequestId
-  const [form, setForm] = useState(() => createInitialQuoteForm(routeState.request, matchingRequestId))
+  const [form, setForm] = useState(createInitialQuoteForm)
   const [modalType, setModalType] = useState(null)
   const [submitStatus, setSubmitStatus] = useState('')
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
@@ -102,7 +81,6 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
       return
     }
 
-    const isMockRequest = !/^\d+$/.test(String(matchingRequestId))
     setSubmitStatus('submitting')
 
     try {
@@ -119,10 +97,6 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
       })
       go(contractorScreens.quoteDone)
     } catch {
-      if (isMockRequest) {
-        go(contractorScreens.quoteDone)
-        return
-      }
       setSubmitStatus('error')
       setModalType(null)
     }
@@ -189,9 +163,9 @@ export function ContractorQuoteDonePage({ go }) {
   )
 }
 
-export function ContractorQuotesPanel() {
+export function ContractorQuotesPanel({ onEmptyConfirm }) {
   const [filter, setFilter] = useState('전체')
-  const [quotes, setQuotes] = useState(() => contractorQuotes.map(normalizeQuote))
+  const [quotes, setQuotes] = useState([])
   const [status, setStatus] = useState('loading')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteStatus, setDeleteStatus] = useState('')
@@ -204,13 +178,13 @@ export function ContractorQuotesPanel() {
       .then((data) => {
         if (ignore) return
         const nextQuotes = data.items?.map(mapQuote) ?? []
-        setQuotes(nextQuotes.length ? nextQuotes : contractorQuotes.map(normalizeQuote))
-        setStatus(nextQuotes.length ? 'loaded' : 'fallback')
+        setQuotes(nextQuotes)
+        setStatus(nextQuotes.length ? 'loaded' : 'empty')
       })
       .catch(() => {
         if (!ignore) {
-          setQuotes(contractorQuotes.map(normalizeQuote))
-          setStatus('fallback')
+          setQuotes([])
+          setStatus('error')
         }
       })
 
@@ -223,22 +197,12 @@ export function ContractorQuotesPanel() {
     if (!deleteTarget) return
     setDeleteStatus('submitting')
 
-    const isMockQuote = !/^\d+$/.test(String(deleteTarget.id))
-
     try {
-      if (!isMockQuote) {
-        await deleteContractorQuote(deleteTarget.id)
-      }
+      await deleteContractorQuote(deleteTarget.id)
       setQuotes((items) => items.filter((item) => item.id !== deleteTarget.id))
       setDeleteTarget(null)
       setDeleteStatus('')
     } catch {
-      if (isMockQuote) {
-        setQuotes((items) => items.filter((item) => item.id !== deleteTarget.id))
-        setDeleteTarget(null)
-        setDeleteStatus('')
-        return
-      }
       setDeleteStatus('error')
     }
   }
@@ -246,7 +210,6 @@ export function ContractorQuotesPanel() {
   return (
     <>
       {status === 'loading' ? <p className="muted center">견적 목록을 불러오는 중입니다.</p> : null}
-      {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 견적을 표시합니다.</p> : null}
       {deleteStatus === 'error' ? <p className="muted center">삭제할 수 없는 견적입니다. 선택 대기 상태와 매칭 상태를 확인해주세요.</p> : null}
       <div className="contractor-filter">
         {quoteFilters.map((item) => (
@@ -282,6 +245,22 @@ export function ContractorQuotesPanel() {
           onConfirm={deleteQuote}
         />
       ) : null}
+
+      {status === 'empty' ? (
+        <InfoModal
+          title="보낸 견적이 없습니다"
+          message="아직 고객에게 보낸 견적이 없습니다. 받은 요청에서 견적서를 작성해보세요."
+          onConfirm={onEmptyConfirm}
+        />
+      ) : null}
+
+      {status === 'error' ? (
+        <InfoModal
+          title="견적 목록을 불러오지 못했습니다"
+          message="서버 연결 또는 로그인 상태를 확인한 뒤 다시 시도해주세요."
+          onConfirm={onEmptyConfirm}
+        />
+      ) : null}
     </>
   )
 }
@@ -289,7 +268,7 @@ export function ContractorQuotesPanel() {
 export function ContractorQuotesPage({ go }) {
   return (
     <ContractorPage title="견적 관리" go={go} back={() => go(contractorScreens.requests)}>
-      <ContractorQuotesPanel />
+      <ContractorQuotesPanel onEmptyConfirm={() => go(contractorScreens.requests)} />
     </ContractorPage>
   )
 }

@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react'
 import { FaBell, FaBriefcase, FaClipboardList, FaComments, FaStar, FaTools } from 'react-icons/fa'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { contractorActiveWork, contractorNotifications, contractorProfile, contractorScreens, contractorWorkOrders } from '../../data/contractorData'
+import { contractorNotifications, contractorProfile, contractorScreens } from '../../data/contractorData'
 import {
   fetchContractorMe,
   fetchContractorWorkOrders,
   updateContractorAlertSettings,
 } from '../../services/contractorService'
-import { ContractorPage, MenuTile, StatusBadge } from './ContractorPageShared'
+import { ContractorPage, InfoModal, MenuTile, StatusBadge } from './ContractorPageShared'
 import './ContractorPages.css'
-
-const workProgressStorageKey = 'tuktak.contractor.workProgress.v2'
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -40,24 +38,6 @@ function statusLabel(status) {
     완료됨: '완료됨',
   }
   return labels[status] || status
-}
-
-function readWorkProgress() {
-  try {
-    return JSON.parse(localStorage.getItem(workProgressStorageKey) || '{}')
-  } catch {
-    return {}
-  }
-}
-
-function getWorkProgressKey(item) {
-  return item?.workOrderId || item?.id
-}
-
-function applyStoredWorkProgress(item) {
-  if (!item) return item
-  const stored = readWorkProgress()[getWorkProgressKey(item)]
-  return stored ? { ...item, ...stored } : item
 }
 
 function mapWorkOrder(item) {
@@ -93,14 +73,9 @@ function mapActiveWork(item) {
   }
 }
 
-function getInitialActiveWork() {
-  const current = findCurrentWork(contractorWorkOrders.map(mapWorkOrder).map(applyStoredWorkProgress))
-  return mapActiveWork(current)
-}
-
 export function ContractorHomePage({ go }) {
   const [notificationOn, setNotificationOn] = useState(contractorProfile.notificationEnabled)
-  const [activeWork, setActiveWork] = useState(getInitialActiveWork)
+  const [activeWork, setActiveWork] = useState(null)
 
   useEffect(() => {
     let ignore = false
@@ -114,10 +89,12 @@ export function ContractorHomePage({ go }) {
     fetchContractorWorkOrders({ page: 1, size: 50 })
       .then((data) => {
         if (ignore) return
-        const current = findCurrentWork(data.items?.map(mapWorkOrder).map(applyStoredWorkProgress) ?? [])
+        const current = findCurrentWork(data.items?.map(mapWorkOrder) ?? [])
         setActiveWork(mapActiveWork(current))
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!ignore) setActiveWork(null)
+      })
 
     return () => {
       ignore = true
@@ -206,21 +183,56 @@ export function ContractorNotificationsPage({ go }) {
 }
 
 export function ContractorActiveWorkPage({ go }) {
-  const [work, setWork] = useState(contractorActiveWork)
+  const [work, setWork] = useState(null)
+  const [status, setStatus] = useState('loading')
 
   useEffect(() => {
     let ignore = false
 
     fetchContractorWorkOrders({ page: 1, size: 1 })
       .then((data) => {
-        if (!ignore && data.items?.[0]) setWork(mapActiveWork(data.items[0]))
+        if (ignore) return
+        if (data.items?.[0]) {
+          setWork(mapActiveWork(mapWorkOrder(data.items[0])))
+          setStatus('loaded')
+          return
+        }
+        setWork(null)
+        setStatus('empty')
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!ignore) {
+          setWork(null)
+          setStatus('error')
+        }
+      })
 
     return () => {
       ignore = true
     }
   }, [])
+
+  if (!work) {
+    return (
+      <ContractorPage title="진행중인 시공" go={go} back={() => go(contractorScreens.home)}>
+        {status === 'loading' ? <p className="muted center">진행중인 시공을 불러오는 중입니다.</p> : null}
+        {status === 'empty' ? (
+          <InfoModal
+            title="진행중인 시공이 없습니다"
+            message="고객이 견적을 선택하면 진행중인 시공이 표시됩니다."
+            onConfirm={() => go(contractorScreens.home)}
+          />
+        ) : null}
+        {status === 'error' ? (
+          <InfoModal
+            title="진행중인 시공을 불러오지 못했습니다"
+            message="서버 연결 또는 로그인 상태를 확인한 뒤 다시 시도해주세요."
+            onConfirm={() => go(contractorScreens.home)}
+          />
+        ) : null}
+      </ContractorPage>
+    )
+  }
 
   return (
     <ContractorPage title={work.title} go={go} back={() => go(contractorScreens.home)}>

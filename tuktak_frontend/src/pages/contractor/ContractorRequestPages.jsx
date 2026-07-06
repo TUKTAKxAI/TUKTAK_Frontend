@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FaSearch } from 'react-icons/fa'
-import { contractorRequests, contractorScreens } from '../../data/contractorData'
+import { contractorScreens } from '../../data/contractorData'
 import { fetchContractorMatchingRequests } from '../../services/contractorService'
-import { ContractorPage, RequestCard, StatusBadge } from './ContractorPageShared'
+import { ContractorPage, InfoModal, RequestCard, StatusBadge } from './ContractorPageShared'
 import { ContractorQuotesPanel } from './ContractorQuotePages'
 
 const regionOptions = ['경기도 김포시', '경기도 고양시', '서울특별시 강남구', '서울특별시 마포구', '인천광역시 서구']
@@ -78,7 +78,7 @@ function RequestEstimatePreview({ item }) {
 
 export function ContractorRequestsPage({ go }) {
   const [activeTab, setActiveTab] = useState('requests')
-  const [items, setItems] = useState(contractorRequests)
+  const [items, setItems] = useState([])
   const [status, setStatus] = useState('loading')
   const [searchModal, setSearchModal] = useState(null)
   const [selectedRegions, setSelectedRegions] = useState([])
@@ -93,13 +93,13 @@ export function ContractorRequestsPage({ go }) {
       .then((data) => {
         if (ignore) return
         const nextItems = data.items?.map(mapRequest) ?? []
-        setItems(nextItems.length ? nextItems : contractorRequests)
-        setStatus(nextItems.length ? 'loaded' : 'fallback')
+        setItems(nextItems)
+        setStatus(nextItems.length ? 'loaded' : 'empty')
       })
       .catch(() => {
         if (!ignore) {
-          setItems(contractorRequests)
-          setStatus('fallback')
+          setItems([])
+          setStatus('error')
         }
       })
 
@@ -156,10 +156,11 @@ export function ContractorRequestsPage({ go }) {
         </button>
       </div>
 
-      {activeTab === 'quotes' ? <ContractorQuotesPanel /> : (
+      {activeTab === 'quotes' ? (
+        <ContractorQuotesPanel onEmptyConfirm={() => setActiveTab('requests')} />
+      ) : (
         <>
           {status === 'loading' ? <p className="muted center">시공 요청을 불러오는 중입니다.</p> : null}
-          {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 요청을 표시합니다.</p> : null}
 
           <section className="contractor-preferred-panel">
             <div>
@@ -187,6 +188,22 @@ export function ContractorRequestsPage({ go }) {
             ))}
             {sortedItems.length === 0 ? <p className="contractor-empty-message">검색 조건에 맞는 요청이 없습니다.</p> : null}
           </div>
+
+          {status === 'empty' ? (
+            <InfoModal
+              title="받은 시공 요청이 없습니다"
+              message="현재 확인할 수 있는 시공 요청이 없습니다."
+              onConfirm={() => go(contractorScreens.home)}
+            />
+          ) : null}
+
+          {status === 'error' ? (
+            <InfoModal
+              title="시공 요청을 불러오지 못했습니다"
+              message="서버 연결 또는 로그인 상태를 확인한 뒤 다시 시도해주세요."
+              onConfirm={() => go(contractorScreens.home)}
+            />
+          ) : null}
         </>
       )}
 
@@ -284,7 +301,7 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
         setItem(found ? mapRequest(found) : null)
       })
       .catch(() => {
-        if (!ignore) setItem(contractorRequests[0])
+        if (!ignore) setItem(null)
       })
 
     return () => {
@@ -295,6 +312,13 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
   return (
     <ContractorPage title="시공 요청 상세" go={go} back={() => go(contractorScreens.requests)}>
       <RequestEstimatePreview item={item} />
+      {!item ? (
+        <InfoModal
+          title="요청 정보를 찾을 수 없습니다"
+          message="요청 목록에서 다시 확인해주세요."
+          onConfirm={() => go(contractorScreens.requests)}
+        />
+      ) : null}
       <div className="contractor-bottom-actions">
         <button type="button" onClick={() => go(contractorScreens.requests)}>닫기</button>
         <button
@@ -310,11 +334,18 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
 }
 
 export function ContractorAiEstimatePage({ go, routeState = {} }) {
-  const item = routeState.request || contractorRequests[0]
+  const item = routeState.request || null
 
   return (
     <ContractorPage title="AI 견적서 보기" go={go} back={() => go(contractorScreens.requestDetail)}>
       <RequestEstimatePreview item={item} />
+      {!item ? (
+        <InfoModal
+          title="AI 견적 정보를 찾을 수 없습니다"
+          message="시공 요청 상세에서 다시 확인해주세요."
+          onConfirm={() => go(contractorScreens.requests)}
+        />
+      ) : null}
     </ContractorPage>
   )
 }
