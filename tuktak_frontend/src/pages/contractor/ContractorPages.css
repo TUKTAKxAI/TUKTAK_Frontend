@@ -651,6 +651,16 @@
   color: #7a8596;
 }
 
+.contractor-edit-row.locked {
+  cursor: default;
+  color: inherit;
+  opacity: 1;
+}
+
+.contractor-edit-row.locked strong {
+  color: #1f2937;
+}
+
 .contractor-edit-panel {
   display: grid;
   gap: 14px;

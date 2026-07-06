@@ -7,6 +7,7 @@ import {
   contractorServiceTree,
 } from '../../data/contractorData'
 import {
+  fetchContractorMe,
   fetchContractorServices,
   fetchReferenceCodes,
   fetchServiceTasks,
@@ -21,22 +22,25 @@ import mypageServicesIcon from '../../assets/figma/contractor-mypage-services.pn
 
 const fallbackUserInfo = {
   name: contractorProfile.name,
+  businessName: contractorProfile.businessName,
   email: contractorProfile.email,
   phone: contractorProfile.phone,
 }
 
 const infoFields = [
-  { key: 'name', label: '이름' },
+  { key: 'name', label: '이름', locked: true },
+  { key: 'businessName', label: '업체명', locked: true },
   { key: 'email', label: '이메일' },
   { key: 'phone', label: '휴대폰번호' },
 ]
 
-// 사용자 기본정보 API 응답을 마이페이지 표시값으로 정리
-function normalizeUserInfo(user = {}) {
+// 사용자/시공자 API 응답을 마이페이지 표시값으로 정리
+function normalizeUserInfo(user = {}, contractor = {}) {
   return {
     name: user.name || fallbackUserInfo.name,
+    businessName: user.businessName || contractor.business_name || fallbackUserInfo.businessName,
     email: user.email || fallbackUserInfo.email,
-    phone: user.phone || fallbackUserInfo.phone,
+    phone: user.phone || contractor.contact_phone || fallbackUserInfo.phone,
   }
 }
 
@@ -158,13 +162,16 @@ function SelectedOptionDock({ selected, tree, maxCount, unit, onRemove, onReset 
 export function ContractorMypagePage({ go }) {
   const [profile, setProfile] = useState(fallbackUserInfo)
 
-  // 마이페이지 홈 상단 프로필은 /users/me 기준으로 표시
+  // 마이페이지 홈 상단 프로필은 /users/me와 /contractors/me 기준으로 표시
   useEffect(() => {
     let ignore = false
 
-    getMe()
-      .then((response) => {
-        if (!ignore) setProfile(normalizeUserInfo(response.data?.user))
+    Promise.all([
+      getMe().catch(() => null),
+      fetchContractorMe().catch(() => null),
+    ])
+      .then(([userResponse, contractor]) => {
+        if (!ignore) setProfile(normalizeUserInfo(userResponse?.data?.user, contractor))
       })
       .catch(() => {
         if (!ignore) setProfile(fallbackUserInfo)
@@ -205,14 +212,17 @@ export function ContractorMyInfoPage({ go }) {
   const isEditingEmail = editingKey === 'email'
   const isEmailChanged = draftValues.email !== originalValues.email
 
-  // 내 정보 화면 진입 시 이름/이메일/전화번호 조회
+  // 내 정보 화면 진입 시 이름/업체명/이메일/전화번호 조회
   useEffect(() => {
     let ignore = false
 
-    getMe()
-      .then((response) => {
+    Promise.all([
+      getMe().catch(() => null),
+      fetchContractorMe().catch(() => null),
+    ])
+      .then(([userResponse, contractor]) => {
         if (ignore) return
-        const nextUserInfo = normalizeUserInfo(response.data?.user)
+        const nextUserInfo = normalizeUserInfo(userResponse?.data?.user, contractor)
         setOriginalValues(nextUserInfo)
         setDraftValues(nextUserInfo)
       })
@@ -228,6 +238,7 @@ export function ContractorMyInfoPage({ go }) {
   }, [])
 
   const startEdit = (key) => {
+    if (infoFields.find((field) => field.key === key)?.locked) return
     setEditingKey(key)
     setEmailCheckStatus('idle')
     setEmailCheckMessage('')
@@ -281,7 +292,7 @@ export function ContractorMyInfoPage({ go }) {
     }
   }
 
-  // 이름/전화번호는 저장하고, 이메일 저장은 백엔드 API 추가 후 연결
+  // 전화번호는 저장하고, 이메일 저장은 백엔드 API 추가 후 연결
   const completeEdit = async () => {
     if (isEditingEmail && isEmailChanged && emailCheckStatus !== 'success') {
       setEmailCheckStatus('error')
@@ -323,10 +334,16 @@ export function ContractorMyInfoPage({ go }) {
     <ContractorPage title="내 정보" go={go} back={() => go(contractorScreens.mypage)}>
       <div className="contractor-edit-list">
         {infoFields.map((field) => (
-          <button className="contractor-edit-row" type="button" key={field.key} onClick={() => startEdit(field.key)}>
+          <button
+            className={`contractor-edit-row ${field.locked ? 'locked' : ''}`}
+            type="button"
+            key={field.key}
+            onClick={() => startEdit(field.key)}
+            disabled={field.locked}
+          >
             <span>{field.label}</span>
             <strong>{draftValues[field.key]}</strong>
-            <FaChevronRight />
+            {field.locked ? null : <FaChevronRight />}
           </button>
         ))}
       </div>
