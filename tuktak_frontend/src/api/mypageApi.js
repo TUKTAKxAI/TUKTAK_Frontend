@@ -1,4 +1,4 @@
-import { apiFormRequest, apiRequest, hasAccessToken } from './client'
+import { apiFormRequest, apiRequest, clearAuthTokens, hasAccessToken } from './client'
 import { estimateCards, historyCards, riskCards } from '../data/customerData'
 
 const defaultProfile = {
@@ -330,7 +330,11 @@ export async function createRiskReport(estimateId) {
 
 // 로그아웃: POST /api/v1/auth/logout
 export async function logout() {
-  await apiRequest('/auth/logout', {
-    method: 'POST',
-  })
+  try {
+    await apiRequest('/auth/logout', {
+      method: 'POST',
+    })
+  } finally {
+    clearAuthTokens()
+  }
 }

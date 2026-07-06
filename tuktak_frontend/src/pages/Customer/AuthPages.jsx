@@ -65,8 +65,6 @@ export function AuthPages({
 
       await authLogin();
 
-      authLogin(result);
-
       if (selectedRole === "partner") {
         go(contractorScreenPaths[contractorScreens.home]);
         return;

@@ -28,6 +28,11 @@ export function getJusoPopupUrl() {
 export async function searchJusoAddresses({ keyword, currentPage = 1, countPerPage = 10 }) {
   const confirmKey = import.meta.env.VITE_JUSO_SEARCH_KEY || import.meta.env.VITE_JUSO_CONFIRM_KEY || import.meta.env.VITE_JUSO_KEY
   const searchUrl = import.meta.env.VITE_JUSO_SEARCH_URL || DEFAULT_JUSO_SEARCH_URL
+
+  if (!confirmKey) {
+    throw new Error('.env에 VITE_JUSO_SEARCH_KEY 또는 VITE_JUSO_CONFIRM_KEY를 설정해주세요.')
+  }
+
   const params = new URLSearchParams({
     confmKey: confirmKey,
     currentPage: String(currentPage),

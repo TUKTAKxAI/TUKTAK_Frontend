@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { fetchHomeAddress, saveHomeAddress } from '../../api/homeApi'
-import { fetchMatchingHistory, fetchMyProfile, logout as requestLogout, updateMyProfile } from '../../api/mypageApi'
+import { fetchMatchingHistory, fetchMyProfile, updateMyProfile } from '../../api/mypageApi'
 import { HistoryCard, InfoRows, MenuTile, ReviewCard, SearchBar } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Avatar, Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { reviewCards, screens } from '../../data/customerData'
+import { useAuth } from '../../context/authContext'
 
 // 마이페이지 메인 홈: 각 마이페이지 메뉴로 이동하는 화면
 export function MyPage({ go, back }) {
@@ -140,6 +141,7 @@ const initialProfile = {
 
 // 내 정보: 프로필 조회, 항목 수정, 로그아웃/회원탈퇴 모달을 담당
 export function ProfilePage({ go, back }) {
+  const { logout } = useAuth()
   const [profile, setProfile] = useState(initialProfile)
   const [editingField, setEditingField] = useState(null)
   const [draftValue, setDraftValue] = useState('')
@@ -251,7 +253,7 @@ export function ProfilePage({ go, back }) {
   const runConfirmAction = async () => {
     setConfirmAction(null)
     if (confirmAction === 'logout') {
-      await requestLogout().catch(() => undefined)
+      await logout().catch(() => undefined)
       go(screens.login)
     }
   }
