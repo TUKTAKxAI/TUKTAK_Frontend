@@ -10,7 +10,7 @@ export function HeaderIcon({ src, label, onClick }) {
   )
 }
 
-export function CustomerTopBar({ go, title, compact = false, onNotificationClick }) {
+export function CustomerTopBar({ go, title, compact = false }) {
   return (
     <header className={`customer-topbar ${compact ? 'compact' : ''}`}>
       <div className="brand-with-title">
@@ -18,7 +18,7 @@ export function CustomerTopBar({ go, title, compact = false, onNotificationClick
         {title ? <h1>{title}</h1> : null}
       </div>
       <div className="top-actions">
-        <HeaderIcon src={figmaAssets.notification} label="알림" onClick={onNotificationClick} />
+        <HeaderIcon src={figmaAssets.notification} label="알림" />
         <HeaderIcon src={figmaAssets.userProfile} label="마이페이지" onClick={() => go?.(screens.mypage)} />
       </div>
     </header>

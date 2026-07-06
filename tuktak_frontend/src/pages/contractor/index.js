@@ -1,7 +1,0 @@
-export * from './ContractorHomePage'
-export * from './ContractorRequestPages'
-export * from './ContractorQuotePages'
-export * from './ContractorWorkPages'
-export * from './ContractorChatPages'
-export * from './ContractorReviewPages'
-export * from './ContractorMyPages'

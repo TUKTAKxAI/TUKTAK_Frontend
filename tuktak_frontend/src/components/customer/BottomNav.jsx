@@ -14,17 +14,9 @@ export function BottomNav({ current, go }) {
     <nav className="bottom-nav">
       {navItems.map(([label, key, target, icon]) => {
         const active = navRoots[key].includes(current)
-        
-        const isHome = key === 'home'
-
         return (
-          <button 
-            className={`${active ? 'active' : ''} ${isHome ? 'home-btn-wrapper' : ''}`} 
-            key={target} 
-            onClick={() => go(target)} 
-            aria-label={label}
-          >
-            <span className={isHome ? 'home-circle' : 'nav-icon'}>
+          <button className={active ? 'active' : ''} key={target} onClick={() => go(target)} aria-label={label}>
+            <span>
               <img src={icon} alt="" />
             </span>
           </button>
