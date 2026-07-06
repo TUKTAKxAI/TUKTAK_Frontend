@@ -123,7 +123,7 @@ export function ContractorHomePage({ go }) {
         <FaBriefcase />
         <div>
           <div className="contractor-active-meta">
-            <small>진행중인 시공</small>
+            <small>진행중인 매칭</small>
             {activeWork ? <StatusBadge tone={activeWork.status === '완료됨' ? 'gray' : 'blue'}>{activeWork.status}</StatusBadge> : null}
           </div>
           {activeWork ? (
@@ -131,12 +131,12 @@ export function ContractorHomePage({ go }) {
               <h1>{activeWork.title}</h1>
               <p>{activeWork.date} · {activeWork.visitTime}</p>
               <p>{activeWork.address}</p>
-              <span>시공 상세작업으로 이동</span>
+              <span>시공 기록 상세로 이동</span>
             </>
           ) : (
             <>
-              <h1>현재 진행중인 시공이 없습니다</h1>
-              <p>시공 기록에서 완료 전 작업을 확인할 수 있습니다.</p>
+              <h1>현재 진행중인 매칭이 없습니다</h1>
+              <p>고객이 견적을 선택하면 시공 기록에서 확인할 수 있습니다.</p>
               <span>시공 기록으로 이동</span>
             </>
           )}
@@ -214,18 +214,18 @@ export function ContractorActiveWorkPage({ go }) {
 
   if (!work) {
     return (
-      <ContractorPage title="진행중인 시공" go={go} back={() => go(contractorScreens.home)}>
-        {status === 'loading' ? <p className="muted center">진행중인 시공을 불러오는 중입니다.</p> : null}
+      <ContractorPage title="진행중인 매칭" go={go} back={() => go(contractorScreens.home)}>
+        {status === 'loading' ? <p className="muted center">진행중인 매칭을 불러오는 중입니다.</p> : null}
         {status === 'empty' ? (
           <InfoModal
-            title="진행중인 시공이 없습니다"
-            message="고객이 견적을 선택하면 진행중인 시공이 표시됩니다."
+            title="진행중인 매칭이 없습니다"
+            message="고객이 견적을 선택하면 시공 기록에서 확인할 수 있습니다."
             onConfirm={() => go(contractorScreens.home)}
           />
         ) : null}
         {status === 'error' ? (
           <InfoModal
-            title="진행중인 시공을 불러오지 못했습니다"
+            title="진행중인 매칭을 불러오지 못했습니다"
             message="서버 연결 또는 로그인 상태를 확인한 뒤 다시 시도해주세요."
             onConfirm={() => go(contractorScreens.home)}
           />
@@ -242,10 +242,10 @@ export function ContractorActiveWorkPage({ go }) {
           <div><dt>날짜</dt><dd>{work.date}</dd></div>
           <div><dt>방문 예정시간</dt><dd>{work.visitTime}</dd></div>
           <div><dt>정확한 주소</dt><dd>{work.address}</dd></div>
-          <div><dt>예상 소요시간</dt><dd>{work.duration}</dd></div>
-          <div><dt>고객정보</dt><dd>{work.customer.name} · {work.customer.phone}</dd></div>
+          <div><dt>작업 상태</dt><dd>{work.status}</dd></div>
+          <div><dt>고객정보</dt><dd>{work.customerName || '확인 필요'}</dd></div>
         </dl>
-        <PrimaryButton onClick={() => go(contractorScreens.chats)}>1:1 채팅 연결</PrimaryButton>
+        <PrimaryButton onClick={() => go(contractorScreens.recordDetail, { workOrder: work.workOrder, workOrderId: work.workOrder?.workOrderId })}>시공 기록 상세로 이동</PrimaryButton>
       </article>
     </ContractorPage>
   )
