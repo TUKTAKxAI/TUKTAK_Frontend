@@ -120,7 +120,7 @@ client.interceptors.response.use(
 )
 
 export function hasAccessToken() {
-  return Boolean(getAccessToken())
+  return Boolean(readAccessToken())
 }
 
 export async function apiRequest(path, { method = 'GET', body, query, headers } = {}) {

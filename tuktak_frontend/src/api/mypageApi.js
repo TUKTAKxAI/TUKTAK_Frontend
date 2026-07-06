@@ -242,7 +242,7 @@ export async function updateMyProfile(fieldKey, value) {
   }
   const backendField = backendFieldMap[fieldKey]
 
-  if (!backendField || !hasAccessToken()) {
+  if (!backendField) {
     return { [fieldKey]: value }
   }
 

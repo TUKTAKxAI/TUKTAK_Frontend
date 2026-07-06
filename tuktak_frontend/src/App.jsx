@@ -5,6 +5,26 @@ import { useAuth } from './context/authContext'
 import { useCustomerFlow } from './context/CustomerFlowContext'
 import { CustomerNotificationProvider } from './context/CustomerNotificationProvider'
 import { chatThreads, publicScreens, screens } from './data/customerData'
+import {
+  ContractorActiveWorkPage,
+  ContractorAiEstimatePage,
+  ContractorChatRoomPage,
+  ContractorChatsPage,
+  ContractorHomePage,
+  ContractorMyInfoPage,
+  ContractorMyRegionsPage,
+  ContractorMyServicesPage,
+  ContractorMypagePage,
+  ContractorNotificationsPage,
+  ContractorQuoteDonePage,
+  ContractorQuoteFormPage,
+  ContractorQuotesPage,
+  ContractorRecordDetailPage,
+  ContractorRecordsPage,
+  ContractorRequestDetailPage,
+  ContractorRequestsPage,
+  ContractorReviewsPage,
+} from './pages/contractor'
 import { AuthPages } from './pages/Customer/AuthPages'
 import { ChatListPage, ChatRoomPage } from './pages/Customer/ChatPage'
 import {
@@ -32,6 +52,7 @@ import {
 } from './pages/Customer/MatchingPages'
 import { MatchHistoryPage, MyPage, MyReviewsPage, ProfilePage } from './pages/Customer/MyPages'
 import { MyRiskListPage, RiskDonePage, RiskHomePage, RiskLoadingPage, RiskOutputPage, RiskSelectPage } from './pages/Customer/RiskPages'
+import { contractorRouteScreens, contractorScreenPaths } from './routes/contractorRoutes'
 import { routeScreens, screenPaths } from './routes/customerRoutes'
 import './App.css'
 
@@ -77,6 +98,50 @@ function CustomerLayout({ screen, children }) {
       <UrgentDialog />
     </>
   )
+}
+
+function useContractorNavigator() {
+  const navigate = useNavigate()
+  const go = (screen, state) => navigate(contractorScreenPaths[screen] || contractorScreenPaths[contractorScreens.home], { state })
+
+  return { go }
+}
+
+function ContractorLayout({ children }) {
+  return (
+    <>
+      <div className="scroll-area app-flow">{children}</div>
+    </>
+  )
+}
+
+function ContractorRoute({ screen }) {
+  const { go } = useContractorNavigator()
+  const location = useLocation()
+  const routeState = location.state || {}
+
+  const pages = {
+    [contractorScreens.home]: <ContractorHomePage go={go} />,
+    [contractorScreens.notifications]: <ContractorNotificationsPage go={go} />,
+    [contractorScreens.activeWork]: <ContractorActiveWorkPage go={go} />,
+    [contractorScreens.requests]: <ContractorRequestsPage go={go} />,
+    [contractorScreens.requestDetail]: <ContractorRequestDetailPage go={go} routeState={routeState} />,
+    [contractorScreens.aiEstimate]: <ContractorAiEstimatePage go={go} routeState={routeState} />,
+    [contractorScreens.quoteForm]: <ContractorQuoteFormPage go={go} routeState={routeState} />,
+    [contractorScreens.quoteDone]: <ContractorQuoteDonePage go={go} />,
+    [contractorScreens.quotes]: <ContractorQuotesPage go={go} />,
+    [contractorScreens.records]: <ContractorRecordsPage go={go} />,
+    [contractorScreens.recordDetail]: <ContractorRecordDetailPage go={go} routeState={routeState} />,
+    [contractorScreens.chats]: <ContractorChatsPage go={go} />,
+    [contractorScreens.chatRoom]: <ContractorChatRoomPage go={go} />,
+    [contractorScreens.reviews]: <ContractorReviewsPage go={go} />,
+    [contractorScreens.mypage]: <ContractorMypagePage go={go} />,
+    [contractorScreens.myInfo]: <ContractorMyInfoPage go={go} />,
+    [contractorScreens.myServices]: <ContractorMyServicesPage go={go} />,
+    [contractorScreens.myRegions]: <ContractorMyRegionsPage go={go} />,
+  }
+
+  return <ContractorLayout>{pages[screen] || <Navigate to={contractorScreenPaths[contractorScreens.home]} replace />}</ContractorLayout>
 }
 
 function UrgentDialog() {

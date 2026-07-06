@@ -4,6 +4,7 @@ export const screenPaths = {
   [screens.login]: '/login',
   [screens.signup]: '/signup',
   [screens.userType]: '/signup/type',
+  [screens.partnerSignup]: '/signup/partner',
   [screens.terms]: '/signup/terms',
   [screens.phone]: '/signup/phone',
   [screens.address]: '/signup/address',
