@@ -11,6 +11,29 @@ export function updateContractorAlertSettings(matchingAlertEnabled) {
   })
 }
 
+// 전문분야 선택 화면에서 사용할 전체 작업 항목 조회
+export function fetchServiceTasks(query = {}) {
+  return apiRequest('/service-tasks', { query }).then((data) => data.tasks || [])
+}
+
+// 지역 선택 화면에서 사용할 공통 코드 조회
+export function fetchReferenceCodes(query = {}) {
+  return apiRequest('/reference-codes', { query }).then((data) => data.codes || [])
+}
+
+// 가입/수정 시 저장된 시공자의 전문분야 + 작업지역 조합 조회
+export function fetchContractorServices() {
+  return apiRequest('/contractors/me/services').then((data) => data.services || [])
+}
+
+// 내 전문분야/내 지역 수정 결과 저장
+export function updateContractorServices(services) {
+  return apiRequest('/contractors/me/services', {
+    method: 'PUT',
+    body: { services },
+  })
+}
+
 export function fetchContractorMatchingRequests(query = {}) {
   return apiRequest('/contractors/me/matching-requests', { query })
 }
