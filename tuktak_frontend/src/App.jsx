@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
 import { useCustomerFlow } from './context/CustomerFlowContext'
 import { contractorScreens } from './data/contractorData'
@@ -96,7 +96,7 @@ function CustomerLayout({ screen, children }) {
 
 function useContractorNavigator() {
   const navigate = useNavigate()
-  const go = (screen) => navigate(contractorScreenPaths[screen] || contractorScreenPaths[contractorScreens.home])
+  const go = (screen, state) => navigate(contractorScreenPaths[screen] || contractorScreenPaths[contractorScreens.home], { state })
 
   return { go }
 }
@@ -111,19 +111,21 @@ function ContractorLayout({ children }) {
 
 function ContractorRoute({ screen }) {
   const { go } = useContractorNavigator()
+  const location = useLocation()
+  const routeState = location.state || {}
 
   const pages = {
     [contractorScreens.home]: <ContractorHomePage go={go} />,
     [contractorScreens.notifications]: <ContractorNotificationsPage go={go} />,
     [contractorScreens.activeWork]: <ContractorActiveWorkPage go={go} />,
     [contractorScreens.requests]: <ContractorRequestsPage go={go} />,
-    [contractorScreens.requestDetail]: <ContractorRequestDetailPage go={go} />,
-    [contractorScreens.aiEstimate]: <ContractorAiEstimatePage go={go} />,
-    [contractorScreens.quoteForm]: <ContractorQuoteFormPage go={go} />,
+    [contractorScreens.requestDetail]: <ContractorRequestDetailPage go={go} routeState={routeState} />,
+    [contractorScreens.aiEstimate]: <ContractorAiEstimatePage go={go} routeState={routeState} />,
+    [contractorScreens.quoteForm]: <ContractorQuoteFormPage go={go} routeState={routeState} />,
     [contractorScreens.quoteDone]: <ContractorQuoteDonePage go={go} />,
     [contractorScreens.quotes]: <ContractorQuotesPage go={go} />,
     [contractorScreens.records]: <ContractorRecordsPage go={go} />,
-    [contractorScreens.recordDetail]: <ContractorRecordDetailPage go={go} />,
+    [contractorScreens.recordDetail]: <ContractorRecordDetailPage go={go} routeState={routeState} />,
     [contractorScreens.chats]: <ContractorChatsPage go={go} />,
     [contractorScreens.chatRoom]: <ContractorChatRoomPage go={go} />,
     [contractorScreens.reviews]: <ContractorReviewsPage go={go} />,

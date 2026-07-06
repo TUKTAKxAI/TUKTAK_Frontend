@@ -2,11 +2,19 @@
  * Access Token
  */
 export const saveAccessToken = (token) => {
-    removeAccessToken();
+    if (token) {
+        localStorage.setItem("access_token", token);
+    } else {
+        removeAccessToken();
+    }
 };
 
 export const getAccessToken = () => {
-    return null;
+    return (
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("tuktak_access_token")
+    );
 };
 
 export const removeAccessToken = () => {
@@ -19,11 +27,19 @@ export const removeAccessToken = () => {
  * Refresh Token
  */
 export const saveRefreshToken = (token) => {
-    removeRefreshToken();
+    if (token) {
+        localStorage.setItem("refresh_token", token);
+    } else {
+        removeRefreshToken();
+    }
 };
 
 export const getRefreshToken = () => {
-    return null;
+    return (
+        localStorage.getItem("refresh_token") ||
+        localStorage.getItem("refreshToken") ||
+        localStorage.getItem("tuktak_refresh_token")
+    );
 };
 
 export const removeRefreshToken = () => {

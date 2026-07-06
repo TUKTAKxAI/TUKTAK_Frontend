@@ -1,3 +1,5 @@
+import { getAccessToken as readAccessToken, getRefreshToken as readRefreshToken } from '../utils/token'
+
 const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 const API_PREFIX = '/api/v1'
 
@@ -32,15 +34,15 @@ function buildUrl(path, query) {
 }
 
 export function getAccessToken() {
-  return null
+  return readAccessToken()
 }
 
 export function getRefreshToken() {
-  return null
+  return readRefreshToken()
 }
 
 export function hasAccessToken() {
-  return true
+  return Boolean(readAccessToken())
 }
 
 export async function apiRequest(path, { method = 'GET', body, query, headers } = {}) {
@@ -48,6 +50,11 @@ export async function apiRequest(path, { method = 'GET', body, query, headers } 
 
   if (body && !(body instanceof FormData) && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json')
+  }
+
+  const accessToken = readAccessToken()
+  if (accessToken && !requestHeaders.has('Authorization')) {
+    requestHeaders.set('Authorization', `Bearer ${accessToken}`)
   }
 
   const response = await fetch(buildUrl(path, query), {

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getAccessToken } from "../utils/token";
 
 const API_PREFIX = "/api/v1";
 const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -14,6 +15,14 @@ const api = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
+});
+
+api.interceptors.request.use((config) => {
+    const token = getAccessToken();
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
 });
 
 export default api;

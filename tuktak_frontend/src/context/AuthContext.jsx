@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
     getUser,
     clearAuth,
+    saveTokens,
     saveUser,
 } from "../utils/token";
 
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
      * 로그인 성공 시 호출
      */
     const login = (response) => {
+        saveTokens(response.access_token, response.refresh_token);
         saveUser(response.user);
 
         setUser(response.user);
