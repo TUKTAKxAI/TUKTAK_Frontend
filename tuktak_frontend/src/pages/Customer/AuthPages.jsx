@@ -3,12 +3,7 @@ import { figmaAssets } from '../../components/customer/figmaAssets'
 import { BackButton, Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { screens, signupTerms } from '../../data/customerData'
-import {
-  contractorRegionTree,
-  contractorScreens,
-  contractorServiceTree,
-  partnerSignupTerms,
-} from '../../data/contractorData'
+import { contractorScreens, partnerSignupTerms } from '../../data/contractorData'
 import { contractorScreenPaths } from '../../routes/contractorRoutes'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/authContext'
@@ -19,25 +14,16 @@ import {
   checkEmailAvailability,
 } from '../../services/authService'
 import { searchJusoAddresses } from '../../api/jusoApi'
-import { clearLocalTestState } from '../../api/client'
-import { FaCamera, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaCamera } from "react-icons/fa";
 
-const toSelectionGroups = (tree) =>
-  tree.map((group) => ({
-    key: group.category,
-    label: group.category,
-    items: group.options.map((option) => ({
-      id: option,
-      label: option,
-    })),
-  }))
-
-const categoryGroups = toSelectionGroups(contractorServiceTree)
-const regionGroups = toSelectionGroups(contractorRegionTree)
-
+// ----------------------------------------------------------------------------
+// 분야 선택 / 작업지역 선택에 공용으로 쓰는 좌-우 패널 컴포넌트
+// (파트너 "전문 분야" 화면과 "작업 지역" 화면이 동일한 UI 패턴이라 재사용)
+// ----------------------------------------------------------------------------
 function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, maxCount }) {
   const [activeGroupKey, setActiveGroupKey] = useState(groups[0]?.key)
-  const activeGroup = groups.find((group) => group.key === activeGroupKey) || groups[0]
+
+  const activeGroup = groups.find((g) => g.key === activeGroupKey) || groups[0]
 
   return (
     <div className="select-panel">
@@ -47,7 +33,7 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
             <button
               key={group.key}
               type="button"
-              className={activeGroupKey === group.key ? 'active' : ''}
+              className={activeGroupKey === group.key ? "active" : ""}
               onClick={() => setActiveGroupKey(group.key)}
             >
               {group.label}
@@ -57,10 +43,13 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
 
         <div className="item-list">
           {activeGroup?.items.map((item) => {
-            const isSelected = selected.some((selectedItem) => selectedItem.id === item.id)
+            const isSelected = selected.some((s) => s.id === item.id)
 
             return (
-              <label className={`item-row ${isSelected ? 'selected' : ''}`} key={item.id}>
+              <label
+                key={item.id}
+                className={`item-row ${isSelected ? "selected" : ""}`}
+              >
                 <input
                   type="checkbox"
                   checked={isSelected}
@@ -85,8 +74,9 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
           <span>
             {footerLabel} {selected.length} / {maxCount}
           </span>
+
           <button type="button" className="reset-button" onClick={onReset}>
-            초기화
+            ↻ 초기화
           </button>
         </div>
 
@@ -95,7 +85,7 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
             <span className="chip" key={item.id}>
               {item.label}
               <button type="button" onClick={() => onToggle(item)}>
-                x
+                ×
               </button>
             </span>
           ))}
@@ -104,6 +94,489 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
     </div>
   )
 }
+
+// TODO: 실제로는 API로 받아오거나 별도 데이터 파일로 분리하세요.
+// (2026-07 데이터 수집 계획서의 object 범주를 기존 대분류에 매핑해 반영함)
+const categoryGroups = [
+  {
+    key: "appliance",
+    label: "가전",
+    items: [
+      { id: "appliance_all", label: "가전 전체" },
+      { id: "aircon", label: "에어컨" },
+      { id: "aircon_remote", label: "에어컨 리모컨" },
+      { id: "washer", label: "세탁기" },
+      { id: "fridge", label: "냉장고" },
+      { id: "tv", label: "TV" },
+      { id: "gas_range", label: "가스레인지" },
+      { id: "induction", label: "인덕션" },
+      { id: "dishwasher", label: "식기세척기" },
+      { id: "boiler", label: "보일러" },
+      { id: "water_heater", label: "온수기" },
+    ],
+  },
+  {
+    key: "plumbing",
+    label: "배관 / 누수",
+    items: [
+      { id: "plumbing_all", label: "배관/누수 전체" },
+      { id: "leak", label: "누수 탐지" },
+      { id: "pipe", label: "배관 교체" },
+      { id: "sink", label: "싱크대" },
+      { id: "faucet", label: "수전" },
+      { id: "drain", label: "배수구" },
+      { id: "sewer", label: "하수구" },
+    ],
+  },
+  {
+    key: "bathroom",
+    label: "욕실",
+    items: [
+      { id: "bathroom_all", label: "욕실 전체" },
+      { id: "wash_basin", label: "세면대" },
+      { id: "toilet", label: "변기" },
+      { id: "shower", label: "샤워기" },
+      { id: "bathtub", label: "욕조" },
+      { id: "bathroom_ceiling", label: "욕실 천장" },
+      { id: "bathroom_floor", label: "욕실 바닥" },
+    ],
+  },
+  {
+    key: "kitchen",
+    label: "주방",
+    items: [
+      { id: "kitchen_all", label: "주방 전체" },
+      { id: "kitchen_floor", label: "주방 바닥" },
+    ],
+  },
+  {
+    key: "electric",
+    label: "전기 / 조명",
+    items: [
+      { id: "electric_all", label: "전기/조명 전체" },
+      { id: "outlet", label: "콘센트" },
+      { id: "switch", label: "스위치" },
+      { id: "lighting", label: "조명" },
+      { id: "breaker", label: "차단기" },
+    ],
+  },
+  {
+    key: "wall",
+    label: "도배 / 벽면",
+    items: [
+      { id: "wall_all", label: "도배/벽면 전체" },
+      { id: "wall", label: "벽" },
+      { id: "ceiling", label: "천장" },
+      { id: "wallpaper", label: "벽지" },
+      { id: "paint", label: "페인트" },
+    ],
+  },
+  {
+    key: "tile",
+    label: "타일 / 바닥",
+    items: [
+      { id: "tile_all", label: "타일/바닥 전체" },
+      { id: "tile", label: "타일" },
+      { id: "wood_floor", label: "마루" },
+      { id: "vinyl_floor", label: "장판" },
+    ],
+  },
+  {
+    key: "door",
+    label: "창호 / 문",
+    items: [
+      { id: "door_all", label: "창호/문 전체" },
+      { id: "door", label: "문" },
+      { id: "door_knob", label: "문고리" },
+      { id: "door_lock", label: "도어락" },
+      { id: "window", label: "창문" },
+      { id: "screen_door", label: "방충망" },
+      { id: "sash", label: "샷시" },
+    ],
+  },
+  {
+    key: "furniture",
+    label: "가구 / 설치",
+    items: [
+      { id: "furniture_all", label: "가구/설치 전체" },
+      { id: "storage_cabinet", label: "수납장" },
+      { id: "built_in_closet", label: "붙박이장" },
+      { id: "curtain_blind", label: "커튼/블라인드" },
+      { id: "furniture", label: "가구" },
+    ],
+  },
+  {
+    key: "etc",
+    label: "기타",
+    items: [
+      { id: "etc_all", label: "기타 전체" },
+      { id: "unknown", label: "알 수 없음" },
+      { id: "etc_other", label: "기타" },
+    ],
+  },
+]
+
+// TODO: 실제로는 API로 받아오거나 별도 데이터 파일로 분리하고,
+// id 값은 실제 행정구역 코드(regionCodeId)로 교체하는 것을 권장합니다.
+// (대한민국 17개 광역시/도 + 시/군/구 전체 반영, 가나다순)
+const regionGroups = [
+  {
+    key: "seoul",
+    label: "서울",
+    items: [
+      { id: "seoul_all", label: "서울 전체" },
+      { id: "gangnam", label: "강남구" },
+      { id: "gangdong", label: "강동구" },
+      { id: "gangbuk", label: "강북구" },
+      { id: "gangseo", label: "강서구" },
+      { id: "gwanak", label: "관악구" },
+      { id: "gwangjin", label: "광진구" },
+      { id: "guro", label: "구로구" },
+      { id: "geumcheon", label: "금천구" },
+      { id: "nowon", label: "노원구" },
+      { id: "dobong", label: "도봉구" },
+      { id: "dongdaemun", label: "동대문구" },
+      { id: "dongjak", label: "동작구" },
+      { id: "mapo", label: "마포구" },
+      { id: "seodaemun", label: "서대문구" },
+      { id: "seocho", label: "서초구" },
+      { id: "seongdong", label: "성동구" },
+      { id: "seongbuk", label: "성북구" },
+      { id: "songpa", label: "송파구" },
+      { id: "yangcheon", label: "양천구" },
+      { id: "yeongdeungpo", label: "영등포구" },
+      { id: "yongsan", label: "용산구" },
+      { id: "eunpyeong", label: "은평구" },
+      { id: "jongno", label: "종로구" },
+      { id: "jung", label: "중구" },
+      { id: "jungnang", label: "중랑구" },
+    ],
+  },
+  {
+    key: "busan",
+    label: "부산",
+    items: [
+      { id: "busan_all", label: "부산 전체" },
+      { id: "busan_gangseo", label: "강서구" },
+      { id: "busan_geumjeong", label: "금정구" },
+      { id: "busan_gijang", label: "기장군" },
+      { id: "busan_nam", label: "남구" },
+      { id: "busan_dong", label: "동구" },
+      { id: "busan_dongnae", label: "동래구" },
+      { id: "busan_busanjin", label: "부산진구" },
+      { id: "busan_buk", label: "북구" },
+      { id: "busan_sasang", label: "사상구" },
+      { id: "busan_saha", label: "사하구" },
+      { id: "busan_seo", label: "서구" },
+      { id: "busan_suyeong", label: "수영구" },
+      { id: "busan_yeonje", label: "연제구" },
+      { id: "busan_yeongdo", label: "영도구" },
+      { id: "busan_jung", label: "중구" },
+      { id: "busan_haeundae", label: "해운대구" },
+    ],
+  },
+  {
+    key: "daegu",
+    label: "대구",
+    items: [
+      { id: "daegu_all", label: "대구 전체" },
+      { id: "daegu_gunwi", label: "군위군" },
+      { id: "daegu_nam", label: "남구" },
+      { id: "daegu_dalseo", label: "달서구" },
+      { id: "daegu_dalseong", label: "달성군" },
+      { id: "daegu_dong", label: "동구" },
+      { id: "daegu_buk", label: "북구" },
+      { id: "daegu_seo", label: "서구" },
+      { id: "daegu_suseong", label: "수성구" },
+      { id: "daegu_jung", label: "중구" },
+    ],
+  },
+  {
+    key: "incheon",
+    label: "인천",
+    items: [
+      { id: "incheon_all", label: "인천 전체" },
+      { id: "incheon_ganghwa", label: "강화군" },
+      { id: "incheon_gyeyang", label: "계양구" },
+      { id: "incheon_namdong", label: "남동구" },
+      { id: "incheon_dong", label: "동구" },
+      { id: "incheon_michuhol", label: "미추홀구" },
+      { id: "incheon_bupyeong", label: "부평구" },
+      { id: "incheon_seo", label: "서구" },
+      { id: "incheon_yeonsu", label: "연수구" },
+      { id: "incheon_ongjin", label: "옹진군" },
+      { id: "incheon_jung", label: "중구" },
+    ],
+  },
+  {
+    key: "gwangju",
+    label: "광주",
+    items: [
+      { id: "gwangju_all", label: "광주 전체" },
+      { id: "gwangju_gwangsan", label: "광산구" },
+      { id: "gwangju_nam", label: "남구" },
+      { id: "gwangju_dong", label: "동구" },
+      { id: "gwangju_buk", label: "북구" },
+      { id: "gwangju_seo", label: "서구" },
+    ],
+  },
+  {
+    key: "daejeon",
+    label: "대전",
+    items: [
+      { id: "daejeon_all", label: "대전 전체" },
+      { id: "daejeon_daedeok", label: "대덕구" },
+      { id: "daejeon_dong", label: "동구" },
+      { id: "daejeon_seo", label: "서구" },
+      { id: "daejeon_yuseong", label: "유성구" },
+      { id: "daejeon_jung", label: "중구" },
+    ],
+  },
+  {
+    key: "ulsan",
+    label: "울산",
+    items: [
+      { id: "ulsan_all", label: "울산 전체" },
+      { id: "ulsan_nam", label: "남구" },
+      { id: "ulsan_dong", label: "동구" },
+      { id: "ulsan_buk", label: "북구" },
+      { id: "ulsan_ulju", label: "울주군" },
+      { id: "ulsan_jung", label: "중구" },
+    ],
+  },
+  {
+    key: "sejong",
+    label: "세종",
+    items: [{ id: "sejong_all", label: "세종 전체" }],
+  },
+  {
+    key: "gyeonggi",
+    label: "경기",
+    items: [
+      { id: "gyeonggi_all", label: "경기 전체" },
+      { id: "gyeonggi_gapyeong", label: "가평군" },
+      { id: "gyeonggi_goyang", label: "고양시" },
+      { id: "gyeonggi_gwacheon", label: "과천시" },
+      { id: "gyeonggi_gwangmyeong", label: "광명시" },
+      { id: "gyeonggi_gwangju", label: "광주시" },
+      { id: "gyeonggi_guri", label: "구리시" },
+      { id: "gyeonggi_gunpo", label: "군포시" },
+      { id: "gyeonggi_gimpo", label: "김포시" },
+      { id: "gyeonggi_namyangju", label: "남양주시" },
+      { id: "gyeonggi_dongducheon", label: "동두천시" },
+      { id: "gyeonggi_bucheon", label: "부천시" },
+      { id: "gyeonggi_seongnam", label: "성남시" },
+      { id: "gyeonggi_suwon", label: "수원시" },
+      { id: "gyeonggi_siheung", label: "시흥시" },
+      { id: "gyeonggi_ansan", label: "안산시" },
+      { id: "gyeonggi_anseong", label: "안성시" },
+      { id: "gyeonggi_anyang", label: "안양시" },
+      { id: "gyeonggi_yangju", label: "양주시" },
+      { id: "gyeonggi_yangpyeong", label: "양평군" },
+      { id: "gyeonggi_yeoju", label: "여주시" },
+      { id: "gyeonggi_yeoncheon", label: "연천군" },
+      { id: "gyeonggi_osan", label: "오산시" },
+      { id: "gyeonggi_yongin", label: "용인시" },
+      { id: "gyeonggi_uiwang", label: "의왕시" },
+      { id: "gyeonggi_uijeongbu", label: "의정부시" },
+      { id: "gyeonggi_icheon", label: "이천시" },
+      { id: "gyeonggi_paju", label: "파주시" },
+      { id: "gyeonggi_pyeongtaek", label: "평택시" },
+      { id: "gyeonggi_pocheon", label: "포천시" },
+      { id: "gyeonggi_hanam", label: "하남시" },
+      { id: "gyeonggi_hwaseong", label: "화성시" },
+    ],
+  },
+  {
+    key: "gangwon",
+    label: "강원",
+    items: [
+      { id: "gangwon_all", label: "강원 전체" },
+      { id: "gangwon_gangneung", label: "강릉시" },
+      { id: "gangwon_goseong", label: "고성군" },
+      { id: "gangwon_donghae", label: "동해시" },
+      { id: "gangwon_samcheok", label: "삼척시" },
+      { id: "gangwon_sokcho", label: "속초시" },
+      { id: "gangwon_yanggu", label: "양구군" },
+      { id: "gangwon_yangyang", label: "양양군" },
+      { id: "gangwon_yeongwol", label: "영월군" },
+      { id: "gangwon_wonju", label: "원주시" },
+      { id: "gangwon_inje", label: "인제군" },
+      { id: "gangwon_jeongseon", label: "정선군" },
+      { id: "gangwon_cheorwon", label: "철원군" },
+      { id: "gangwon_chuncheon", label: "춘천시" },
+      { id: "gangwon_taebaek", label: "태백시" },
+      { id: "gangwon_pyeongchang", label: "평창군" },
+      { id: "gangwon_hongcheon", label: "홍천군" },
+      { id: "gangwon_hwacheon", label: "화천군" },
+      { id: "gangwon_hoengseong", label: "횡성군" },
+    ],
+  },
+  {
+    key: "chungbuk",
+    label: "충북",
+    items: [
+      { id: "chungbuk_all", label: "충북 전체" },
+      { id: "chungbuk_goesan", label: "괴산군" },
+      { id: "chungbuk_danyang", label: "단양군" },
+      { id: "chungbuk_boeun", label: "보은군" },
+      { id: "chungbuk_yeongdong", label: "영동군" },
+      { id: "chungbuk_okcheon", label: "옥천군" },
+      { id: "chungbuk_eumseong", label: "음성군" },
+      { id: "chungbuk_jecheon", label: "제천시" },
+      { id: "chungbuk_jeungpyeong", label: "증평군" },
+      { id: "chungbuk_jincheon", label: "진천군" },
+      { id: "chungbuk_cheongju", label: "청주시" },
+      { id: "chungbuk_chungju", label: "충주시" },
+    ],
+  },
+  {
+    key: "chungnam",
+    label: "충남",
+    items: [
+      { id: "chungnam_all", label: "충남 전체" },
+      { id: "chungnam_gyeryong", label: "계룡시" },
+      { id: "chungnam_gongju", label: "공주시" },
+      { id: "chungnam_geumsan", label: "금산군" },
+      { id: "chungnam_nonsan", label: "논산시" },
+      { id: "chungnam_dangjin", label: "당진시" },
+      { id: "chungnam_boryeong", label: "보령시" },
+      { id: "chungnam_buyeo", label: "부여군" },
+      { id: "chungnam_seosan", label: "서산시" },
+      { id: "chungnam_seocheon", label: "서천군" },
+      { id: "chungnam_asan", label: "아산시" },
+      { id: "chungnam_yesan", label: "예산군" },
+      { id: "chungnam_cheonan", label: "천안시" },
+      { id: "chungnam_cheongyang", label: "청양군" },
+      { id: "chungnam_taean", label: "태안군" },
+      { id: "chungnam_hongseong", label: "홍성군" },
+    ],
+  },
+  {
+    key: "jeonbuk",
+    label: "전북",
+    items: [
+      { id: "jeonbuk_all", label: "전북 전체" },
+      { id: "jeonbuk_gochang", label: "고창군" },
+      { id: "jeonbuk_gunsan", label: "군산시" },
+      { id: "jeonbuk_gimje", label: "김제시" },
+      { id: "jeonbuk_namwon", label: "남원시" },
+      { id: "jeonbuk_muju", label: "무주군" },
+      { id: "jeonbuk_buan", label: "부안군" },
+      { id: "jeonbuk_sunchang", label: "순창군" },
+      { id: "jeonbuk_wanju", label: "완주군" },
+      { id: "jeonbuk_iksan", label: "익산시" },
+      { id: "jeonbuk_imsil", label: "임실군" },
+      { id: "jeonbuk_jangsu", label: "장수군" },
+      { id: "jeonbuk_jeonju", label: "전주시" },
+      { id: "jeonbuk_jeongeup", label: "정읍시" },
+      { id: "jeonbuk_jinan", label: "진안군" },
+    ],
+  },
+  {
+    key: "jeonnam",
+    label: "전남",
+    items: [
+      { id: "jeonnam_all", label: "전남 전체" },
+      { id: "jeonnam_gangjin", label: "강진군" },
+      { id: "jeonnam_goheung", label: "고흥군" },
+      { id: "jeonnam_gokseong", label: "곡성군" },
+      { id: "jeonnam_gwangyang", label: "광양시" },
+      { id: "jeonnam_gurye", label: "구례군" },
+      { id: "jeonnam_naju", label: "나주시" },
+      { id: "jeonnam_damyang", label: "담양군" },
+      { id: "jeonnam_mokpo", label: "목포시" },
+      { id: "jeonnam_muan", label: "무안군" },
+      { id: "jeonnam_boseong", label: "보성군" },
+      { id: "jeonnam_suncheon", label: "순천시" },
+      { id: "jeonnam_sinan", label: "신안군" },
+      { id: "jeonnam_yeosu", label: "여수시" },
+      { id: "jeonnam_yeonggwang", label: "영광군" },
+      { id: "jeonnam_yeongam", label: "영암군" },
+      { id: "jeonnam_wando", label: "완도군" },
+      { id: "jeonnam_jangseong", label: "장성군" },
+      { id: "jeonnam_jangheung", label: "장흥군" },
+      { id: "jeonnam_jindo", label: "진도군" },
+      { id: "jeonnam_hampyeong", label: "함평군" },
+      { id: "jeonnam_haenam", label: "해남군" },
+      { id: "jeonnam_hwasun", label: "화순군" },
+    ],
+  },
+  {
+    key: "gyeongbuk",
+    label: "경북",
+    items: [
+      { id: "gyeongbuk_all", label: "경북 전체" },
+      { id: "gyeongbuk_gyeongsan", label: "경산시" },
+      { id: "gyeongbuk_gyeongju", label: "경주시" },
+      { id: "gyeongbuk_goryeong", label: "고령군" },
+      { id: "gyeongbuk_gumi", label: "구미시" },
+      { id: "gyeongbuk_gimcheon", label: "김천시" },
+      { id: "gyeongbuk_mungyeong", label: "문경시" },
+      { id: "gyeongbuk_bonghwa", label: "봉화군" },
+      { id: "gyeongbuk_sangju", label: "상주시" },
+      { id: "gyeongbuk_seongju", label: "성주군" },
+      { id: "gyeongbuk_andong", label: "안동시" },
+      { id: "gyeongbuk_yeongdeok", label: "영덕군" },
+      { id: "gyeongbuk_yeongyang", label: "영양군" },
+      { id: "gyeongbuk_yeongju", label: "영주시" },
+      { id: "gyeongbuk_yeongcheon", label: "영천시" },
+      { id: "gyeongbuk_yecheon", label: "예천군" },
+      { id: "gyeongbuk_ulleung", label: "울릉군" },
+      { id: "gyeongbuk_uljin", label: "울진군" },
+      { id: "gyeongbuk_uiseong", label: "의성군" },
+      { id: "gyeongbuk_cheongdo", label: "청도군" },
+      { id: "gyeongbuk_cheongsong", label: "청송군" },
+      { id: "gyeongbuk_chilgok", label: "칠곡군" },
+      { id: "gyeongbuk_pohang", label: "포항시" },
+    ],
+  },
+  {
+    key: "gyeongnam",
+    label: "경남",
+    items: [
+      { id: "gyeongnam_all", label: "경남 전체" },
+      { id: "gyeongnam_geoje", label: "거제시" },
+      { id: "gyeongnam_geochang", label: "거창군" },
+      { id: "gyeongnam_gimhae", label: "김해시" },
+      { id: "gyeongnam_namhae", label: "남해군" },
+      { id: "gyeongnam_miryang", label: "밀양시" },
+      { id: "gyeongnam_sacheon", label: "사천시" },
+      { id: "gyeongnam_sancheong", label: "산청군" },
+      { id: "gyeongnam_yangsan", label: "양산시" },
+      { id: "gyeongnam_uiryeong", label: "의령군" },
+      { id: "gyeongnam_jinju", label: "진주시" },
+      { id: "gyeongnam_changnyeong", label: "창녕군" },
+      { id: "gyeongnam_changwon", label: "창원시" },
+      { id: "gyeongnam_tongyeong", label: "통영시" },
+      { id: "gyeongnam_hadong", label: "하동군" },
+      { id: "gyeongnam_haman", label: "함안군" },
+      { id: "gyeongnam_hamyang", label: "함양군" },
+      { id: "gyeongnam_hapcheon", label: "합천군" },
+    ],
+  },
+  {
+    key: "jeju",
+    label: "제주",
+    items: [
+      { id: "jeju_all", label: "제주 전체" },
+      { id: "jeju_jejusi", label: "제주시" },
+      { id: "jeju_seogwipo", label: "서귀포시" },
+    ],
+  },
+]
+
+// 약관 유형 코드 - 백엔드 app/core/agreements.py 의 get_agreement_catalog() 기준.
+// 고객/파트너 구분 없이 이 4개만 존재하며, 전부 필수(is_required=True)입니다.
+// terms_version 은 settings.xxx_version 값과 정확히 일치해야 하며, 지금은
+// "1.0"으로 하드코딩되어 있습니다. 나중에 백엔드에서 약관 버전을 올리면
+// (.env 의 terms_of_service_version 등) 여기도 같이 맞춰줘야 합니다.
+const agreementTermsTypes = [
+  "TERMS_OF_SERVICE",
+  "PRIVACY_POLICY",
+  "IMAGE_ANALYSIS",
+  "MATCHING_INFO",
+]
 
 export function AuthPages({
   screen,
@@ -505,13 +978,6 @@ export function AuthPages({
     setShowCompanyAddressModal(false);
   };
 
-  const resetLocalTestState = () => {
-    clearLocalTestState();
-    setLoginData({ email: '', password: '' });
-    resetSignupForm();
-    alert("로컬 테스트 데이터가 초기화되었습니다.");
-  };
-
   const searchAddress = async () => {
     if (addressKeyword.trim().length < 2) {
       alert("주소를 2글자 이상 입력해주세요.");
@@ -636,14 +1102,6 @@ export function AuthPages({
           }}
         >
           회원가입 | 아이디 찾기 | 비밀번호 찾기
-        </button>
-
-        <button
-          className="link-row"
-          type="button"
-          onClick={resetLocalTestState}
-        >
-          테스트 데이터 초기화
         </button>
       </section>
     )

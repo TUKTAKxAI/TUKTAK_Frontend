@@ -10,7 +10,6 @@ export const contractorScreens = {
   quotes: 'contractorQuotes',
   records: 'contractorRecords',
   recordDetail: 'contractorRecordDetail',
-  paymentRequest: 'contractorPaymentRequest',
   chats: 'contractorChats',
   chatRoom: 'contractorChatRoom',
   reviews: 'contractorReviews',
@@ -136,6 +135,30 @@ export const contractorReviews = [
   },
 ]
 
+export const contractorNotifications = [
+  {
+    id: 'noti-1',
+    title: '내 지역 주변 새 수리요청',
+    body: '경기도 김포시 도어락 수리 요청이 도착했습니다.',
+    time: '방금 전',
+    targetScreen: contractorScreens.requests,
+  },
+  {
+    id: 'noti-2',
+    title: '매칭 성공',
+    body: '거실 도배 시공 매칭이 성공했습니다. 진행중인 시공을 확인해주세요.',
+    time: '20분 전',
+    targetScreen: contractorScreens.activeWork,
+  },
+  {
+    id: 'noti-3',
+    title: '새 리뷰가 등록되었습니다',
+    body: '김고객님이 도어락 수리 리뷰를 남겼습니다.',
+    time: '1시간 전',
+    targetScreen: contractorScreens.reviews,
+  },
+]
+
 export const contractorServiceTree = [
   { category: '가전', options: ['에어컨 수리', '세탁기 설치', '냉장고 수리'] },
   { category: '인테리어', options: ['도배', '장판', '타일', '페인트'] },
@@ -148,20 +171,3 @@ export const contractorRegionTree = [
   { category: '경기도', options: ['김포시', '고양시', '부천시', '수원시'] },
   { category: '인천광역시', options: ['서구', '남동구', '연수구', '부평구'] },
 ]
-
-export const chatThreads = [
-  { id: 'hong', name: '홍길동 파트너님', preview: '내일 그럼 오후 4시에 방문하도록 하 ...', time: '오후 3:30', unread: 1 },
-  { id: 'kim', name: '김도배 파트너님', preview: '시공 감사합니다 ~', time: '2개월 전', unread: 0 },
-]
-
-export const initialMessages = {
-  hong: [
-    { from: 'me', text: '안녕하세요. 도어락 수리 견적서 넣은 홍길동입니다. 매칭 잡아주셔서 채팅 드립니다.' },
-    { from: 'partner', text: '아 네! 안녕하세요 ㅎㅎ 잘부탁드립니다!' },
-    { from: 'me', text: '거두절미하고 말씀드리겠습니다. 내일 오후 3시부터 7시까지 가능하다고 하셨는데, 4시 가능하신지요.' },
-    { from: 'partner', text: '아 네 그때 가능합니다!' },
-    { from: 'me', text: '내일 그럼 오후 4시에 방문하도록 하겠습니다.' },
-    { from: 'partner', text: '네 그때 뵙겠습니다 ~' },
-  ],
-  kim: [{ from: 'partner', text: '시공 감사합니다 ~' }],
-}

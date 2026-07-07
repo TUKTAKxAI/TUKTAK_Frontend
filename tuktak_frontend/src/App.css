@@ -102,7 +102,7 @@ button {
 
 .chat-room-head h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
 }
 
@@ -1723,14 +1723,11 @@ button {
 
 .subpage-screen,
 .selection-screen,
+.chat-list-screen,
 .chat-room-screen,
 .form-screen,
 .document-screen {
   padding-top: 4px;
-}
-
-.chat-list-screen {
-  padding-top: 0;
 }
 
 .subpage-title-row,
@@ -1755,7 +1752,8 @@ button {
 }
 
 .subpage-title-row h1,
-.brand-with-title h1 {
+.brand-with-title h1,
+.chat-room-head h1 {
   font-size: 28px;
   font-weight: 650;
   letter-spacing: 0;
@@ -3632,6 +3630,10 @@ button {
   transform: translateX(12px);
 }
 
+
+
+
+
 .avatar {
   width: 56px;
   height: 56px;
@@ -3970,14 +3972,14 @@ button {
 }
 
 .chat-page-title img {
-  width: 34px;
-  height: 34px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
 }
 
 .chat-page-title h2 {
   margin: 0;
-  font-size: 28px;
+  font-size: 48px;
   font-weight: 800;
   color: #1F2937;
   line-height: 1;
@@ -4187,8 +4189,180 @@ button {
   color: #e53935;
 }
 
-.inline-back-arrow img {
-  width: 24px;
-  height: 24px;
+/* ============================================================================
+   파트너 회원가입 - 전문 분야 / 작업 지역 선택 패널 (MultiSelectPanel)
+   ============================================================================ */
+
+.select-panel {
+  margin-top: 10px;
+  border-top: 1px solid #d8dee8;
+}
+
+.select-panel-body {
+  display: flex;
+  height: 322px;
+  overflow: hidden;
+  border-bottom: 1px solid #d8dee8;
+  background: #fff;
+}
+
+.sidebar-list {
+  width: 34%;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid #eceff5;
+  background: #fff;
+}
+
+.sidebar-list button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 15px 14px;
+  text-align: left;
+  color: #9aa3b2;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.sidebar-list button.active {
+  background: #f1f3f7;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.item-list {
+  flex: 1;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 16px;
+  color: #c3c8d1;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.item-row::before {
+  content: '✓';
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #c3c8d1;
+}
+
+.item-row.selected {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.item-row.selected::before {
+  color: #1a57db;
+}
+
+.item-row input[type="checkbox"] {
+  display: none;
+}
+
+.select-panel-footer {
+  padding: 12px 2px 0;
+}
+
+.footer-count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reset-button {
+  border: 0;
+  background: transparent;
+  color: #9aa3b2;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.select-panel .chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 0 4px;
+  padding: 0;
+}
+
+.select-panel .chip-row .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 10px 7px 14px;
+  border: 1px solid #d6dae2;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.select-panel .chip-row .chip button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #9aa3b2;
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ============================================================================
+   파트너 회원가입 - 사업자등록증 업로드
+   ============================================================================ */
+
+.upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 196px;
+  margin: 26px 0 40px;
+  border: 2px dashed #c7cbd3;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #9aa3b2;
+  cursor: pointer;
+}
+
+.upload-box input[type="file"] {
+  display: none;
+}
+
+.upload-box svg {
+  color: #1f2937;
+}
+
+.upload-filename {
+  padding: 0 24px;
+  color: #526d9a;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  word-break: break-all;
+}
+
+.upload-preview-image {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  border-radius: 16px;
+  background: #f8fafc;
 }

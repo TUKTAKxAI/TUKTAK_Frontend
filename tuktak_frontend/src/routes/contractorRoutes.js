@@ -12,7 +12,6 @@ export const contractorScreenPaths = {
   [contractorScreens.quotes]: '/contractor/quotes',
   [contractorScreens.records]: '/contractor/records',
   [contractorScreens.recordDetail]: '/contractor/records/detail',
-  [contractorScreens.paymentRequest]: '/contractor/records/payment-request',
   [contractorScreens.chats]: '/contractor/chats',
   [contractorScreens.chatRoom]: '/contractor/chats/room',
   [contractorScreens.reviews]: '/contractor/reviews',
