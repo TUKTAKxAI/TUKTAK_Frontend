@@ -2,10 +2,13 @@ export const screens = {
   login: 'login',
   signup: 'signup',
   userType: 'userType',
-  partnerSignup: 'partnerSignup',
   terms: 'terms',
+  category: 'category',       // 추가: 파트너 전문 분야 선택
+  bizReg: 'bizReg',           // 추가: 파트너 사업자등록증 업로드
+  companyInfo: 'companyInfo', // 추가: 파트너 업체 정보 입력
   phone: 'phone',
   address: 'address',
+  region: 'region',           // 추가: 파트너 작업 지역 선택
   welcome: 'welcome',
   home: 'home',
   estimateHome: 'estimateHome',
@@ -39,14 +42,18 @@ export const screens = {
   reviewWrite: 'reviewWrite',
 }
 
+// 로그인 없이 접근 가능한 화면 목록 (기존 partnerSignup 대신 파트너 가입 세부 화면들을 등록)
 export const publicScreens = [
   screens.login,
   screens.signup,
   screens.userType,
-  screens.partnerSignup,
   screens.terms,
+  screens.category,
+  screens.bizReg,
+  screens.companyInfo,
   screens.phone,
   screens.address,
+  screens.region,
   screens.welcome,
 ]
 
@@ -71,6 +78,7 @@ export const navRoots = {
   chat: [screens.chatList, screens.chatRoom],
 }
 
+// 고객 회원가입 약관 (고객 데이터이므로 customerData.js 에 유지)
 export const signupTerms = [
   '(필수) 서비스 이용 약관 동의',
   '(필수) 개인정보 수집 및 이용 동의',
