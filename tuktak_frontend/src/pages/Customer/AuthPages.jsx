@@ -3,7 +3,12 @@ import { figmaAssets } from '../../components/customer/figmaAssets'
 import { BackButton, Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { screens, signupTerms } from '../../data/customerData'
-import { contractorScreens, partnerSignupTerms } from '../../data/contractorData'
+import {
+  contractorRegionTree,
+  contractorScreens,
+  contractorServiceTree,
+  partnerSignupTerms,
+} from '../../data/contractorData'
 import { contractorScreenPaths } from '../../routes/contractorRoutes'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/authContext'
@@ -15,7 +20,90 @@ import {
 } from '../../services/authService'
 import { searchJusoAddresses } from '../../api/jusoApi'
 import { clearLocalTestState } from '../../api/client'
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaCamera, FaEye, FaEyeSlash } from "react-icons/fa";
+
+const toSelectionGroups = (tree) =>
+  tree.map((group) => ({
+    key: group.category,
+    label: group.category,
+    items: group.options.map((option) => ({
+      id: option,
+      label: option,
+    })),
+  }))
+
+const categoryGroups = toSelectionGroups(contractorServiceTree)
+const regionGroups = toSelectionGroups(contractorRegionTree)
+
+function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, maxCount }) {
+  const [activeGroupKey, setActiveGroupKey] = useState(groups[0]?.key)
+  const activeGroup = groups.find((group) => group.key === activeGroupKey) || groups[0]
+
+  return (
+    <div className="select-panel">
+      <div className="select-panel-body">
+        <div className="sidebar-list">
+          {groups.map((group) => (
+            <button
+              key={group.key}
+              type="button"
+              className={activeGroupKey === group.key ? 'active' : ''}
+              onClick={() => setActiveGroupKey(group.key)}
+            >
+              {group.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="item-list">
+          {activeGroup?.items.map((item) => {
+            const isSelected = selected.some((selectedItem) => selectedItem.id === item.id)
+
+            return (
+              <label className={`item-row ${isSelected ? 'selected' : ''}`} key={item.id}>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() =>
+                    onToggle({
+                      id: item.id,
+                      label: item.label,
+                      groupKey: activeGroup.key,
+                      groupLabel: activeGroup.label,
+                    })
+                  }
+                />
+                <span>{item.label}</span>
+              </label>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="select-panel-footer">
+        <div className="footer-count-row">
+          <span>
+            {footerLabel} {selected.length} / {maxCount}
+          </span>
+          <button type="button" className="reset-button" onClick={onReset}>
+            초기화
+          </button>
+        </div>
+
+        <div className="chip-row">
+          {selected.map((item) => (
+            <span className="chip" key={item.id}>
+              {item.label}
+              <button type="button" onClick={() => onToggle(item)}>
+                x
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function AuthPages({
   screen,

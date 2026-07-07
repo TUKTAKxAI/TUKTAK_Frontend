@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
-import { contractorActiveWork,  contractorProfile,  contractorScreens } from '../../data/contractorData'
-import { fetchContractorMe, fetchContractorWorkOrders, updateContractorAlertSettings } from '../../services/contractorService'
-import { ContractorPage } from './ContractorPageShared'
+import { contractorActiveWork, contractorProfile, contractorScreens } from '../../data/contractorData'
 import { figmaAssets } from '../../components/contractor/figmaAssets'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { contractorNotifications, contractorProfile, contractorScreens } from '../../data/contractorData'
 import {
   fetchContractorMe,
   fetchContractorWorkOrders,
   updateContractorAlertSettings,
 } from '../../services/contractorService'
-import { ContractorPage, InfoModal, MenuTile, StatusBadge } from './ContractorPageShared'
+import { ContractorPage, InfoModal } from './ContractorPageShared'
 import './ContractorPages.css'
 
 function formatDate(value) {
@@ -78,7 +75,7 @@ function mapActiveWork(item) {
 
 export function ContractorHomePage({ go }) {
   const [notificationOn, setNotificationOn] = useState(contractorProfile.notificationEnabled)
-  const [activeWork, setActiveWork] = useState(null)
+  const [activeWork, setActiveWork] = useState(contractorActiveWork)
 
   useEffect(() => {
     let ignore = false
@@ -93,10 +90,10 @@ export function ContractorHomePage({ go }) {
       .then((data) => {
         if (ignore) return
         const current = findCurrentWork(data.items?.map(mapWorkOrder) ?? [])
-        setActiveWork(mapActiveWork(current))
+        setActiveWork(mapActiveWork(current) ?? contractorActiveWork)
       })
       .catch(() => {
-        if (!ignore) setActiveWork(null)
+        if (!ignore) setActiveWork(contractorActiveWork)
       })
 
     return () => {
