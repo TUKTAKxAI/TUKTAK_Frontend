@@ -1,7 +1,17 @@
-import { useMemo, useState } from 'react'
-import { FaComments, FaPaperPlane, FaSearch } from 'react-icons/fa'
-import { contractorChats, contractorScreens } from '../../data/contractorData'
-import { ContractorPage, StatusBadge } from './ContractorPageShared'
+import { useState, useEffect } from 'react'
+import { ChatListPage, ChatRoomPage } from '../Customer/ChatPage' 
+import { chatThreads, initialMessages, contractorScreens } from '../../data/contractorData'
+import { screens as customerScreens } from '../../data/customerData'
+
+if (!globalThis.partnerChatThreads) {
+  globalThis.partnerChatThreads = JSON.parse(JSON.stringify(chatThreads));
+}
+if (!globalThis.partnerInitialMessages) {
+  globalThis.partnerInitialMessages = JSON.parse(JSON.stringify(initialMessages));
+}
+if (!globalThis.currentActiveThreadId) {
+  globalThis.currentActiveThreadId = 'hong'; 
+}
 
 const initialMessagesByChat = {
   'chat-1': [
@@ -19,103 +29,74 @@ function getLastMessage(messages = []) {
 }
 
 export function ContractorChatsPage({ go }) {
-  const [query, setQuery] = useState('')
-  const [threads, setThreads] = useState(contractorChats)
-  const filteredThreads = useMemo(() => {
-    const keyword = query.trim().toLowerCase()
-    if (!keyword) return threads
+  const [threads, setFilterThreads] = useState(globalThis.partnerChatThreads)
 
-    return threads.filter((chat) => (
-      `${chat.name} ${chat.preview}`.toLowerCase().includes(keyword)
-    ))
-  }, [query, threads])
-
-  const openChat = (chat) => {
-    setThreads((items) => items.map((item) => (
-      item.id === chat.id ? { ...item, unread: 0 } : item
-    )))
-    go(contractorScreens.chatRoom, { chat })
+  const clearUnread = (threadId) => {
+    globalThis.partnerChatThreads = globalThis.partnerChatThreads.map(thread => 
+      thread.id === threadId ? { ...thread, unread: 0 } : thread
+    )
+    setFilterThreads(globalThis.partnerChatThreads)
+  }
+  const handleGo = (screen) => {
+    if (screen === customerScreens.mypage) {
+      go?.(contractorScreens.mypage)
+    } else {
+      go?.(screen)
+    }
   }
 
   return (
-    <ContractorPage title="채팅 목록" go={go} back={() => go(contractorScreens.home)}>
-      <label className="contractor-search-bar">
-        <FaSearch />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="고객명 또는 대화 내용 검색"
-        />
-      </label>
-      <div className="contractor-list">
-        {filteredThreads.map((chat) => (
-          <button className={`contractor-line-card clickable ${chat.unread ? 'unread' : ''}`} type="button" key={chat.id} onClick={() => openChat(chat)}>
-            <FaComments />
-            <div>
-              <strong>{chat.name}</strong>
-              <p>{chat.preview}</p>
-              <small>{chat.time}</small>
-            </div>
-            {chat.unread ? <StatusBadge>{chat.unread}</StatusBadge> : null}
-          </button>
-        ))}
-        {filteredThreads.length === 0 ? <p className="contractor-empty-message">검색 결과가 없습니다.</p> : null}
-      </div>
-    </ContractorPage>
+    <ChatListPage
+      threads={threads}
+      messagesByThread={globalThis.partnerInitialMessages}
+      goToRoom={(id) => {
+        globalThis.currentActiveThreadId = id; 
+        
+        clearUnread(id); 
+        
+        go(contractorScreens.chatRoom);
+      }}
+      go={handleGo}
+      clearUnread={clearUnread}
+    />
   )
 }
 
-export function ContractorChatRoomPage({ go, routeState = {} }) {
-  const chat = routeState.chat || contractorChats[0]
-  const [messages, setMessages] = useState(() => {
-    const initialMessages = initialMessagesByChat[chat.id] || []
-    if (!routeState.autoMessage) return initialMessages
+export function ContractorChatRoomPage({ go }) {
+  const threadId = globalThis.currentActiveThreadId; 
+  
+  const [chatText, setChatText] = useState('')
+  const [messages, setMessages] = useState(globalThis.partnerInitialMessages[threadId] || [])
 
-    return [
-      ...initialMessages,
-      { id: `${chat.id}-auto-${Date.now()}`, from: 'me', text: routeState.autoMessage },
-    ]
-  })
-  const [text, setText] = useState('')
-  const lastMessage = getLastMessage(messages)
+  const currentThread = globalThis.partnerChatThreads.find(t => t.id === threadId);
+  const realPartnerName = currentThread ? currentThread.name : '고객님';
 
   const sendMessage = () => {
-    const trimmed = text.trim()
-    if (!trimmed) return
+    if (!chatText.trim()) return
+    
+    const newMessage = { from: 'me', text: chatText }
+    
+    if (!globalThis.partnerInitialMessages[threadId]) {
+      globalThis.partnerInitialMessages[threadId] = [];
+    }
+    globalThis.partnerInitialMessages[threadId].push(newMessage);
+    
+    globalThis.partnerChatThreads = globalThis.partnerChatThreads.map(t => 
+      t.id === threadId ? { ...t, preview: chatText } : t
+    );
 
-    setMessages((items) => [
-      ...items,
-      { id: `${chat.id}-${Date.now()}`, from: 'me', text: trimmed },
-    ])
-    setText('')
+    setMessages([...globalThis.partnerInitialMessages[threadId]])
+    setChatText('')
   }
 
   return (
-    <ContractorPage title={chat.name} go={go} back={() => go(contractorScreens.chats)}>
-      <div className="contractor-chat-summary">
-        <strong>최근 대화</strong>
-        <p>{lastMessage}</p>
-      </div>
-      <div className="contractor-chat-room">
-        {messages.map((message) => (
-          <p className={message.from === 'me' ? 'from-me' : 'from-customer'} key={message.id}>
-            {message.text}
-          </p>
-        ))}
-      </div>
-      <div className="contractor-chat-compose">
-        <input
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') sendMessage()
-          }}
-          placeholder="메시지를 입력하세요"
-        />
-        <button type="button" onClick={sendMessage} disabled={!text.trim()} aria-label="메시지 보내기">
-          <FaPaperPlane />
-        </button>
-      </div>
-    </ContractorPage>
+    <ChatRoomPage
+      partnerName={realPartnerName} 
+      messages={messages}
+      chatText={chatText}
+      setChatText={setChatText}
+      sendMessage={sendMessage}
+      back={() => go(contractorScreens.chats)} 
+    />
   )
 }

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { FaBell, FaBriefcase, FaClipboardList, FaComments, FaStar, FaTools } from 'react-icons/fa'
+import { contractorActiveWork,  contractorProfile,  contractorScreens } from '../../data/contractorData'
+import { fetchContractorMe, fetchContractorWorkOrders, updateContractorAlertSettings } from '../../services/contractorService'
+import { ContractorPage } from './ContractorPageShared'
+import { figmaAssets } from '../../components/contractor/figmaAssets'
 import { PrimaryButton } from '../../components/customer/FormControls'
 import { contractorNotifications, contractorProfile, contractorScreens } from '../../data/contractorData'
 import {
@@ -109,78 +112,70 @@ export function ContractorHomePage({ go }) {
 
   return (
     <ContractorPage go={go}>
-      <button
-        className="contractor-active-card"
-        type="button"
-        onClick={() => {
-          if (activeWork?.workOrder) {
-            go(contractorScreens.recordDetail, { workOrder: activeWork.workOrder, workOrderId: activeWork.workOrder.workOrderId })
-            return
-          }
-          go(contractorScreens.records)
-        }}
-      >
-        <FaBriefcase />
-        <div>
-          <div className="contractor-active-meta">
-            <small>진행중인 매칭</small>
-            {activeWork ? <StatusBadge tone={activeWork.status === '완료됨' ? 'gray' : 'blue'}>{activeWork.status}</StatusBadge> : null}
+      
+      <div className="px-5 mt-2 shrink-0">
+        <button 
+          className="w-full bg-white border border-gray-400 rounded-[28px] p-5 flex items-start shadow-sm active:scale-95 transition-transform text-left"
+          onClick={() => go(contractorScreens.activeWork)}
+        >
+          <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center mr-4 shrink-0 mt-1">
+            <img src={figmaAssets.nowMatching} alt="진행중" className="w-10 h-10 object-contain" />
           </div>
-          {activeWork ? (
-            <>
-              <h1>{activeWork.title}</h1>
-              <p>{activeWork.date} · {activeWork.visitTime}</p>
-              <p>{activeWork.address}</p>
-              <span>시공 기록 상세로 이동</span>
-            </>
-          ) : (
-            <>
-              <h1>현재 진행중인 매칭이 없습니다</h1>
-              <p>고객이 견적을 선택하면 시공 기록에서 확인할 수 있습니다.</p>
-              <span>시공 기록으로 이동</span>
-            </>
-          )}
-        </div>
-      </button>
-
-      <div className="contractor-menu-grid">
-        <MenuTile icon={<FaClipboardList />} label="시공 요청 보기" onClick={() => go(contractorScreens.requests)} />
-        <MenuTile icon={<FaTools />} label="시공 기록 보기" onClick={() => go(contractorScreens.records)} />
-        <MenuTile icon={<FaComments />} label="채팅 목록 보기" onClick={() => go(contractorScreens.chats)} />
-        <MenuTile icon={<FaStar />} label="리뷰 보기" onClick={() => go(contractorScreens.reviews)} />
+          
+          <div className="flex flex-col">
+            <span className="text-gray-500 text-[12px] font-bold mb-0.5">진행중인 시공</span>
+            <h2 className="text-[22px] font-bold text-gray-900 leading-tight mb-1">{activeWork.title}</h2>
+            <p className="text-[14px] font-bold text-gray-900 leading-snug">{activeWork.date} {activeWork.visitTime}</p>
+            <p className="text-[14px] font-bold text-gray-900 leading-snug">{activeWork.address}</p>
+            <span className="text-[12px] text-gray-400 font-medium mt-1.5">자세한 정보는 클릭해서 보기</span>
+          </div>
+        </button>
       </div>
 
-      <button
-        className={`contractor-alarm ${notificationOn ? 'on' : 'off'}`}
-        type="button"
-        aria-pressed={notificationOn}
-        onClick={toggleNotification}
-      >
-        <FaBell />
-        <strong>{notificationOn ? '알림 받는 중' : '알림 꺼짐'}</strong>
-      </button>
+      <div className="grid grid-cols-2 gap-y-10 px-4 mt-10 shrink-0">
+        <button className="flex flex-col items-center active:scale-95 transition-transform" onClick={() => go(contractorScreens.requests)}>
+          <img src={figmaAssets.contractorMatchingRequest} alt="시공 요청" className="w-24 h-24 object-contain mb-3" />
+          <span className="font-bold text-[18px] text-gray-900">시공 요청 보기</span>
+        </button>
+
+        <button className="flex flex-col items-center active:scale-95 transition-transform" onClick={() => go(contractorScreens.records)}>
+          <img src={figmaAssets.contractorMatchingHistory} alt="시공 기록" className="w-24 h-24 object-contain mb-3" />
+          <span className="font-bold text-[18px] text-gray-900">시공 기록 보기</span>
+        </button>
+
+        <button className="flex flex-col items-center active:scale-95 transition-transform" onClick={() => go(contractorScreens.chats)}>
+          <img src={figmaAssets.contractorChatting} alt="채팅 기록" className="w-24 h-24 object-contain mb-3" />
+          <span className="font-bold text-[18px] text-gray-900">채팅 기록 보기</span>
+        </button>
+
+        <button className="flex flex-col items-center active:scale-95 transition-transform" onClick={() => go(contractorScreens.reviews)}>
+          <img src={figmaAssets.contractorReview} alt="리뷰 보기" className="w-24 h-24 object-contain mb-3" />
+          <span className="font-bold text-[18px] text-gray-900">리뷰 보기</span>
+        </button>
+      </div>
+
+      <div className="mt-14 mb-8 flex justify-center w-full shrink-0">
+        <button
+          onClick={toggleNotification}
+          className={`w-64 h-64 rounded-full flex flex-col items-center justify-center transition-colors shadow-sm active:scale-95 shrink-0 ${
+            notificationOn ? 'bg-[#D6E2F6] border-[6px] border-[#C3D5F2]' : 'bg-gray-200 border-[6px] border-gray-300'
+          }`}
+        >
+          <img 
+            src={notificationOn ? figmaAssets.contractorAlarmOn : figmaAssets.contractorAlarmOff} 
+            alt="알림 상태" 
+            className="w-32 h-32 object-contain mb-3" 
+          />
+          <span className={`font-extrabold text-[22px] ${notificationOn ? 'text-[#1C54D4]' : 'text-gray-500'}`}>
+            {notificationOn ? '알림 받는 중' : '알림 꺼짐'}
+          </span>
+        </button>
+      </div>
+
     </ContractorPage>
   )
 }
 
-export function ContractorNotificationsPage({ go }) {
-  return (
-    <ContractorPage title="알림 목록" go={go} back={() => go(contractorScreens.home)}>
-      <div className="contractor-list">
-        {contractorNotifications.map((item) => (
-          <button className="contractor-line-card clickable" type="button" key={item.id} onClick={() => go(item.targetScreen)}>
-            <FaBell />
-            <div>
-              <strong>{item.title}</strong>
-              <p>{item.body}</p>
-              <small>{item.time}</small>
-            </div>
-          </button>
-        ))}
-      </div>
-    </ContractorPage>
-  )
-}
 
 export function ContractorActiveWorkPage({ go }) {
   const [work, setWork] = useState(null)
@@ -235,18 +230,23 @@ export function ContractorActiveWorkPage({ go }) {
   }
 
   return (
-    <ContractorPage title={work.title} go={go} back={() => go(contractorScreens.home)}>
-      <article className="contractor-detail-card">
-        <dl>
-          <div><dt>시공 가격</dt><dd>{work.price}</dd></div>
-          <div><dt>날짜</dt><dd>{work.date}</dd></div>
-          <div><dt>방문 예정시간</dt><dd>{work.visitTime}</dd></div>
-          <div><dt>정확한 주소</dt><dd>{work.address}</dd></div>
-          <div><dt>작업 상태</dt><dd>{work.status}</dd></div>
-          <div><dt>고객정보</dt><dd>{work.customerName || '확인 필요'}</dd></div>
-        </dl>
-        <PrimaryButton onClick={() => go(contractorScreens.recordDetail, { workOrder: work.workOrder, workOrderId: work.workOrder?.workOrderId })}>시공 기록 상세로 이동</PrimaryButton>
-      </article>
+    <ContractorPage title={work.title} back={() => go(contractorScreens.home)} go={go}>
+      <div className="px-6 py-4 flex flex-col flex-1 shrink-0">
+        <article className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-200 flex flex-col flex-1">
+          <div className="flex flex-col gap-4 mb-8">
+            <div className="flex justify-between items-center"><span className="text-gray-500 text-[15px]">시공 가격</span><span className="font-bold text-gray-900 text-[15px]">{work.price}</span></div>
+            <div className="flex justify-between items-center"><span className="text-gray-500 text-[15px]">날짜</span><span className="font-bold text-gray-900 text-[15px]">{work.date}</span></div>
+            <div className="flex justify-between items-center"><span className="text-gray-500 text-[15px]">방문 예정시간</span><span className="font-bold text-gray-900 text-[15px]">{work.visitTime}</span></div>
+            <div className="flex justify-between items-center"><span className="text-gray-500 text-[15px]">정확한 주소</span><span className="font-bold text-gray-900 text-[15px]">{work.address}</span></div>
+            <div className="flex justify-between items-center"><span className="text-gray-500 text-[15px]">예상 소요시간</span><span className="font-bold text-gray-900 text-[15px]">{work.duration}</span></div>
+            <div className="flex justify-between items-center"><span className="text-gray-500 text-[15px]">고객정보</span><span className="font-bold text-gray-900 text-[15px]">{work.customer.name} · {work.customer.phone}</span></div>
+          </div>
+          
+          <div className="mt-auto pt-6">
+            <PrimaryButton onClick={() => go(contractorScreens.chats)}>1:1 채팅 연결</PrimaryButton>
+          </div>
+        </article>
+      </div>
     </ContractorPage>
   )
 }

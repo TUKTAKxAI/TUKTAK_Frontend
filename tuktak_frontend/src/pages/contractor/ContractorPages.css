@@ -145,8 +145,8 @@
 }
 
 .contractor-menu-grid.compact {
-  gap: 18px;
-  margin: 22px 0;
+  gap: 14px;
+  margin: 28px 4px 0;
 }
 
 .contractor-menu-tile {
@@ -161,9 +161,21 @@
 }
 
 .contractor-menu-grid.compact .contractor-menu-tile {
-  border: 1.5px solid #858585;
-  border-radius: 9px;
+  min-height: 148px;
+  border: 1.5px solid #8d9299;
+  border-radius: 12px;
   background: #fff;
+  box-shadow: 0 8px 18px rgb(22 32 51 / 4%);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.contractor-menu-grid.compact .contractor-menu-tile:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 10px rgb(22 32 51 / 5%);
+}
+
+.contractor-menu-grid.compact .contractor-menu-tile:nth-child(3) {
+  grid-column: 1 / 2;
 }
 
 .contractor-menu-tile span {
@@ -171,8 +183,17 @@
   color: #1787ee;
 }
 
+.contractor-menu-icon {
+  display: block;
+  width: 78px;
+  height: 78px;
+  object-fit: cover;
+  border-radius: 20px;
+}
+
 .contractor-menu-tile strong {
   font-size: 20px;
+  color: #172033;
 }
 
 .contractor-alarm {
@@ -873,20 +894,33 @@
 
 .contractor-profile-head {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
-  margin: 22px 8px;
+  margin: 34px 6px 36px;
 }
 
 .contractor-profile-head > svg {
-  color: #3866be;
-  font-size: 52px;
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  color: #3165c9;
+  filter: drop-shadow(0 6px 12px rgb(49 101 201 / 14%));
 }
 
 .contractor-profile-head h1 {
-  font-size: 28px;
-  line-height: 1.25;
+  font-size: 25px;
+  line-height: 1.28;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: #172033;
   margin: 0;
+}
+
+.contractor-profile-head p {
+  margin: 8px 0 0;
+  color: #8b95a3;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .contractor-service-grid {
@@ -929,6 +963,16 @@
   color: #7a8596;
 }
 
+.contractor-edit-row.locked {
+  cursor: default;
+  color: inherit;
+  opacity: 1;
+}
+
+.contractor-edit-row.locked strong {
+  color: #1f2937;
+}
+
 .contractor-edit-panel {
   display: grid;
   gap: 14px;
@@ -951,6 +995,48 @@
   border-radius: 10px;
   padding: 0 14px;
   font-size: 16px;
+}
+
+.contractor-email-check-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  margin-top: -2px;
+}
+
+.contractor-email-check-row button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: #2461dc;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 0 14px;
+}
+
+.contractor-email-check-row button:disabled {
+  background: #cbd5e1;
+}
+
+.contractor-email-check-message {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #7a8596;
+}
+
+.contractor-email-check-message.success {
+  color: #0f9f6e;
+}
+
+.contractor-email-check-message.error {
+  color: #dc2626;
 }
 
 .contractor-tree {
@@ -996,6 +1082,79 @@
   font-weight: 800;
 }
 
+.contractor-selection-dock {
+  margin-top: 0;
+  padding: 10px 14px 12px;
+  border: 1.5px solid #858585;
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #fff;
+}
+
+.contractor-selection-dock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.contractor-selection-dock-head button {
+  border: 0;
+  background: transparent;
+  color: #8b95a3;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contractor-selection-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.contractor-selection-chip {
+  min-height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: #eef0f2;
+  color: #5f6b7a;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.contractor-selection-empty {
+  margin: 9px 0 0;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.contractor-helper-message {
+  margin: 8px 0 0;
+  color: #7a8596;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.contractor-account-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+
+.contractor-account-actions button {
+  border: 0;
+  background: transparent;
+  color: #8b95a3;
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .contractor-split-selector {
   display: grid;
   grid-template-columns: 112px 1fr;
@@ -1004,6 +1163,10 @@
   border: 1.5px solid #858585;
   border-radius: 10px;
   background: #fff;
+}
+
+.contractor-split-selector:has(+ .contractor-selection-dock) {
+  border-radius: 10px 10px 0 0;
 }
 
 .contractor-category-list {

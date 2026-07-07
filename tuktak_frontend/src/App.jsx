@@ -16,7 +16,6 @@ import {
   ContractorMyRegionsPage,
   ContractorMyServicesPage,
   ContractorMypagePage,
-  ContractorNotificationsPage,
   ContractorQuoteDonePage,
   ContractorQuoteFormPage,
   ContractorQuotesPage,
@@ -79,7 +78,10 @@ function PublicRoute({ screen }) {
   const { go, back, setScreen } = useScreenNavigator()
 
   if (loading) return null
-  if (isLogin) return <Navigate to={screenPaths[screens.home]} replace />
+
+  if (isLogin && screen !== screens.welcome) {
+    return <Navigate to={screenPaths[screens.home]} replace />
+  }
 
   return (
     <AuthPages
@@ -130,7 +132,6 @@ function ContractorRoute({ screen }) {
 
   const pages = {
     [contractorScreens.home]: <ContractorHomePage go={go} />,
-    [contractorScreens.notifications]: <ContractorNotificationsPage go={go} />,
     [contractorScreens.activeWork]: <ContractorActiveWorkPage go={go} />,
     [contractorScreens.requests]: <ContractorRequestsPage go={go} />,
     [contractorScreens.requestDetail]: <ContractorRequestDetailPage go={go} routeState={routeState} />,

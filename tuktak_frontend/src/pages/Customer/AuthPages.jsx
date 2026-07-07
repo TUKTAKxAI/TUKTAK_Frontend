@@ -3,9 +3,9 @@ import { figmaAssets } from '../../components/customer/figmaAssets'
 import { BackButton, Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { screens, signupTerms } from '../../data/customerData'
-import { contractorScreens } from '../../data/contractorData'
+import { contractorScreens, partnerSignupTerms } from '../../data/contractorData'
 import { contractorScreenPaths } from '../../routes/contractorRoutes'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/authContext'
 import {
   login,
@@ -30,6 +30,14 @@ export function AuthPages({
 
   const { login: authLogin } = useAuth()
 
+  // 약관 유형/버전 + 체크박스 상태(terms)로 서버에 보낼 agreements 배열 생성
+  const buildAgreementsPayload = () =>
+    agreementTermsTypes.map((type, index) => ({
+      terms_type: type,
+      terms_version: "1.0",
+      is_agreed: !!terms[index],
+    }))
+
   const [loginData, setLoginData] = useState({
     email: '',
     password: '',
@@ -49,11 +57,21 @@ export function AuthPages({
     regionCodeId: null,
   })
 
+  // 파트너 전용 데이터
+  // (이름/이메일/비밀번호/전화번호는 signupData 를 공용으로 사용합니다)
   const [partnerSignupData, setPartnerSignupData] = useState({
-    businessName: '',
-    specialty: '',
-    careerYears: '',
-    businessAddress: '',
+    categories: [],           // [{id, label, groupKey, groupLabel}]
+    businessRegFile: null,
+    businessNumber: '',       // 사업자등록번호 (수동 입력)
+    companyName: '',
+    ownerName: '',
+    companyPhone: '',
+    businessStatus: '',       // TODO: 백엔드가 허용하는 실제 값(enum) 확인 필요
+    companyAddress: '',
+    companyDetailAddress: '',
+    companyZipNo: '',
+    companyRegionCodeId: null,
+    workRegions: [],          // [{id, label, groupKey, groupLabel}]
   })
 
 
@@ -64,18 +82,18 @@ export function AuthPages({
         loginData.password
       );
 
-      await authLogin();
-
       if (selectedRole === "partner") {
         go(contractorScreenPaths[contractorScreens.home]);
-        return;
+      } else {
+        go(screens.home);
       }
-      alert("로그인 성공");
 
-      setScreen(screens.home);
+      await authLogin();
 
     } catch (err) {
-      const detail = err.response?.data?.detail;
+      // client.js 의 응답 인터셉터가 에러를 normalizeError()로 감싸면서
+      // err.response 가 아니라 err.data 에 서버 응답 본문을 담아줍니다.
+      const detail = err.data?.detail;
 
       // 이메일 형식이 잘못된 경우(422)
       if (Array.isArray(detail)) {
@@ -139,6 +157,24 @@ export function AuthPages({
     return nickname.trim().length >= 2;
   };
 
+  // 파트너 카테고리/지역 선택 토글 헬퍼
+  const togglePartnerSelection = (field, item, max) => {
+    setPartnerSignupData((prev) => {
+      const exists = prev[field].some((x) => x.id === item.id)
+
+      if (exists) {
+        return { ...prev, [field]: prev[field].filter((x) => x.id !== item.id) }
+      }
+
+      if (prev[field].length >= max) {
+        alert(`최대 ${max}개까지 선택할 수 있습니다.`)
+        return prev
+      }
+
+      return { ...prev, [field]: [...prev[field], item] }
+    })
+  }
+
   const handleSignup = async () => {
     if (!isValidPassword(signupData.password)) {
       alert(
@@ -162,33 +198,7 @@ export function AuthPages({
       return;
     }
 
-    const agreements = [
-
-      {
-        terms_type: "TERMS_OF_SERVICE",
-        terms_version: "1.0",
-        is_agreed: terms[0],
-      },
-
-      {
-        terms_type: "PRIVACY_POLICY",
-        terms_version: "1.0",
-        is_agreed: terms[1],
-      },
-
-      {
-        terms_type: "IMAGE_ANALYSIS",
-        terms_version: "1.0",
-        is_agreed: terms[2],
-      },
-
-      {
-        terms_type: "MATCHING_INFO",
-        terms_version: "1.0",
-        is_agreed: terms[3],
-      },
-
-    ]
+    const agreements = buildAgreementsPayload()
 
     try {
 
@@ -210,48 +220,115 @@ export function AuthPages({
       });
 
       await login(signupData.email, signupData.password);
+      go(screens.welcome)
       await authLogin();
 
-      go(screens.welcome)
-
     } catch (err) {
-      alert(JSON.stringify(err.response?.data, null, 2));
+      const detail = err.data?.detail;
+      alert(
+        typeof detail === "string"
+          ? detail
+          : JSON.stringify(err.data ?? err.message, null, 2)
+      );
     }
 
   }
 
+  // 파트너 최종 가입 처리 (작업지역 선택 화면의 "다음"에서 호출)
   const handlePartnerSignup = async () => {
-    if (!partnerSignupData.businessName.trim()) {
+
+    if (!isValidPassword(signupData.password)) {
+      alert(
+        "비밀번호는 8~20자의 영문, 숫자, 특수문자를 모두 포함해야 합니다."
+      );
+      return;
+    }
+
+    if (signupData.password !== signupData.passwordConfirm) {
+      alert("비밀번호가 일치하지 않습니다.")
+      return
+    }
+
+    if (!isValidNickname(signupData.nickname)) {
+      alert("닉네임은 2글자 이상 입력해주세요.");
+      return;
+    }
+
+    if (partnerSignupData.categories.length === 0) {
+      alert("전문 분야를 1개 이상 선택해주세요.")
+      return
+    }
+
+    if (!partnerSignupData.businessRegFile) {
+      alert("사업자등록증을 업로드해주세요.")
+      return
+    }
+
+    if (!partnerSignupData.businessNumber.trim()) {
+      alert("사업자등록번호를 입력해주세요.")
+      return
+    }
+
+    if (!partnerSignupData.companyName.trim()) {
       alert("업체명을 입력해주세요.")
       return
     }
 
-    if (!partnerSignupData.specialty.trim()) {
-      alert("전문 분야를 입력해주세요.")
+    if (!partnerSignupData.businessStatus) {
+      alert("사업자 구분을 선택해주세요.")
       return
     }
 
-    if (!partnerSignupData.businessAddress.trim()) {
-      alert("사업장 주소를 입력해주세요.")
+    if (!partnerSignupData.companyAddress.trim()) {
+      alert("업체 주소를 입력해주세요.")
       return
     }
+
+    if (partnerSignupData.workRegions.length === 0) {
+      alert("작업 지역을 1개 이상 선택해주세요.")
+      return
+    }
+
+    const agreements = buildAgreementsPayload()
 
     try {
+      // TODO: businessRegFile 은 File 객체입니다. 지금은 백엔드가 이 필드를
+      // 빈 값({})으로 받아도 검증 에러를 내지 않아 임시로 그대로 두었지만,
+      // 실제 파일 업로드는 multipart/form-data 또는 presigned URL 방식으로
+      // 별도 구현이 필요합니다. authService.js 의 signupPartner 를 조정하세요.
       await signupPartner({
         name: signupData.name,
         nickname: signupData.nickname,
         email: signupData.email,
         password: signupData.password,
         phone: signupData.phone,
-        business_name: partnerSignupData.businessName,
-        specialty: partnerSignupData.specialty,
-        career_years: Number(partnerSignupData.careerYears || 0),
-        business_address: partnerSignupData.businessAddress,
+        business_registration_file: partnerSignupData.businessRegFile,
+        business_number: partnerSignupData.businessNumber,
+        business_name: partnerSignupData.companyName,
+        representative_name: partnerSignupData.ownerName,
+        contact_phone: partnerSignupData.companyPhone,
+        business_status: partnerSignupData.businessStatus,
+        company_address_json: {
+          address: partnerSignupData.companyAddress,
+          address_detail: partnerSignupData.companyDetailAddress.trim(),
+          zip_no: partnerSignupData.companyZipNo,
+          region_code_id: partnerSignupData.companyRegionCodeId,
+        },
+        category_ids: partnerSignupData.categories.map((c) => c.id),
+        work_region_ids: partnerSignupData.workRegions.map((r) => r.id),
+        agreements,
       })
 
+      await login(signupData.email, signupData.password);
       go(screens.welcome)
+      await authLogin();
     } catch (err) {
-      alert(JSON.stringify(err.response?.data, null, 2));
+      const detail = err.data?.detail;
+      alert(
+        typeof detail === "string"
+          ? detail
+          : JSON.stringify(err.data ?? err.message, null, 2)
+      );
     }
   }
 
@@ -268,11 +345,33 @@ export function AuthPages({
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupPasswordConfirm, setShowSignupPasswordConfirm] = useState(false);
 
+  const currentSignupTerms = userType === 'partner' ? partnerSignupTerms : signupTerms;
+
   const isRequiredTermsChecked = terms.slice(0, 4).every(Boolean);
 
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showCompanyAddressModal, setShowCompanyAddressModal] = useState(false);
+
+  // 사업자등록증 이미지 미리보기 (PDF 등 이미지가 아닌 파일은 미리보기 없이 파일명만 표시)
+  const [businessRegPreviewUrl, setBusinessRegPreviewUrl] = useState(null);
+
+  useEffect(() => {
+    const file = partnerSignupData.businessRegFile;
+
+    if (!file || !file.type?.startsWith('image/')) {
+      setBusinessRegPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setBusinessRegPreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [partnerSignupData.businessRegFile]);
 
   const resetSignupForm = () => {
     setSignupData({
@@ -288,18 +387,20 @@ export function AuthPages({
       zipNo: '',
       regionCodeId: null,
     });
-  
+
     setPartnerSignupData({
-      businessName: '',
-      specialty: '',
-      careerYears: '',
-      businessAddress: '',
-    });
-    setPartnerSignupData({
-      businessName: '',
-      specialty: '',
-      careerYears: '',
-      businessAddress: '',
+      categories: [],
+      businessRegFile: null,
+      businessNumber: '',
+      companyName: '',
+      ownerName: '',
+      companyPhone: '',
+      businessStatus: '',
+      companyAddress: '',
+      companyDetailAddress: '',
+      companyZipNo: '',
+      companyRegionCodeId: null,
+      workRegions: [],
     });
 
     setEmailCheckResult(null);
@@ -308,11 +409,12 @@ export function AuthPages({
     setShowSignupPassword(false);
     setShowSignupPasswordConfirm(false);
 
-    setTerms([false, false, false, false]);
+    setTerms([false, false, false, false, false]);
 
     setUserType("customer");
 
     setShowAddressModal(false);
+    setShowCompanyAddressModal(false);
   };
 
   const resetLocalTestState = () => {
@@ -381,6 +483,9 @@ export function AuthPages({
                 email: e.target.value,
               })
             }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleLogin();
+            }}
           />
         </label>
 
@@ -395,6 +500,9 @@ export function AuthPages({
                 password: e.target.value,
               })
             }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleLogin();
+            }}
           />
 
           <button
@@ -665,85 +773,22 @@ export function AuthPages({
     )
   }
 
+  // 유형 선택: 고객/파트너 모두 다음은 공용 terms 화면으로 이동
+  // (terms 화면 안에서 userType 에 따라 문구/약관/다음 이동지가 분기됩니다)
   if (screen === screens.userType) {
     return (
       <section className="auth-screen">
         <BackButton onClick={back} />
         <Logo />
         <h2 className="hero-copy compact">어떤 사용자신가요?</h2>
-        <ChoiceCard active={userType === 'customer'} onClick={() => setUserType('customer')} title="고객" text="파트너에게 수리를 맡겨보세요" />
+        <ChoiceCard active={userType === 'customer'} onClick={() => setUserType('customer')} title="고객" text="시공자에게 수리를 맡겨보세요" />
         <ChoiceCard active={userType === 'partner'} onClick={() => setUserType('partner')} title="파트너" text="시공이 필요한 고객을 만나보세요" />
-        <PrimaryButton narrow onClick={() => go(userType === 'partner' ? screens.partnerSignup : screens.terms)}>다음</PrimaryButton>
+        <PrimaryButton narrow onClick={() => go(screens.terms)}>다음</PrimaryButton>
       </section>
     )
   }
 
-  if (screen === screens.partnerSignup) {
-    return (
-      <section className="auth-screen signup-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">파트너 정보를 입력해주세요</h2>
-
-        <label className="field">
-          <input
-            placeholder="업체명"
-            value={partnerSignupData.businessName}
-            onChange={(e) =>
-              setPartnerSignupData({
-                ...partnerSignupData,
-                businessName: e.target.value,
-              })
-            }
-          />
-        </label>
-
-        <label className="field">
-          <input
-            placeholder="전문 분야"
-            value={partnerSignupData.specialty}
-            onChange={(e) =>
-              setPartnerSignupData({
-                ...partnerSignupData,
-                specialty: e.target.value,
-              })
-            }
-          />
-        </label>
-
-        <label className="field">
-          <input
-            type="number"
-            min="0"
-            placeholder="경력 연수"
-            value={partnerSignupData.careerYears}
-            onChange={(e) =>
-              setPartnerSignupData({
-                ...partnerSignupData,
-                careerYears: e.target.value,
-              })
-            }
-          />
-        </label>
-
-        <label className="field">
-          <input
-            placeholder="사업장 주소"
-            value={partnerSignupData.businessAddress}
-            onChange={(e) =>
-              setPartnerSignupData({
-                ...partnerSignupData,
-                businessAddress: e.target.value,
-              })
-            }
-          />
-        </label>
-
-        <PrimaryButton onClick={handlePartnerSignup}>파트너 가입 완료</PrimaryButton>
-      </section>
-    )
-  }
-
+  // 약관 동의 - 고객/파트너 공용 화면, 문구/약관목록/다음 이동지만 분기
   if (screen === screens.terms) {
     return (
       <section className="auth-screen">
@@ -751,7 +796,7 @@ export function AuthPages({
         <Logo />
 
         <h2 className="hero-copy huge">
-          고객님의 가입을 위해 약관에 동의해주세요
+          <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 가입을 위해 약관에 동의해주세요
         </h2>
 
         <div className="terms-panel docked">
@@ -762,7 +807,7 @@ export function AuthPages({
             약관 자세히보기
           </button>
 
-          {signupTerms.map((item, index) => (
+          {currentSignupTerms.map((item, index) => (
             <label className="check-line" key={item}>
               <input
                 type="checkbox"
@@ -788,7 +833,9 @@ export function AuthPages({
             </PrimaryButton>
 
             <PrimaryButton
-              onClick={() => go(screens.phone)}
+              onClick={() =>
+                go(userType === 'partner' ? screens.category : screens.phone)
+              }
               disabled={!isRequiredTermsChecked}
             >
               동의 및 진행
@@ -817,128 +864,125 @@ export function AuthPages({
                   보여주면 됩니다.
                 </p>
 
-                <div className="terms-modal-content">
-                  <h4>1. [필수] 개인정보 수집 및 이용 동의</h4>
+                {userType !== 'partner' && (
+                  <div className="terms-modal-content">
+                    <h4>1. [필수] 개인정보 수집 및 이용 동의</h4>
 
-                  <p><strong>1) 수집 항목</strong></p>
-                  <p>
-                    이름, 휴대전화 번호, 서비스 이용기록, 기기 정보,
-                    (매칭 시) 시공 희망 주소지
-                  </p>
+                    <p><strong>1) 수집 항목</strong></p>
+                    <p>
+                      이름, 휴대전화 번호, 서비스 이용기록, 기기 정보,
+                      (매칭 시) 시공 희망 주소지
+                    </p>
 
-                  <p><strong>2) 수집 목적</strong></p>
-                  <p>
-                    서비스 가입 및 본인 인증, 시공 견적 산출,
-                    고객 상담 및 CS 처리
-                  </p>
+                    <p><strong>2) 수집 목적</strong></p>
+                    <p>
+                      서비스 가입 및 본인 인증, 시공 견적 산출,
+                      고객 상담 및 CS 처리
+                    </p>
 
-                  <p><strong>3) 보유 및 이용기간</strong></p>
-                  <p>
-                    회원 탈퇴 시 즉시 파기
-                    (단, 관계 법령에 따라 보존이 필요한 경우
-                    해당 법령에서 정한 기간 동안 보관)
-                  </p>
+                    <p><strong>3) 보유 및 이용기간</strong></p>
+                    <p>
+                      회원 탈퇴 시 즉시 파기
+                      (단, 관계 법령에 따라 보존이 필요한 경우
+                      해당 법령에서 정한 기간 동안 보관)
+                    </p>
 
-                  <p>
-                    • 귀하는 동의를 거부할 권리가 있으나,
-                    거부 시 서비스 가입 및 견적 산출이 제한됩니다.
-                  </p>
+                    <p>
+                      • 귀하는 동의를 거부할 권리가 있으나,
+                      거부 시 서비스 가입 및 견적 산출이 제한됩니다.
+                    </p>
 
-                  <hr />
+                    <hr />
 
-                  <h4>2. [필수] AI 품질 검사를 위한 이미지 데이터 처리 동의</h4>
+                    <h4>2. [필수] AI 품질 검사를 위한 이미지 데이터 처리 동의</h4>
 
-                  <p><strong>1) 수집 항목</strong></p>
-                  <p>
-                    사용자가 직접 촬영하여 업로드한
-                    시공 부위 사진 및 영상
-                  </p>
+                    <p><strong>1) 수집 항목</strong></p>
+                    <p>
+                      사용자가 직접 촬영하여 업로드한
+                      시공 부위 사진 및 영상
+                    </p>
 
-                  <p><strong>2) 수집 및 이용 목적</strong></p>
+                    <p><strong>2) 수집 및 이용 목적</strong></p>
 
-                  <ul>
-                    <li>
-                      딥러닝(CNN) AI 모델을 활용한 이미지 유효성
-                      (시공 부위 식별) 사전 검사
-                    </li>
+                    <ul>
+                      <li>
+                        딥러닝(CNN) AI 모델을 활용한 이미지 유효성
+                        (시공 부위 식별) 사전 검사
+                      </li>
 
-                    <li>
-                      파손 심각도 및 수리 범위 1차 판별,
-                      자동 견적 산출을 위한 데이터 분석
-                    </li>
+                      <li>
+                        파손 심각도 및 수리 범위 1차 판별,
+                        자동 견적 산출을 위한 데이터 분석
+                      </li>
 
-                    <li>
-                      AI 엔진 고도화를 위한
-                      비식별화(익명화)된 학습 데이터 활용
-                    </li>
-                  </ul>
+                      <li>
+                        AI 엔진 고도화를 위한
+                        비식별화(익명화)된 학습 데이터 활용
+                      </li>
+                    </ul>
 
-                  <p><strong>3) 유의사항</strong></p>
+                    <p><strong>3) 유의사항</strong></p>
 
-                  <p>
-                    업로드된 이미지 내에 개인을 식별할 수 있는 정보
-                    (가족사진, 얼굴, 거울에 비친 모습 등)가
-                    포함되지 않도록 주의하여 주시기 바랍니다.
-                  </p>
+                    <p>
+                      업로드된 이미지 내에 개인을 식별할 수 있는 정보
+                      (가족사진, 얼굴, 거울에 비친 모습 등)가
+                      포함되지 않도록 주의하여 주시기 바랍니다.
+                    </p>
 
-                  <hr />
+                    <hr />
 
-                  <h4>3. [필수] 시공 매칭을 위한 제3자(시공자) 정보 제공 동의</h4>
+                    <h4>3. [필수] 시공 매칭을 위한 제3자(시공자) 정보 제공 동의</h4>
 
-                  <p><strong>1) 제공받는 자</strong></p>
+                    <p><strong>1) 제공받는 자</strong></p>
 
-                  <p>
-                    본 플랫폼과 제휴된 해당 지역 시공 파트너
-                    (매칭된 시공자에 한함)
-                  </p>
+                    <p>
+                      본 플랫폼과 제휴된 해당 지역 시공 파트너
+                      (매칭된 시공자에 한함)
+                    </p>
 
-                  <p><strong>2) 제공하는 항목</strong></p>
+                    <p><strong>2) 제공하는 항목</strong></p>
 
-                  <ul>
-                    <li>
-                      <strong>매칭 전</strong> :
-                      동/읍/면 단위의 대략적 위치,
-                      시공 희망 부위 사진,
-                      AI 견적 리포트
-                    </li>
+                    <ul>
+                      <li>
+                        <strong>매칭 전</strong> :
+                        동/읍/면 단위의 대략적 위치,
+                        시공 희망 부위 사진,
+                        AI 견적 리포트
+                      </li>
 
-                    <li>
-                      <strong>매칭 후</strong> :
-                      이름,
-                      안심번호(또는 휴대전화 번호),
-                      상세 주소
-                    </li>
-                  </ul>
+                      <li>
+                        <strong>매칭 후</strong> :
+                        이름,
+                        안심번호(또는 휴대전화 번호),
+                        상세 주소
+                      </li>
+                    </ul>
 
-                  <p><strong>3) 제공 목적</strong></p>
+                    <p><strong>3) 제공 목적</strong></p>
 
-                  <p>
-                    현장 방문, 정확한 견적 안내,
-                    시공 서비스 제공 및 분쟁 해결
-                  </p>
+                    <p>
+                      현장 방문, 정확한 견적 안내,
+                      시공 서비스 제공 및 분쟁 해결
+                    </p>
 
-                  <p><strong>4) 보유 및 이용기간</strong></p>
+                    <p><strong>4) 보유 및 이용기간</strong></p>
 
-                  <p>
-                    시공 완료 및 하자보수(AS) 기간 종료 후 즉시 파기
-                  </p>
-                </div>
+                    <p>
+                      시공 완료 및 하자보수(AS) 기간 종료 후 즉시 파기
+                    </p>
+                  </div>
+                )}
 
-                <p>
-                  ----------------------------------------
-                </p>
-
-                <p>
-                  개인정보 수집 및 이용 동의 내용...
-                </p>
-
-                <p>
-                  AI 이미지 분석 동의 내용...
-                </p>
-
-                <p>
-                  제3자 정보 제공 동의 내용...
-                </p>
+                {userType === 'partner' && (
+                  <div className="terms-modal-content">
+                    <p>
+                      {/* TODO: 파트너용 약관 상세 내용으로 교체 */}
+                      파트너 서비스 이용약관 / 시공 표준(시방서) 준수 및
+                      하자보수(AS) 정책 / 고객 매칭을 위한 프로필 정보 공개
+                      관련 상세 내용을 이곳에 채워주세요.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button
@@ -954,12 +998,255 @@ export function AuthPages({
     );
   }
 
+  // ---------------------------------------------------------------
+  // 파트너 전용: 전문 분야 선택
+  // ---------------------------------------------------------------
+  if (screen === screens.category) {
+    return (
+      <section className="auth-screen">
+        <BackButton onClick={back} />
+        <Logo />
+        <h2 className="hero-copy compact">
+          <strong>파트너</strong>님의 전문 분야를<br />알려주세요
+        </h2>
+
+        <MultiSelectPanel
+          groups={categoryGroups}
+          selected={partnerSignupData.categories}
+          onToggle={(item) => togglePartnerSelection('categories', item, 999)}
+          onReset={() => setPartnerSignupData((prev) => ({ ...prev, categories: [] }))}
+          footerLabel="선택한 분야"
+          maxCount={999}
+        />
+
+        <PrimaryButton
+          narrow
+          onClick={() => go(screens.bizReg)}
+          disabled={partnerSignupData.categories.length === 0}
+        >
+          다음
+        </PrimaryButton>
+      </section>
+    )
+  }
+
+  // ---------------------------------------------------------------
+  // 파트너 전용: 사업자등록증 업로드 + 사업자등록번호 수동 입력
+  // ---------------------------------------------------------------
+  if (screen === screens.bizReg) {
+    return (
+      <section className="auth-screen">
+        <BackButton onClick={back} />
+        <Logo />
+        <h2 className="hero-copy compact">
+          <strong>파트너</strong>님의<br />사업자등록증을<br />업로드해주세요
+        </h2>
+
+        <label className="upload-box">
+          <input
+            type="file"
+            accept="image/*,.pdf"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) {
+                setPartnerSignupData((prev) => ({ ...prev, businessRegFile: file }))
+              }
+            }}
+          />
+
+          {businessRegPreviewUrl ? (
+            <img
+              src={businessRegPreviewUrl}
+              alt="사업자등록증 미리보기"
+              className="upload-preview-image"
+            />
+          ) : partnerSignupData.businessRegFile ? (
+            <span className="upload-filename">
+              {partnerSignupData.businessRegFile.name}
+            </span>
+          ) : (
+            <FaCamera size={32} />
+          )}
+        </label>
+
+        <label className="field">
+          <input
+            inputMode="numeric"
+            maxLength={12}
+            placeholder="사업자등록번호 (예: 123-45-67890)"
+            value={partnerSignupData.businessNumber}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "").slice(0, 10)
+
+              let formatted = digits
+
+              if (digits.length > 3 && digits.length <= 5) {
+                formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`
+              } else if (digits.length > 5) {
+                formatted = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5, 10)}`
+              }
+
+              setPartnerSignupData((prev) => ({
+                ...prev,
+                businessNumber: formatted,
+              }))
+            }}
+          />
+        </label>
+
+        <PrimaryButton
+          narrow
+          onClick={() => go(screens.companyInfo)}
+          disabled={
+            !partnerSignupData.businessRegFile ||
+            !partnerSignupData.businessNumber.trim()
+          }
+        >
+          다음
+        </PrimaryButton>
+      </section>
+    )
+  }
+
+  // ---------------------------------------------------------------
+  // 파트너 전용: 업체 정보 (업체 주소 검색 포함)
+  // ---------------------------------------------------------------
+  if (screen === screens.companyInfo) {
+    return (
+      <section className="auth-screen">
+        <BackButton onClick={back} />
+        <Logo />
+        <h2 className="hero-copy compact">
+          <strong>파트너</strong>님의<br />업체 정보를<br />입력해주세요
+        </h2>
+
+        <label className="field">
+          <input
+            placeholder="업체명"
+            value={partnerSignupData.companyName}
+            onChange={(e) =>
+              setPartnerSignupData({ ...partnerSignupData, companyName: e.target.value })
+            }
+          />
+        </label>
+
+        <label className="field">
+          <input
+            placeholder="업체 대표 이름"
+            value={partnerSignupData.ownerName}
+            onChange={(e) =>
+              setPartnerSignupData({ ...partnerSignupData, ownerName: e.target.value })
+            }
+          />
+        </label>
+
+        <label className="field">
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={13}
+            placeholder="업체 전화번호"
+            value={partnerSignupData.companyPhone}
+            onChange={(e) => {
+              const phone = e.target.value.replace(/\D/g, "");
+
+              let formatted = phone;
+
+              if (phone.length > 3 && phone.length <= 7) {
+                formatted = `${phone.slice(0, 3)}-${phone.slice(3)}`;
+              } else if (phone.length > 7) {
+                formatted = `${phone.slice(0, 3)}-${phone.slice(3, 7)}-${phone.slice(7, 11)}`;
+              }
+
+              setPartnerSignupData({ ...partnerSignupData, companyPhone: formatted });
+            }}
+          />
+        </label>
+
+        {/* TODO: 실제 백엔드가 허용하는 business_status 값 목록으로 옵션을 맞춰주세요 */}
+        <label className="field">
+          <select
+            value={partnerSignupData.businessStatus}
+            onChange={(e) =>
+              setPartnerSignupData({ ...partnerSignupData, businessStatus: e.target.value })
+            }
+            style={{ width: '100%', border: 0, background: 'transparent' }}
+          >
+            <option value="">사업자 구분 선택</option>
+            <option value="INDIVIDUAL">개인사업자</option>
+            <option value="CORPORATE">법인사업자</option>
+          </select>
+        </label>
+
+        <button
+          className="input-like"
+          type="button"
+          onClick={() => setShowCompanyAddressModal(true)}
+        >
+          주소 검색
+        </button>
+
+        <label className="field compact">
+          <input
+            value={partnerSignupData.companyAddress}
+            placeholder="검색한 주소가 표시됩니다."
+            readOnly
+          />
+        </label>
+
+        <label className="field compact">
+          <input
+            placeholder="업체 상세 주소"
+            value={partnerSignupData.companyDetailAddress}
+            onChange={(e) =>
+              setPartnerSignupData({
+                ...partnerSignupData,
+                companyDetailAddress: e.target.value,
+              })
+            }
+          />
+        </label>
+
+        <PrimaryButton
+          narrow
+          onClick={() => go(screens.phone)}
+          disabled={
+            !partnerSignupData.companyName.trim() ||
+            !partnerSignupData.businessStatus ||
+            !partnerSignupData.companyAddress.trim()
+          }
+        >
+          다음
+        </PrimaryButton>
+
+        {showCompanyAddressModal ? (
+          <JusoSearchModal
+            onClose={() => setShowCompanyAddressModal(false)}
+            onSelect={(item) => {
+              setPartnerSignupData((current) => ({
+                ...current,
+                companyAddress: item.roadAddr,
+                companyZipNo: item.zipNo || '',
+                companyRegionCodeId: item.admCd || null,
+              }))
+              setShowCompanyAddressModal(false)
+            }}
+          />
+        ) : null}
+      </section>
+    )
+  }
+
+  // 전화번호 - 고객/파트너 공용 (문구, 다음 이동지, 건너뛰기 노출 여부만 분기)
   if (screen === screens.phone) {
     return (
       <section className="auth-screen">
         <BackButton onClick={back} />
         <Logo />
-        <h2 className="hero-copy compact">고객님의 전화번호를 <br />알려주세요</h2>
+        <h2 className="hero-copy compact">
+          <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 전화번호를 <br />알려주세요
+        </h2>
 
         <div className="phone-row">
           <select
@@ -1005,22 +1292,28 @@ export function AuthPages({
 
         <PrimaryButton
           narrow
-          onClick={() => go(screens.address)}
+          onClick={() =>
+            go(userType === 'partner' ? screens.region : screens.address)
+          }
           disabled={!signupData.phone.trim()}
         >
           다음
         </PrimaryButton>
 
-        <button
-          className="link-row"
-          onClick={() => go(screens.address)}
-        >
-          건너뛰기
-        </button>
+        {/* 파트너는 시안상 건너뛰기 노출 안 됨 (필수 단계) */}
+        {userType !== 'partner' && (
+          <button
+            className="link-row"
+            onClick={() => go(screens.address)}
+          >
+            건너뛰기
+          </button>
+        )}
       </section>
     )
   }
 
+  // 고객 전용: 주소 입력
   if (screen === screens.address) {
     return (
       <section className="auth-screen">
@@ -1095,15 +1388,57 @@ export function AuthPages({
     );
   }
 
+  // ---------------------------------------------------------------
+  // 파트너 전용: 작업 지역 선택 (마지막 단계 -> 바로 가입 처리)
+  // ---------------------------------------------------------------
+  if (screen === screens.region) {
+    return (
+      <section className="auth-screen">
+        <BackButton onClick={back} />
+        <Logo />
+        <h2 className="hero-copy compact">
+          <strong>파트너</strong>님의 작업 지역을<br />선택하세요
+        </h2>
+
+        <MultiSelectPanel
+          groups={regionGroups}
+          selected={partnerSignupData.workRegions}
+          onToggle={(item) => togglePartnerSelection('workRegions', item, 10)}
+          onReset={() => setPartnerSignupData((prev) => ({ ...prev, workRegions: [] }))}
+          footerLabel="선택한 곳"
+          maxCount={10}
+        />
+
+        <PrimaryButton
+          narrow
+          onClick={handlePartnerSignup}
+          disabled={partnerSignupData.workRegions.length === 0}
+        >
+          다음
+        </PrimaryButton>
+      </section>
+    )
+  }
+
+  // 완료 화면 - 고객/파트너 공용, 문구만 분기
   return (
     <section className="auth-screen complete-screen">
       <Logo />
       <div className="complete-copy">
-        <h2>고객님, 환영합니다 !</h2>
+        <h2>{userType === 'partner' ? '파트너' : '고객'}님, 환영합니다 !</h2>
         <p>회원가입이 완료되었어요</p>
       </div>
       <div className="status-ring success">✓</div>
-      <PrimaryButton narrow onClick={() => setScreen(screens.home)}>완료</PrimaryButton>
+      <PrimaryButton
+        narrow
+        onClick={() =>
+          userType === 'partner'
+            ? go(contractorScreenPaths[contractorScreens.home])
+            : go(screens.home)
+        }
+      >
+        완료
+      </PrimaryButton>
     </section>
   )
 }
