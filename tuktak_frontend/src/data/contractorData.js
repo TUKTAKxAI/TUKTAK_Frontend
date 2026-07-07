@@ -171,3 +171,20 @@ export const contractorRegionTree = [
   { category: '경기도', options: ['김포시', '고양시', '부천시', '수원시'] },
   { category: '인천광역시', options: ['서구', '남동구', '연수구', '부평구'] },
 ]
+
+export const chatThreads = [
+  { id: 'hong', name: '홍길동 파트너님', preview: '내일 그럼 오후 4시에 방문하도록 하 ...', time: '오후 3:30', unread: 1 },
+  { id: 'kim', name: '김도배 파트너님', preview: '시공 감사합니다 ~', time: '2개월 전', unread: 0 },
+]
+
+export const initialMessages = {
+  hong: [
+    { from: 'me', text: '안녕하세요. 도어락 수리 견적서 넣은 홍길동입니다. 매칭 잡아주셔서 채팅 드립니다.' },
+    { from: 'partner', text: '아 네! 안녕하세요 ㅎㅎ 잘부탁드립니다!' },
+    { from: 'me', text: '거두절미하고 말씀드리겠습니다. 내일 오후 3시부터 7시까지 가능하다고 하셨는데, 4시 가능하신지요.' },
+    { from: 'partner', text: '아 네 그때 가능합니다!' },
+    { from: 'me', text: '내일 그럼 오후 4시에 방문하도록 하겠습니다.' },
+    { from: 'partner', text: '네 그때 뵙겠습니다 ~' },
+  ],
+  kim: [{ from: 'partner', text: '시공 감사합니다 ~' }],
+}

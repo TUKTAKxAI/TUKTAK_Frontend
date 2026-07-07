@@ -1,21 +1,26 @@
 import { FaChevronRight } from 'react-icons/fa'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
-import { contractorScreens } from '../../data/contractorData'
 import { screens } from '../../data/customerData'
+import { contractorScreens } from '../../data/contractorData'
 
 export function StatusBadge({ children, tone = 'blue' }) {
   return <span className={`contractor-status ${tone}`}>{children}</span>
 }
 
 export function ContractorPage({ title, children, go, back, action }) {
-  const headerGo = (screen) => {
-    go?.(screen === screens.mypage ? contractorScreens.mypage : screen)
+  const handleGo = (screen) => {
+    if (screen === screens.mypage) {
+      go?.(contractorScreens.mypage)
+    } else {
+      go?.(screen)
+    }
   }
 
   return (
-    <section className="contractor-screen">
-      <CustomerTopBar go={headerGo} compact onNotificationClick={() => go?.(contractorScreens.notifications)} />
-      <div className="contractor-content">
+    <section className="home-layout">
+      <CustomerTopBar go={handleGo} />
+
+      <div className="flex flex-col flex-1">
         {(title || back || action) ? (
           <div className="contractor-page-head">
             <div>
@@ -27,6 +32,8 @@ export function ContractorPage({ title, children, go, back, action }) {
         ) : null}
         {children}
       </div>
+
+      <div className="h-40 w-full shrink-0"></div>
     </section>
   )
 }
