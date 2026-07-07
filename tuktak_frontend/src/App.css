@@ -102,7 +102,7 @@ button {
 
 .chat-room-head h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -1723,11 +1723,14 @@ button {
 
 .subpage-screen,
 .selection-screen,
-.chat-list-screen,
 .chat-room-screen,
 .form-screen,
 .document-screen {
   padding-top: 4px;
+}
+
+.chat-list-screen {
+  padding-top: 0;
 }
 
 .subpage-title-row,
@@ -1752,8 +1755,7 @@ button {
 }
 
 .subpage-title-row h1,
-.brand-with-title h1,
-.chat-room-head h1 {
+.brand-with-title h1 {
   font-size: 28px;
   font-weight: 650;
   letter-spacing: 0;
@@ -3601,38 +3603,34 @@ button {
 
 .bottom-nav .home-circle {
   position: absolute;
-  bottom: 0; 
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  
+
   width: 100px;
   height: 100px;
-  
+
   z-index: 10;
-  
+
   display: flex;
   justify-content: center;
-  align-items: flex-end; 
+  align-items: flex-end;
 }
 
 .bottom-nav .home-circle img {
   width: 100% !important;
   height: auto !important;
-  
+
   filter: drop-shadow(0px -3px 6px rgba(0, 0, 0, 0.15)) !important;
 }
 
 .bottom-nav button:nth-child(2) {
-  transform: translateX(-12px); 
+  transform: translateX(-12px);
 }
 
 .bottom-nav button:nth-child(4) {
-  transform: translateX(12px); 
+  transform: translateX(12px);
 }
-
-
-
-
 
 .avatar {
   width: 56px;
@@ -3972,14 +3970,14 @@ button {
 }
 
 .chat-page-title img {
-  width: 46px;
-  height: 46px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
 }
 
 .chat-page-title h2 {
   margin: 0;
-  font-size: 48px;
+  font-size: 28px;
   font-weight: 800;
   color: #1F2937;
   line-height: 1;
@@ -4187,4 +4185,10 @@ button {
 
 .chat-menu-item.danger {
   color: #e53935;
+}
+
+.inline-back-arrow img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
