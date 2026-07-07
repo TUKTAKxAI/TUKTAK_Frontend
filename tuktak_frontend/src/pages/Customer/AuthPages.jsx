@@ -14,6 +14,7 @@ import {
   checkEmailAvailability,
 } from '../../services/authService'
 import { searchJusoAddresses } from '../../api/jusoApi'
+import { clearAuthTokens } from '../../api/client'
 import { FaEye, FaEyeSlash, FaCamera } from "react-icons/fa";
 
 // ----------------------------------------------------------------------------
@@ -638,18 +639,52 @@ export function AuthPages({
 
   const handleLogin = async () => {
     try {
-      await login(
+      const loginResult = await login(
         loginData.email,
         loginData.password
       );
 
+      const role = loginResult.user?.user_type;
       if (selectedRole === "partner") {
-        go(contractorScreenPaths[contractorScreens.home]);
-      } else {
-        go(screens.home);
+        if (role === "CONTRACTOR" || role === "BOTH") {
+          await authLogin();
+          go(contractorScreenPaths[contractorScreens.home]);
+          return;
+        }
+
+        alert("파트너 등록이 필요합니다. 기존 계정 정보로 파트너 등록을 이어갑니다.");
+        clearAuthTokens();
+        setUserType("partner");
+        setSignupData((current) => ({
+          ...current,
+          email: loginData.email,
+          password: loginData.password,
+          passwordConfirm: loginData.password,
+        }));
+        setEmailCheckResult(false);
+        setCheckedEmail(loginData.email);
+        go(screens.userType);
+        return;
+      }
+
+      if (role === "CONTRACTOR") {
+        alert("고객 서비스 등록이 필요합니다. 기존 계정 정보로 고객 등록을 이어갑니다.");
+        clearAuthTokens();
+        setUserType("customer");
+        setSignupData((current) => ({
+          ...current,
+          email: loginData.email,
+          password: loginData.password,
+          passwordConfirm: loginData.password,
+        }));
+        setEmailCheckResult(false);
+        setCheckedEmail(loginData.email);
+        go(screens.userType);
+        return;
       }
 
       await authLogin();
+      go(screens.home);
 
     } catch (err) {
       // client.js 의 응답 인터셉터가 에러를 normalizeError()로 감싸면서
@@ -717,6 +752,27 @@ export function AuthPages({
   const isValidNickname = (nickname) => {
     return nickname.trim().length >= 2;
   };
+
+  const getSignupErrorMessage = (detail, roleLabel) => {
+    if (detail === "Existing account password does not match") {
+      return "이미 가입된 이메일입니다. 기존 계정 비밀번호를 입력해주세요."
+    }
+
+    if (detail === "Account already has customer access") {
+      return "이미 고객으로 가입된 계정입니다. 로그인해주세요."
+    }
+
+    if (detail === "Account already has contractor access") {
+      return "이미 파트너로 등록된 계정입니다. 로그인해주세요."
+    }
+
+    if (detail === "Phone does not match existing account") {
+      return `기존 계정의 휴대폰번호와 달라 ${roleLabel} 등록을 진행할 수 없어요.`
+    }
+
+    if (typeof detail === "string") return detail
+    return JSON.stringify(detail ?? "회원가입에 실패했습니다.", null, 2)
+  }
 
   // 파트너 카테고리/지역 선택 토글 헬퍼
   const togglePartnerSelection = (field, item, max) => {
@@ -786,11 +842,7 @@ export function AuthPages({
 
     } catch (err) {
       const detail = err.data?.detail;
-      alert(
-        typeof detail === "string"
-          ? detail
-          : JSON.stringify(err.data ?? err.message, null, 2)
-      );
+      alert(getSignupErrorMessage(detail ?? err.data ?? err.message, "고객"));
     }
 
   }
@@ -885,11 +937,7 @@ export function AuthPages({
       await authLogin();
     } catch (err) {
       const detail = err.data?.detail;
-      alert(
-        typeof detail === "string"
-          ? detail
-          : JSON.stringify(err.data ?? err.message, null, 2)
-      );
+      alert(getSignupErrorMessage(detail ?? err.data ?? err.message, "파트너"));
     }
   }
 
@@ -1162,7 +1210,7 @@ export function AuthPages({
 
         {emailCheckResult === false && (
           <p className="email-guide invalid">
-            이미 가입된 이메일입니다.
+            이미 가입된 이메일입니다. 기존 계정 비밀번호가 맞으면 선택한 역할을 추가로 등록할 수 있어요.
           </p>
         )}
 
@@ -1266,7 +1314,7 @@ export function AuthPages({
             }
 
             if (
-              emailCheckResult !== true ||
+              emailCheckResult === null ||
               checkedEmail !== signupData.email
             ) {
               alert("이메일 중복확인을 진행해주세요.");
