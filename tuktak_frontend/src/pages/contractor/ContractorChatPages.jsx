@@ -13,6 +13,21 @@ if (!globalThis.currentActiveThreadId) {
   globalThis.currentActiveThreadId = 'hong'; 
 }
 
+const initialMessagesByChat = {
+  'chat-1': [
+    { id: 'chat-1-1', from: 'customer', text: '내일 오후 3시에 방문 가능하실까요?' },
+    { id: 'chat-1-2', from: 'me', text: '네, 가능합니다. 방문 전에 연락드리겠습니다.' },
+  ],
+  'chat-2': [
+    { id: 'chat-2-1', from: 'customer', text: '견적 확인했습니다.' },
+    { id: 'chat-2-2', from: 'me', text: '확인 감사합니다. 일정 확정되면 다시 안내드리겠습니다.' },
+  ],
+}
+
+function getLastMessage(messages = []) {
+  return messages[messages.length - 1]?.text || '아직 대화가 없습니다.'
+}
+
 export function ContractorChatsPage({ go }) {
   const [threads, setFilterThreads] = useState(globalThis.partnerChatThreads)
 

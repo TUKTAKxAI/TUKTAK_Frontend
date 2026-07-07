@@ -10,6 +10,7 @@ export const contractorScreens = {
   quotes: 'contractorQuotes',
   records: 'contractorRecords',
   recordDetail: 'contractorRecordDetail',
+  paymentRequest: 'contractorPaymentRequest',
   chats: 'contractorChats',
   chatRoom: 'contractorChatRoom',
   reviews: 'contractorReviews',
