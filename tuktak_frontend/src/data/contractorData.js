@@ -27,6 +27,15 @@ export const contractorNavItems = [
   { key: contractorScreens.mypage, label: '마이' },
 ]
 
+// 파트너 회원가입 약관 (파트너 데이터이므로 contractorData.js 에 유지)
+export const partnerSignupTerms = [
+  '(필수) 파트너 서비스 이용약관 동의',
+  '(필수) 개인정보 수집 및 이용 동의',
+  '(필수) 시공 표준(시방서) 준수 및 하자보수(AS) 정책 동의',
+  '(필수) 고객 매칭을 위한 프로필 정보 공개 동의',
+  '(선택) 플랫폼 파트너 혜택 및 마케팅 정보 수신 동의',
+]
+
 export const contractorProfile = {
   name: '홍길동',
   email: 'hongroadest@abc.com',
