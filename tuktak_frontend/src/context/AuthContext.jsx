@@ -3,6 +3,10 @@ import { getMe } from "../services/userService";
 import { logout as logoutApi } from "../services/authService";
 import { AuthContext } from "./authContext";
 
+function unwrapUser(result) {
+    return result?.data?.user ?? result?.data ?? result?.user ?? result;
+}
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [isLogin, setIsLogin] = useState(false);
@@ -12,7 +16,7 @@ export function AuthProvider({ children }) {
         try {
             const result = await getMe();
 
-            setUser(result.user ?? result);
+            setUser(unwrapUser(result));
             setIsLogin(true);
         } catch {
             setUser(null);
@@ -29,7 +33,7 @@ export function AuthProvider({ children }) {
     const login = async () => {
         const result = await getMe();
 
-        setUser(result.user ?? result);
+        setUser(unwrapUser(result));
         setIsLogin(true);
     };
 

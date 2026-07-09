@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { Avatar } from '../../components/customer/FormControls'
 import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { figmaAssets } from '../../components/customer/figmaAssets'
 import chatIcon from '../../assets/figma/chat.png'
 
 const FILTERS = [
@@ -257,9 +258,6 @@ export function ChatRoomPage({
             )
     }
 
-    const [hiddenThreads, setHiddenThreads] =
-        useState([])
-
     const moveSearchResult = (
         direction
     ) => {
@@ -360,7 +358,7 @@ export function ChatRoomPage({
                             className="inline-back-arrow"
                             onClick={back}
                         >
-                            ‹
+                            <img src={figmaAssets.back} alt="뒤로가기" />
                         </button>
 
                         <div className="chat-room-title">
@@ -413,7 +411,7 @@ export function ChatRoomPage({
                                 )
                             }}
                         >
-                            ‹
+                            <img src={figmaAssets.back} alt="뒤로가기" />
                         </button>
 
                         <input
@@ -428,6 +426,11 @@ export function ChatRoomPage({
                                         .value
                                 )
                             }
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    handleSearch();
+                                }
+                            }}
                             placeholder="대화 내용 검색"
                         />
 
@@ -519,6 +522,11 @@ export function ChatRoomPage({
                                 .value
                         )
                     }
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            sendMessage();
+                        }
+                    }}
                 />
 
                 <button
