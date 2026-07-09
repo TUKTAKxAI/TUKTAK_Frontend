@@ -324,7 +324,7 @@ export function RiskLoadingPage({ go }) {
 }
 
 // 5. 생성 완료 페이지
-export function RiskDonePage({ go }) {
+export function RiskDonePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const resultData = location.state?.resultData;
@@ -563,7 +563,7 @@ export function RiskOutputPage({ go }) {
 }
 
 // 7. 내 리스크 리포트 목록 페이지 (실제 데이터 연동)
-export function MyRiskListPage({ go, back }) {
+export function MyRiskListPage({ go }) {
   // 💡 모달에 띄울 데이터를 담아둘 상태(State) 상자를 만듭니다.
   const [selectedRisk, setSelectedRisk] = useState(null);
   
@@ -660,7 +660,6 @@ export function MyRiskListPage({ go, back }) {
 // 견적서 모달과 동일한 오버레이 배경을 쓰되, 안쪽은 리포트 디자인으로 꽉 채웠습니다.
 // ==============================================================
 function RiskReportModal({ item, onClose }) {
-  const riskItems = item.risk_items || item.risk_items_json || [];
   const checklist = item.checklist || item.checklist_json || [];
   const additionalCostRisks = item.additional_cost_risks || item.additional_cost_risks_json || [];
   const safetyRisks = item.safety_risks || item.safety_risks_json || [];

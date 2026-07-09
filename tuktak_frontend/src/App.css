@@ -1494,7 +1494,7 @@ button {
 .logo-mini {
   width: 58px;
   height: 58px;
-  background: url('./assets/figma/tuktak-logo.png') center/contain no-repeat;
+  background: url('./assets/figma/tuktak-logo.webp') center/contain no-repeat;
 }
 
 .service-hero h1 {

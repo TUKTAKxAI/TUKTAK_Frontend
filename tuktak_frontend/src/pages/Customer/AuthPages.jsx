@@ -5,7 +5,7 @@ import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { screens, signupTerms } from '../../data/customerData'
 import { contractorScreens, partnerSignupTerms } from '../../data/contractorData'
 import { contractorScreenPaths } from '../../routes/contractorRoutes'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../context/authContext'
 import {
   login,
@@ -13,7 +13,6 @@ import {
   signupPartner,
   checkEmailAvailability,
 } from '../../services/authService'
-import { searchJusoAddresses } from '../../api/jusoApi'
 import { clearAuthTokens } from '../../api/client'
 import { FaEye, FaEyeSlash, FaCamera } from "react-icons/fa";
 
@@ -588,6 +587,7 @@ export function AuthPages({
   setUserType,
   terms,
   setTerms,
+  initialSelectedRole = "customer",
 }) {
 
   const { login: authLogin } = useAuth()
@@ -941,7 +941,7 @@ export function AuthPages({
     }
   }
 
-  const [selectedRole, setSelectedRole] = useState("customer");
+  const [selectedRole, setSelectedRole] = useState(initialSelectedRole === "partner" ? "partner" : "customer");
 
   // null : 아직 확인 안 함
   // true : 사용 가능
@@ -964,23 +964,23 @@ export function AuthPages({
   const [showCompanyAddressModal, setShowCompanyAddressModal] = useState(false);
 
   // 사업자등록증 이미지 미리보기 (PDF 등 이미지가 아닌 파일은 미리보기 없이 파일명만 표시)
-  const [businessRegPreviewUrl, setBusinessRegPreviewUrl] = useState(null);
-
-  useEffect(() => {
+  const businessRegPreviewUrl = useMemo(() => {
     const file = partnerSignupData.businessRegFile;
 
     if (!file || !file.type?.startsWith('image/')) {
-      setBusinessRegPreviewUrl(null);
-      return;
+      return null;
     }
 
-    const url = URL.createObjectURL(file);
-    setBusinessRegPreviewUrl(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    return URL.createObjectURL(file);
   }, [partnerSignupData.businessRegFile]);
+
+  useEffect(() => {
+    return () => {
+      if (businessRegPreviewUrl) {
+        URL.revokeObjectURL(businessRegPreviewUrl);
+      }
+    };
+  }, [businessRegPreviewUrl]);
 
   const resetSignupForm = () => {
     setSignupData({
@@ -1026,26 +1026,6 @@ export function AuthPages({
     setShowCompanyAddressModal(false);
   };
 
-  const searchAddress = async () => {
-    if (addressKeyword.trim().length < 2) {
-      alert("주소를 2글자 이상 입력해주세요.");
-      return;
-    }
-
-    try {
-      const data = await searchJusoAddresses({
-        keyword: addressKeyword,
-        currentPage: 1,
-        countPerPage: 10,
-      });
-
-      setAddressList(data.items || []);
-
-    } catch (error) {
-      console.error(error);
-      alert("주소 검색 실패");
-    }
-  };
 
   if (screen === screens.login) {
     return (

@@ -258,9 +258,6 @@ export function ChatRoomPage({
             )
     }
 
-    const [hiddenThreads, setHiddenThreads] =
-        useState([])
-
     const moveSearchResult = (
         direction
     ) => {

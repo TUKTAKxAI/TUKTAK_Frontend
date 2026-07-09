@@ -75,11 +75,13 @@ function useScreenNavigator() {
 function PublicRoute({ screen }) {
   const flow = useCustomerFlow()
   const { isLogin, loading } = useAuth()
+  const location = useLocation()
   const { go, back, setScreen } = useScreenNavigator()
+  const forceLogin = Boolean(location.state?.forceLogin)
 
   if (loading) return null
 
-  if (isLogin && screen !== screens.welcome) {
+  if (isLogin && screen !== screens.welcome && !forceLogin) {
     return <Navigate to={screenPaths[screens.home]} replace />
   }
 
@@ -93,6 +95,7 @@ function PublicRoute({ screen }) {
       setUserType={flow.setUserType}
       terms={flow.terms}
       setTerms={flow.setTerms}
+      initialSelectedRole={location.state?.role}
     />
   )
 }
@@ -127,8 +130,19 @@ function ContractorLayout({ children }) {
 
 function ContractorRoute({ screen }) {
   const { go } = useContractorNavigator()
+  const { isLogin, loading, user } = useAuth()
   const location = useLocation()
   const routeState = location.state || {}
+  const loginRedirect = (
+    <Navigate
+      to={screenPaths[screens.login]}
+      replace
+      state={{ forceLogin: true, role: 'partner', from: location.pathname }}
+    />
+  )
+
+  if (loading) return null
+  if (!isLogin || !hasContractorAccess(user)) return loginRedirect
 
   const pages = {
     [contractorScreens.home]: <ContractorHomePage go={go} />,
@@ -152,6 +166,18 @@ function ContractorRoute({ screen }) {
   }
 
   return <ContractorLayout>{pages[screen] || <Navigate to={contractorScreenPaths[contractorScreens.home]} replace />}</ContractorLayout>
+}
+
+function hasContractorAccess(user) {
+  const currentUser = user?.data?.user ?? user?.data ?? user
+  const role = String(currentUser?.user_type || currentUser?.userType || currentUser?.role || currentUser?.type || '').toUpperCase()
+  if (role === 'CONTRACTOR' || role === 'BOTH' || role === 'PARTNER') return true
+
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles : []
+  return roles.some((item) => {
+    const normalized = String(item?.role || item?.name || item).toUpperCase()
+    return normalized === 'CONTRACTOR' || normalized === 'BOTH' || normalized === 'PARTNER'
+  })
 }
 
 function UrgentDialog() {

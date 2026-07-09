@@ -52,8 +52,13 @@ function formatInfoValue(key, value) {
   return value || '-'
 }
 
-const getOptionKey = (option) => (typeof option === 'object' ? option.id : option)
+const normalizeId = (value) => (value === undefined || value === null ? '' : String(value))
+const getOptionKey = (option) => normalizeId(typeof option === 'object' ? option.id : option)
 const getOptionLabel = (option) => (typeof option === 'object' ? option.label : option)
+const uniqueIds = (values = []) => [...new Set(values.map(normalizeId).filter(Boolean))]
+const toApiId = (value) => (/^\d+$/.test(normalizeId(value)) ? Number(value) : value)
+const getServiceTaskId = (service) => service.service_task_id ?? service.serviceTaskId ?? service.task_id ?? service.taskId
+const getRegionCodeId = (service) => service.region_code_id ?? service.regionCodeId ?? service.code_id ?? service.codeId
 
 // 전문분야 목록 API를 카테고리/체크리스트 형태로 변환
 function buildServiceTree(tasks = []) {
@@ -61,7 +66,7 @@ function buildServiceTree(tasks = []) {
     const category = task.main_category || '기타'
     if (!acc[category]) acc[category] = []
     acc[category].push({
-      id: task.service_task_id,
+      id: normalizeId(task.service_task_id),
       label: task.task_name,
     })
     return acc
@@ -77,31 +82,28 @@ function buildRegionTree(codes = []) {
 
   if (parents.length === 0) {
     return codes.length > 0
-      ? [{ category: '지역', options: codes.map((code) => ({ id: code.code_id, label: code.code_name })) }]
+      ? [{ category: '지역', options: codes.map((code) => ({ id: normalizeId(code.code_id), label: code.code_name })) }]
       : []
   }
 
   return parents.map((parent) => ({
     category: parent.code_name,
     options: children
-      .filter((child) => child.parent_code_id === parent.code_id)
-      .map((child) => ({ id: child.code_id, label: child.code_name })),
+      .filter((child) => normalizeId(child.parent_code_id) === normalizeId(parent.code_id))
+      .map((child) => ({ id: normalizeId(child.code_id), label: child.code_name })),
   })).filter((group) => group.options.length > 0)
 }
 
 // 전문분야/지역 페이지에서 공통으로 쓰는 2단 선택 UI
 function SplitTreeSelector({ tree, selected, onToggle }) {
   const [activeCategory, setActiveCategory] = useState(tree[0]?.category || '')
-
-  useEffect(() => {
-    if (!tree.some((group) => group.category === activeCategory)) {
-      setActiveCategory(tree[0]?.category || '')
-    }
-  }, [activeCategory, tree])
+  const effectiveActiveCategory = tree.some((group) => group.category === activeCategory)
+    ? activeCategory
+    : tree[0]?.category || ''
 
   const activeGroup = useMemo(
-    () => tree.find((group) => group.category === activeCategory) || tree[0],
-    [activeCategory, tree],
+    () => tree.find((group) => group.category === effectiveActiveCategory) || tree[0],
+    [effectiveActiveCategory, tree],
   )
 
   return (
@@ -109,7 +111,7 @@ function SplitTreeSelector({ tree, selected, onToggle }) {
       <aside className="contractor-category-list" aria-label="대분류">
         {tree.map((group) => (
           <button
-            className={group.category === activeGroup.category ? 'active' : ''}
+            className={group.category === activeGroup?.category ? 'active' : ''}
             type="button"
             key={group.category}
             onClick={() => setActiveCategory(group.category)}
@@ -124,7 +126,7 @@ function SplitTreeSelector({ tree, selected, onToggle }) {
           <label className="contractor-checkbox-row" key={getOptionKey(option)}>
             <input
               type="checkbox"
-              checked={selected.includes(getOptionKey(option))}
+              checked={selected.map(normalizeId).includes(getOptionKey(option))}
               onChange={() => onToggle(getOptionKey(option))}
             />
             <span>{getOptionLabel(option)}</span>
@@ -372,7 +374,7 @@ export function ContractorMyServicesPage({ go }) {
 
       if (services.length > 0) {
         setSavedServices(services)
-        setSelected([...new Set(services.map((service) => service.service_task_id))])
+        setSelected(uniqueIds(services.map(getServiceTaskId)))
       } else if (nextTree.length === 0) {
         setStatusMessage('전문분야 API 연결 전이라 임시데이터를 표시함.')
       }
@@ -385,13 +387,14 @@ export function ContractorMyServicesPage({ go }) {
 
   // 전문분야는 선택 개수 제한 없이 토글
   const toggle = (option) => {
-    setSelected((current) => (current.includes(option) ? current.filter((item) => item !== option) : [...current, option]))
+    const optionId = normalizeId(option)
+    setSelected((current) => (current.map(normalizeId).includes(optionId) ? current.filter((item) => normalizeId(item) !== optionId) : [...current, optionId]))
   }
 
   // 선택한 전문분야를 기존 지역 조합과 함께 저장
   const saveServices = async () => {
-    const selectedTaskIds = selected.filter((item) => typeof item === 'number')
-    const regionIds = [...new Set(savedServices.map((service) => service.region_code_id).filter(Boolean))]
+    const selectedTaskIds = uniqueIds(selected)
+    const regionIds = uniqueIds(savedServices.map(getRegionCodeId))
 
     if (selectedTaskIds.length === 0) {
       setStatusMessage('현재는 임시 전문분야 데이터라 화면에서만 선택 상태가 반영돼요.')
@@ -406,12 +409,12 @@ export function ContractorMyServicesPage({ go }) {
     const payload = selectedTaskIds.flatMap((serviceTaskId) => (
       regionIds.map((regionCodeId) => {
         const previous =
-          savedServices.find((service) => service.service_task_id === serviceTaskId && service.region_code_id === regionCodeId) ||
-          savedServices.find((service) => service.region_code_id === regionCodeId)
+          savedServices.find((service) => normalizeId(getServiceTaskId(service)) === serviceTaskId && normalizeId(getRegionCodeId(service)) === regionCodeId) ||
+          savedServices.find((service) => normalizeId(getRegionCodeId(service)) === regionCodeId)
 
         return {
-          service_task_id: serviceTaskId,
-          region_code_id: regionCodeId,
+          service_task_id: toApiId(serviceTaskId),
+          region_code_id: toApiId(regionCodeId),
           experience_years: previous?.experience_years ?? null,
           minimum_visit_fee: previous?.minimum_visit_fee ?? null,
           service_radius_km: previous?.service_radius_km ?? null,
@@ -482,7 +485,7 @@ export function ContractorMyRegionsPage({ go }) {
 
       if (services.length > 0) {
         setSavedServices(services)
-        setSelected([...new Set(services.map((service) => service.region_code_id))])
+        setSelected(uniqueIds(services.map(getRegionCodeId)))
       } else if (nextTree.length === 0) {
         setStatusMessage('지역 API 연결 전이라 임시데이터를 표시함.')
       }
@@ -495,10 +498,11 @@ export function ContractorMyRegionsPage({ go }) {
 
   // 작업지역은 회원가입 정책과 동일하게 최대 10개까지 선택
   const toggle = (option) => {
+    const optionId = normalizeId(option)
     setSelected((current) => {
-      if (current.includes(option)) {
+      if (current.map(normalizeId).includes(optionId)) {
         setStatusMessage('')
-        return current.filter((item) => item !== option)
+        return current.filter((item) => normalizeId(item) !== optionId)
       }
 
       if (current.length >= maxRegionCount) {
@@ -507,14 +511,14 @@ export function ContractorMyRegionsPage({ go }) {
       }
 
       setStatusMessage('')
-      return [...current, option]
+      return [...current, optionId]
     })
   }
 
   // 선택한 지역을 기존 전문분야 조합과 함께 저장
   const saveRegions = async () => {
-    const selectedRegionIds = selected.filter((item) => typeof item === 'number')
-    const serviceTaskIds = [...new Set(savedServices.map((service) => service.service_task_id).filter(Boolean))]
+    const selectedRegionIds = uniqueIds(selected)
+    const serviceTaskIds = uniqueIds(savedServices.map(getServiceTaskId))
 
     if (selectedRegionIds.length === 0) {
       setStatusMessage('현재는 임시 지역 데이터라 화면에서만 선택 상태가 반영돼요.')
@@ -529,12 +533,12 @@ export function ContractorMyRegionsPage({ go }) {
     const payload = serviceTaskIds.flatMap((serviceTaskId) => (
       selectedRegionIds.map((regionCodeId) => {
         const previous =
-          savedServices.find((service) => service.service_task_id === serviceTaskId && service.region_code_id === regionCodeId) ||
-          savedServices.find((service) => service.service_task_id === serviceTaskId)
+          savedServices.find((service) => normalizeId(getServiceTaskId(service)) === serviceTaskId && normalizeId(getRegionCodeId(service)) === regionCodeId) ||
+          savedServices.find((service) => normalizeId(getServiceTaskId(service)) === serviceTaskId)
 
         return {
-          service_task_id: serviceTaskId,
-          region_code_id: regionCodeId,
+          service_task_id: toApiId(serviceTaskId),
+          region_code_id: toApiId(regionCodeId),
           experience_years: previous?.experience_years ?? null,
           minimum_visit_fee: previous?.minimum_visit_fee ?? null,
           service_radius_km: previous?.service_radius_km ?? null,
