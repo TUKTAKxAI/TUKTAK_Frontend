@@ -4,6 +4,7 @@ const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:
 const API_PREFIX = '/api/v1'
 const ACCESS_TOKEN_KEY = 'tuktak_access_token'
 const REFRESH_TOKEN_KEY = 'tuktak_refresh_token'
+const LOCAL_API_HOSTS = new Set(['localhost', '127.0.0.1', '::1'])
 
 function getStorage() {
   if (typeof window === 'undefined') return null
@@ -42,8 +43,27 @@ export function clearLocalTestState() {
 }
 
 function getBaseURL() {
-  const baseURL = RAW_API_BASE_URL.replace(/\/$/, '')
+  const baseURL = normalizeBaseURLProtocol(RAW_API_BASE_URL).replace(/\/$/, '')
   return baseURL.endsWith(API_PREFIX) ? baseURL : `${baseURL}${API_PREFIX}`
+}
+
+function normalizeBaseURLProtocol(rawBaseURL) {
+  if (typeof window === 'undefined' || window.location.protocol !== 'https:') {
+    return rawBaseURL
+  }
+
+  try {
+    const parsedURL = new URL(rawBaseURL)
+
+    if (parsedURL.protocol === 'http:' && !LOCAL_API_HOSTS.has(parsedURL.hostname)) {
+      parsedURL.protocol = 'https:'
+      return parsedURL.toString()
+    }
+  } catch {
+    return rawBaseURL
+  }
+
+  return rawBaseURL
 }
 
 function normalizePath(path = '') {
