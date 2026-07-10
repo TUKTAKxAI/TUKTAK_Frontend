@@ -6,13 +6,13 @@ import { clearAuthTokens, getRefreshToken, setAuthTokens } from "../api/client";
  * POST /auth/login
  */
 export const login = async (email, password) => {
-    const response = await api.post("/auth/login", {
+    const data = await api.post("/auth/login", {
         email,
         password,
     });
 
-    setAuthTokens(response.data);
-    return response.data;
+    setAuthTokens(data);
+    return data;
 };
 
 /**
@@ -20,12 +20,10 @@ export const login = async (email, password) => {
  * POST /auth/signup/customer
  */
 export const signupCustomer = async (signupData) => {
-    const response = await api.post(
+    return api.post(
         "/auth/signup/customer",
         signupData
     );
-
-    return response.data;
 };
 
 /**
@@ -33,12 +31,10 @@ export const signupCustomer = async (signupData) => {
  * POST /auth/signup/contractor
  */
 export const signupPartner = async (signupData) => {
-    const response = await api.post(
+    return api.post(
         "/auth/signup/contractor",
         signupData
     );
-
-    return response.data;
 };
 
 /**
@@ -53,8 +49,7 @@ export const signupPartner = async (signupData) => {
  * `return response.data` 대신 `return response`로 바꿔주세요.
  */
 export const getAgreementCatalog = async () => {
-    const response = await api.get("/auth/agreements");
-    return response.data;
+    return api.get("/auth/agreements");
 };
 
 /**
@@ -62,7 +57,7 @@ export const getAgreementCatalog = async () => {
  * GET /auth/email-availability
  */
 export const checkEmailAvailability = async (email) => {
-    const response = await api.get(
+    return api.get(
         "/auth/email-availability",
         {
             params: {
@@ -70,8 +65,6 @@ export const checkEmailAvailability = async (email) => {
             },
         }
     );
-
-    return response.data;
 };
 
 /**
@@ -92,10 +85,10 @@ export const logout = async () => {
  * 토큰 재발급
  */
 export const refresh = async () => {
-    const response = await api.post("/auth/refresh", {
+    const data = await api.post("/auth/refresh", {
         refresh_token: getRefreshToken(),
     });
 
-    setAuthTokens(response.data);
-    return response.data;
+    setAuthTokens(data);
+    return data;
 };

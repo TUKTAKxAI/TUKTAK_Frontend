@@ -32,9 +32,11 @@ export function AuthProvider({ children }) {
 
     const login = async () => {
         const result = await getMe();
+        const nextUser = unwrapUser(result);
 
-        setUser(unwrapUser(result));
+        setUser(nextUser);
         setIsLogin(true);
+        return nextUser;
     };
 
     const logout = async () => {

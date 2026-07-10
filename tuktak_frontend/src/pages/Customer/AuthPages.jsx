@@ -566,6 +566,35 @@ const regionGroups = [
   },
 ]
 
+function getUserRole(user) {
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  return String(currentUser?.user_type || currentUser?.userType || currentUser?.role || currentUser?.type || '').toUpperCase()
+}
+
+function hasContractorAccess(user) {
+  const role = getUserRole(user)
+  if (role === 'CONTRACTOR' || role === 'BOTH' || role === 'PARTNER') return true
+
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles : []
+  return roles.some((item) => {
+    const normalized = String(item?.role || item?.name || item).toUpperCase()
+    return normalized === 'CONTRACTOR' || normalized === 'BOTH' || normalized === 'PARTNER'
+  })
+}
+
+function hasCustomerAccess(user) {
+  const role = getUserRole(user)
+  if (!role || role === 'CUSTOMER' || role === 'BOTH' || role === 'USER') return true
+
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles : []
+  return roles.some((item) => {
+    const normalized = String(item?.role || item?.name || item).toUpperCase()
+    return normalized === 'CUSTOMER' || normalized === 'BOTH' || normalized === 'USER'
+  })
+}
+
 // 약관 유형 코드 - 백엔드 app/core/agreements.py 의 get_agreement_catalog() 기준.
 // 고객/파트너 구분 없이 이 4개만 존재하며, 전부 필수(is_required=True)입니다.
 // terms_version 은 settings.xxx_version 값과 정확히 일치해야 하며, 지금은
@@ -639,15 +668,14 @@ export function AuthPages({
 
   const handleLogin = async () => {
     try {
-      const loginResult = await login(
+      await login(
         loginData.email,
         loginData.password
       );
 
-      const role = loginResult.user?.user_type;
+      const currentUser = await authLogin();
       if (selectedRole === "partner") {
-        if (role === "CONTRACTOR" || role === "BOTH") {
-          await authLogin();
+        if (hasContractorAccess(currentUser)) {
           go(contractorScreenPaths[contractorScreens.home]);
           return;
         }
@@ -667,7 +695,7 @@ export function AuthPages({
         return;
       }
 
-      if (role === "CONTRACTOR") {
+      if (!hasCustomerAccess(currentUser)) {
         alert("고객 서비스 등록이 필요합니다. 기존 계정 정보로 고객 등록을 이어갑니다.");
         clearAuthTokens();
         setUserType("customer");
@@ -683,7 +711,6 @@ export function AuthPages({
         return;
       }
 
-      await authLogin();
       go(screens.home);
 
     } catch (err) {

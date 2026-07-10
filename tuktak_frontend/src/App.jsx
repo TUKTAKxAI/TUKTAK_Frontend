@@ -74,7 +74,7 @@ function useScreenNavigator() {
 
 function PublicRoute({ screen }) {
   const flow = useCustomerFlow()
-  const { isLogin, loading } = useAuth()
+  const { isLogin, loading, user } = useAuth()
   const location = useLocation()
   const { go, back, setScreen } = useScreenNavigator()
   const forceLogin = Boolean(location.state?.forceLogin)
@@ -82,7 +82,7 @@ function PublicRoute({ screen }) {
   if (loading) return null
 
   if (isLogin && screen !== screens.welcome && !forceLogin) {
-    return <Navigate to={screenPaths[screens.home]} replace />
+    return <Navigate to={getHomePathForUser(user)} replace />
   }
 
   return (
@@ -169,15 +169,26 @@ function ContractorRoute({ screen }) {
 }
 
 function hasContractorAccess(user) {
-  const currentUser = user?.data?.user ?? user?.data ?? user
-  const role = String(currentUser?.user_type || currentUser?.userType || currentUser?.role || currentUser?.type || '').toUpperCase()
+  const role = getUserRole(user)
   if (role === 'CONTRACTOR' || role === 'BOTH' || role === 'PARTNER') return true
 
+  const currentUser = user?.data?.user ?? user?.data ?? user
   const roles = Array.isArray(currentUser?.roles) ? currentUser.roles : []
   return roles.some((item) => {
     const normalized = String(item?.role || item?.name || item).toUpperCase()
     return normalized === 'CONTRACTOR' || normalized === 'BOTH' || normalized === 'PARTNER'
   })
+}
+
+function getUserRole(user) {
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  return String(currentUser?.user_type || currentUser?.userType || currentUser?.role || currentUser?.type || '').toUpperCase()
+}
+
+function getHomePathForUser(user) {
+  return hasContractorAccess(user)
+    ? contractorScreenPaths[contractorScreens.home]
+    : screenPaths[screens.home]
 }
 
 function UrgentDialog() {
@@ -287,8 +298,8 @@ function CustomerRoute({ screen }) {
 }
 
 function App() {
-  const { isLogin, loading } = useAuth()
-  const initialPath = loading || !isLogin ? screenPaths[screens.login] : screenPaths[screens.home]
+  const { isLogin, loading, user } = useAuth()
+  const initialPath = loading || !isLogin ? screenPaths[screens.login] : getHomePathForUser(user)
 
   return (
     <div className="app-shell">
