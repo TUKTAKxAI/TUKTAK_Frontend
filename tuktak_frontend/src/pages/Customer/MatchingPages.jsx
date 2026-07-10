@@ -59,6 +59,7 @@ function buildMatchingRequestBody({ estimate, address, schedule, isEmergency }) 
 
   return {
     estimate_id: estimate.estimate_id,
+    service_task_id: estimate.service_task_id || estimate.serviceTaskId || estimate.task_id || estimate.taskId || null,
     title: estimateTitle(estimate),
     region_code_id: address.region_code_id,
     address: fullAddress,

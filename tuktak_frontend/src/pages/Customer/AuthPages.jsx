@@ -13,6 +13,11 @@ import {
   signupPartner,
   checkEmailAvailability,
 } from '../../services/authService'
+import {
+  fetchReferenceCodes,
+  fetchServiceTasks,
+  updateContractorServices,
+} from '../../services/contractorService'
 import { clearAuthTokens } from '../../api/client'
 import { FaEye, FaEyeSlash, FaCamera } from "react-icons/fa";
 
@@ -24,6 +29,7 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
   const [activeGroupKey, setActiveGroupKey] = useState(groups[0]?.key)
 
   const activeGroup = groups.find((g) => g.key === activeGroupKey) || groups[0]
+  const effectiveActiveGroupKey = activeGroup?.key
 
   return (
     <div className="select-panel">
@@ -33,7 +39,7 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
             <button
               key={group.key}
               type="button"
-              className={activeGroupKey === group.key ? "active" : ""}
+              className={effectiveActiveGroupKey === group.key ? "active" : ""}
               onClick={() => setActiveGroupKey(group.key)}
             >
               {group.label}
@@ -571,6 +577,59 @@ function getUserRole(user) {
   return String(currentUser?.user_type || currentUser?.userType || currentUser?.role || currentUser?.type || '').toUpperCase()
 }
 
+const normalizeSignupId = (value) => (value === undefined || value === null ? '' : String(value))
+const uniqueSignupIds = (values = []) => [...new Set(values.map(normalizeSignupId).filter(Boolean))]
+const numericSignupIds = (values = []) => uniqueSignupIds(values).filter((value) => /^\d+$/.test(value))
+
+function buildSignupServiceGroups(tasks = []) {
+  const groups = tasks.reduce((acc, task) => {
+    const key = task.main_category || '기타'
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        label: key,
+        items: [],
+      }
+    }
+    acc[key].items.push({
+      id: normalizeSignupId(task.service_task_id),
+      label: task.task_name,
+    })
+    return acc
+  }, {})
+
+  return Object.values(groups)
+}
+
+function buildSignupRegionGroups(codes = []) {
+  const parents = codes.filter((code) => !code.parent_code_id)
+  const children = codes.filter((code) => code.parent_code_id)
+
+  if (parents.length === 0) {
+    return codes.length > 0
+      ? [{
+          key: 'region',
+          label: '지역',
+          items: codes.map((code) => ({
+            id: normalizeSignupId(code.code_id),
+            label: code.code_name,
+          })),
+        }]
+      : []
+  }
+
+  return parents.map((parent) => ({
+    key: normalizeSignupId(parent.code_id),
+    label: parent.code_name,
+    items: children
+      .filter((child) => normalizeSignupId(child.parent_code_id) === normalizeSignupId(parent.code_id))
+      .map((child) => ({
+        id: normalizeSignupId(child.code_id),
+        label: child.code_name,
+      })),
+  })).filter((group) => group.items.length > 0)
+}
+
 function hasContractorAccess(user) {
   const role = getUserRole(user)
   if (role === 'CONTRACTOR' || role === 'BOTH' || role === 'PARTNER') return true
@@ -664,6 +723,42 @@ export function AuthPages({
     companyRegionCodeId: null,
     workRegions: [],          // [{id, label, groupKey, groupLabel}]
   })
+  const [partnerServiceGroups, setPartnerServiceGroups] = useState(categoryGroups)
+  const [partnerRegionGroups, setPartnerRegionGroups] = useState(regionGroups)
+  const [hasPartnerServiceCatalog, setHasPartnerServiceCatalog] = useState(false)
+  const [hasPartnerRegionCatalog, setHasPartnerRegionCatalog] = useState(false)
+
+  useEffect(() => {
+    let ignore = false
+
+    Promise.all([
+      fetchServiceTasks().catch(() => []),
+      fetchReferenceCodes({ code_group: 'REGION' }).catch(() => []),
+    ]).then(([tasks, codes]) => {
+      if (ignore) return
+
+      const nextServiceGroups = buildSignupServiceGroups(tasks)
+      const nextRegionGroups = buildSignupRegionGroups(codes)
+
+      if (nextServiceGroups.length > 0) {
+        setPartnerServiceGroups(nextServiceGroups)
+        setHasPartnerServiceCatalog(true)
+      } else {
+        setHasPartnerServiceCatalog(false)
+      }
+
+      if (nextRegionGroups.length > 0) {
+        setPartnerRegionGroups(nextRegionGroups)
+        setHasPartnerRegionCatalog(true)
+      } else {
+        setHasPartnerRegionCatalog(false)
+      }
+    })
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
 
   const handleLogin = async () => {
@@ -899,6 +994,12 @@ export function AuthPages({
       return
     }
 
+    const selectedServiceTaskIds = numericSignupIds(partnerSignupData.categories.map((category) => category.id))
+    if (!hasPartnerServiceCatalog || selectedServiceTaskIds.length === 0) {
+      alert("전문 분야 목록을 불러오지 못했습니다. 새로고침 후 다시 선택해주세요.")
+      return
+    }
+
     if (!partnerSignupData.businessRegFile) {
       alert("사업자등록증을 업로드해주세요.")
       return
@@ -929,6 +1030,12 @@ export function AuthPages({
       return
     }
 
+    const selectedRegionCodeIds = numericSignupIds(partnerSignupData.workRegions.map((region) => region.id))
+    if (!hasPartnerRegionCatalog || selectedRegionCodeIds.length === 0) {
+      alert("작업 지역 목록을 불러오지 못했습니다. 새로고침 후 다시 선택해주세요.")
+      return
+    }
+
     const agreements = buildAgreementsPayload()
 
     try {
@@ -954,12 +1061,24 @@ export function AuthPages({
           zip_no: partnerSignupData.companyZipNo,
           region_code_id: partnerSignupData.companyRegionCodeId,
         },
-        category_ids: partnerSignupData.categories.map((c) => c.id),
-        work_region_ids: partnerSignupData.workRegions.map((r) => r.id),
+        category_ids: selectedServiceTaskIds.map(Number),
+        work_region_ids: selectedRegionCodeIds.map(Number),
         agreements,
       })
 
       await login(signupData.email, signupData.password);
+      await updateContractorServices(
+        selectedServiceTaskIds.flatMap((serviceTaskId) => (
+          selectedRegionCodeIds.map((regionCodeId) => ({
+            service_task_id: Number(serviceTaskId),
+            region_code_id: Number(regionCodeId),
+            experience_years: null,
+            minimum_visit_fee: null,
+            service_radius_km: null,
+            is_active: true,
+          }))
+        ))
+      )
       go(screens.welcome)
       await authLogin();
     } catch (err) {
@@ -1612,7 +1731,7 @@ export function AuthPages({
         </h2>
 
         <MultiSelectPanel
-          groups={categoryGroups}
+          groups={partnerServiceGroups}
           selected={partnerSignupData.categories}
           onToggle={(item) => togglePartnerSelection('categories', item, 999)}
           onReset={() => setPartnerSignupData((prev) => ({ ...prev, categories: [] }))}
@@ -1623,7 +1742,7 @@ export function AuthPages({
         <PrimaryButton
           narrow
           onClick={() => go(screens.bizReg)}
-          disabled={partnerSignupData.categories.length === 0}
+          disabled={!hasPartnerServiceCatalog || partnerSignupData.categories.length === 0}
         >
           다음
         </PrimaryButton>
@@ -2002,7 +2121,7 @@ export function AuthPages({
         </h2>
 
         <MultiSelectPanel
-          groups={regionGroups}
+          groups={partnerRegionGroups}
           selected={partnerSignupData.workRegions}
           onToggle={(item) => togglePartnerSelection('workRegions', item, 10)}
           onReset={() => setPartnerSignupData((prev) => ({ ...prev, workRegions: [] }))}
@@ -2013,7 +2132,7 @@ export function AuthPages({
         <PrimaryButton
           narrow
           onClick={handlePartnerSignup}
-          disabled={partnerSignupData.workRegions.length === 0}
+          disabled={!hasPartnerRegionCatalog || partnerSignupData.workRegions.length === 0}
         >
           다음
         </PrimaryButton>

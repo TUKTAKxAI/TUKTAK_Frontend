@@ -214,6 +214,18 @@
   gap: 13px;
 }
 
+.contractor-region-request-group {
+  display: grid;
+  gap: 10px;
+}
+
+.contractor-region-request-group h2 {
+  margin: 10px 2px 0;
+  color: #172033;
+  font-size: 17px;
+  font-weight: 900;
+}
+
 .contractor-request-card {
   display: grid;
   grid-template-columns: 1fr auto;
