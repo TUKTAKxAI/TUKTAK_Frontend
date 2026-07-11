@@ -97,6 +97,7 @@ function RequestEstimatePreview({ item }) {
 export function ContractorRequestsPage({ go }) {
   const [items, setItems] = useState([])
   const [status, setStatus] = useState('loading')
+  const [activeTab, setActiveTab] = useState('new')
 
   useEffect(() => {
     let ignore = false
@@ -119,14 +120,29 @@ export function ContractorRequestsPage({ go }) {
     }
   }, [])
 
-  const groupedItems = groupByRegion(items)
+  const visibleItems = items.filter((item) => (
+    activeTab === 'quoted' ? Boolean(item.quoteId) : !item.quoteId
+  ))
+  const groupedItems = groupByRegion(visibleItems)
   const regionNames = Object.keys(groupedItems)
 
   return (
     <ContractorPage title="시공 요청 목록" go={go} back={() => go(contractorScreens.home)}>
+      <div className="contractor-filter">
+        <button className={activeTab === 'new' ? 'active' : ''} type="button" onClick={() => setActiveTab('new')}>
+          새 요청
+        </button>
+        <button className={activeTab === 'quoted' ? 'active' : ''} type="button" onClick={() => setActiveTab('quoted')}>
+          보낸 견적
+        </button>
+      </div>
       {status === 'loading' ? <p className="muted center">시공 요청을 불러오는 중입니다.</p> : null}
       {status === 'error' ? <p className="muted center">시공 요청을 불러오지 못했습니다.</p> : null}
-      {status === 'loaded' && items.length === 0 ? <p className="muted center">현재 설정한 지역에 도착한 시공 요청이 없습니다.</p> : null}
+      {status === 'loaded' && visibleItems.length === 0 ? (
+        <p className="muted center">
+          {activeTab === 'quoted' ? '아직 보낸 견적이 없습니다.' : '현재 설정한 지역에 도착한 새 요청이 없습니다.'}
+        </p>
+      ) : null}
       <div className="contractor-list">
         {regionNames.map((regionName) => (
           <section className="contractor-region-request-group" key={regionName}>
@@ -176,10 +192,10 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
         <button type="button" onClick={() => go(contractorScreens.requests)}>닫기</button>
         <button
           type="button"
-          disabled={!item?.matchingRequestId || item?.quoteId}
-          onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: item.matchingRequestId })}
+          disabled={!item?.matchingRequestId}
+          onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: item.matchingRequestId, quoteId: item.quoteId })}
         >
-          {item?.quoteId ? '견적 전송 완료' : '견적서 작성하기'}
+          {item?.quoteId ? '내 견적 보기' : '견적서 작성하기'}
         </button>
       </div>
     </ContractorPage>

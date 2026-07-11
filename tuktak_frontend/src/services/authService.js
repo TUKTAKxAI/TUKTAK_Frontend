@@ -1,15 +1,20 @@
 import api from "./api";
 import { clearAuthTokens, getRefreshToken, setAuthTokens } from "../api/client";
 
+function unwrapResponse(response) {
+    return response?.data ?? response;
+}
+
 /**
  * 로그인
  * POST /auth/login
  */
 export const login = async (email, password) => {
-    const data = await api.post("/auth/login", {
+    const response = await api.post("/auth/login", {
         email,
         password,
     });
+    const data = unwrapResponse(response);
 
     setAuthTokens(data);
     return data;
@@ -20,10 +25,10 @@ export const login = async (email, password) => {
  * POST /auth/signup/customer
  */
 export const signupCustomer = async (signupData) => {
-    return api.post(
+    return unwrapResponse(await api.post(
         "/auth/signup/customer",
         signupData
-    );
+    ));
 };
 
 /**
@@ -31,10 +36,10 @@ export const signupCustomer = async (signupData) => {
  * POST /auth/signup/contractor
  */
 export const signupPartner = async (signupData) => {
-    return api.post(
+    return unwrapResponse(await api.post(
         "/auth/signup/contractor",
         signupData
-    );
+    ));
 };
 
 /**
@@ -49,7 +54,7 @@ export const signupPartner = async (signupData) => {
  * `return response.data` 대신 `return response`로 바꿔주세요.
  */
 export const getAgreementCatalog = async () => {
-    return api.get("/auth/agreements");
+    return unwrapResponse(await api.get("/auth/agreements"));
 };
 
 /**
@@ -57,14 +62,14 @@ export const getAgreementCatalog = async () => {
  * GET /auth/email-availability
  */
 export const checkEmailAvailability = async (email) => {
-    return api.get(
+    return unwrapResponse(await api.get(
         "/auth/email-availability",
         {
             params: {
                 email,
             },
         }
-    );
+    ));
 };
 
 /**
@@ -85,9 +90,10 @@ export const logout = async () => {
  * 토큰 재발급
  */
 export const refresh = async () => {
-    const data = await api.post("/auth/refresh", {
+    const response = await api.post("/auth/refresh", {
         refresh_token: getRefreshToken(),
     });
+    const data = unwrapResponse(response);
 
     setAuthTokens(data);
     return data;

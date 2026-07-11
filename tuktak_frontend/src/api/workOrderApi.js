@@ -7,3 +7,4 @@ export function getWorkOrders(query) {
 export function getWorkOrder(workOrderId) {
   return apiRequest(`/api/v1/work-orders/${workOrderId}`)
 }
+     

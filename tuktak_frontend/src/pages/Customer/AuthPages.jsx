@@ -21,6 +21,12 @@ import {
 import { clearAuthTokens } from '../../api/client'
 import { FaEye, FaEyeSlash, FaCamera } from "react-icons/fa";
 
+const PREFERRED_ROLE_KEY = 'tuktak_preferred_role'
+
+function setPreferredRole(role) {
+  window.localStorage.setItem(PREFERRED_ROLE_KEY, role)
+}
+
 // ----------------------------------------------------------------------------
 // 분야 선택 / 작업지역 선택에 공용으로 쓰는 좌-우 패널 컴포넌트
 // (파트너 "전문 분야" 화면과 "작업 지역" 화면이 동일한 UI 패턴이라 재사용)
@@ -771,6 +777,7 @@ export function AuthPages({
       const currentUser = await authLogin();
       if (selectedRole === "partner") {
         if (hasContractorAccess(currentUser)) {
+          setPreferredRole("partner");
           go(contractorScreenPaths[contractorScreens.home]);
           return;
         }
@@ -806,6 +813,7 @@ export function AuthPages({
         return;
       }
 
+      setPreferredRole("customer");
       go(screens.home);
 
     } catch (err) {

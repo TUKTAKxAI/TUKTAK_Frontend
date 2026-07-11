@@ -406,6 +406,61 @@
   line-height: 1.4;
 }
 
+.matching-current-quote-list {
+  display: grid;
+  gap: 10px;
+}
+
+.matching-current-quote-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #d8dde6;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.matching-current-quote-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.matching-current-quote-card p {
+  margin: 5px 0;
+  color: #394255;
+  font-size: 13px;
+}
+
+.matching-current-quote-card small {
+  color: #7f8794;
+  font-size: 12px;
+}
+
+.matching-current-quote-card > div:last-child {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.matching-current-quote-card b {
+  color: var(--blue);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.matching-current-quote-card button {
+  border: 0;
+  border-radius: 8px;
+  background: #1c54d4;
+  color: #fff;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .matching-status-badge {
   border-radius: 999px;
   background: #e8efff;

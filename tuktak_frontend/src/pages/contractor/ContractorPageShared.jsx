@@ -54,7 +54,7 @@ export function RequestCard({ item, onDetail }) {
         <strong className="contractor-region">{item.city}</strong>
         <h2>{item.title}</h2>
         <p>{item.desiredDate} · {item.time}</p>
-        {item.quoteId ? <p>이미 견적서를 보냈습니다</p> : null}
+        {item.quoteId ? <p className="contractor-request-quoted">견적 전송 완료</p> : null}
       </div>
       <button className="contractor-detail-link" type="button" onClick={onDetail}>
         자세히 보기 <FaChevronRight />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getMe } from "../services/userService";
 import { logout as logoutApi } from "../services/authService";
 import { AuthContext } from "./authContext";
+import { clearAuthTokens } from "../api/client";
 
 function unwrapUser(result) {
     return result?.data?.user ?? result?.data ?? result?.user ?? result;
@@ -19,6 +20,7 @@ export function AuthProvider({ children }) {
             setUser(unwrapUser(result));
             setIsLogin(true);
         } catch {
+            clearAuthTokens({ redirectToLogin: window.location.pathname !== "/login" });
             setUser(null);
             setIsLogin(false);
         } finally {
@@ -29,6 +31,17 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         queueMicrotask(initialize);
     }, [initialize]);
+
+    useEffect(() => {
+        const handleAuthCleared = () => {
+            setUser(null);
+            setIsLogin(false);
+            setLoading(false);
+        };
+
+        window.addEventListener("tuktak:auth-cleared", handleAuthCleared);
+        return () => window.removeEventListener("tuktak:auth-cleared", handleAuthCleared);
+    }, []);
 
     const login = async () => {
         const result = await getMe();

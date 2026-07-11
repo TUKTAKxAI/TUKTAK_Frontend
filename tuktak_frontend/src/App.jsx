@@ -57,6 +57,13 @@ import { contractorRouteScreens, contractorScreenPaths } from './routes/contract
 import { routeScreens, screenPaths } from './routes/customerRoutes'
 import './App.css'
 
+const PREFERRED_ROLE_KEY = 'tuktak_preferred_role'
+
+function getPreferredRole() {
+  if (typeof window === 'undefined') return ''
+  return window.localStorage.getItem(PREFERRED_ROLE_KEY) || ''
+}
+
 function useScreenNavigator() {
   const navigate = useNavigate()
   const go = (screen) => {
@@ -82,7 +89,7 @@ function PublicRoute({ screen }) {
   if (loading) return null
 
   if (isLogin && screen !== screens.welcome && !forceLogin) {
-    return <Navigate to={getHomePathForUser(user)} replace />
+    return <Navigate to={getHomePathForUser(user, getPreferredRole())} replace />
   }
 
   return (
@@ -185,10 +192,30 @@ function getUserRole(user) {
   return String(currentUser?.user_type || currentUser?.userType || currentUser?.role || currentUser?.type || '').toUpperCase()
 }
 
-function getHomePathForUser(user) {
+function getHomePathForUser(user, preferredRole = '') {
+  if (preferredRole === 'customer' && hasCustomerAccess(user)) {
+    return screenPaths[screens.home]
+  }
+
+  if (preferredRole === 'partner' && hasContractorAccess(user)) {
+    return contractorScreenPaths[contractorScreens.home]
+  }
+
   return hasContractorAccess(user)
     ? contractorScreenPaths[contractorScreens.home]
     : screenPaths[screens.home]
+}
+
+function hasCustomerAccess(user) {
+  const role = getUserRole(user)
+  if (!role || role === 'CUSTOMER' || role === 'BOTH' || role === 'USER') return true
+
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles : []
+  return roles.some((item) => {
+    const normalized = String(item?.role || item?.name || item).toUpperCase()
+    return normalized === 'CUSTOMER' || normalized === 'BOTH' || normalized === 'USER'
+  })
 }
 
 function UrgentDialog() {
