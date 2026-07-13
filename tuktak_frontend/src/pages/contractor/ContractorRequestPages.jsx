@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FaCamera, FaFileInvoice } from 'react-icons/fa'
-import { contractorRequests, contractorScreens } from '../../data/contractorData'
+import { contractorScreens } from '../../data/contractorData'
 import { fetchContractorMatchingRequests } from '../../services/contractorService'
 import { ContractorPage, RequestCard, StatusBadge } from './ContractorPageShared'
 
@@ -18,27 +18,44 @@ function formatBudget(min, max) {
   return formatWon(max || min)
 }
 
+function formatTimeRange(start, end) {
+  if (start && end) return `${start} - ${end}`
+  return '시간 협의'
+}
+
 function mapRequest(item) {
+  const regionName = item.region_name || (item.region_code_id ? `지역 코드 ${item.region_code_id}` : '지역 미정')
   return {
     id: String(item.matching_request_id),
     matchingRequestId: item.matching_request_id,
     matchingTargetId: item.matching_target_id,
     quoteId: item.quote_id,
-    city: item.region_code_id ? `지역 코드 ${item.region_code_id}` : '지역 미정',
-    region: item.region_code_id ? `지역 코드 ${item.region_code_id}` : '지역 미정',
+    city: regionName,
+    region: item.address || regionName,
+    regionName,
     title: item.title,
+    serviceTaskName: item.service_task_name,
     budget: formatBudget(item.budget_min, item.budget_max),
     desiredDate: formatDate(item.preferred_date),
-    time: '시간 협의',
+    time: formatTimeRange(item.preferred_time_start, item.preferred_time_end),
     status: item.target_status || item.matching_status,
     aiEstimate: {
       summary: '고객의 AI 견적 기반 매칭 요청입니다.',
       priceRange: formatBudget(item.budget_min, item.budget_max),
       expectedTime: '상세 협의',
-      note: `매칭 상태: ${item.matching_status}`,
+      note: item.request_message || `매칭 상태: ${item.matching_status}`,
     },
     photos: ['고객 첨부 사진', 'AI 견적 이미지'],
   }
+}
+
+function groupByRegion(items) {
+  return items.reduce((groups, item) => {
+    const key = item.regionName || '지역 미정'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(item)
+    return groups
+  }, {})
 }
 
 function RequestEstimatePreview({ item }) {
@@ -78,8 +95,9 @@ function RequestEstimatePreview({ item }) {
 }
 
 export function ContractorRequestsPage({ go }) {
-  const [items, setItems] = useState(contractorRequests)
+  const [items, setItems] = useState([])
   const [status, setStatus] = useState('loading')
+  const [activeTab, setActiveTab] = useState('new')
 
   useEffect(() => {
     let ignore = false
@@ -92,8 +110,8 @@ export function ContractorRequestsPage({ go }) {
       })
       .catch(() => {
         if (!ignore) {
-          setItems(contractorRequests)
-          setStatus('fallback')
+          setItems([])
+          setStatus('error')
         }
       })
 
@@ -102,17 +120,43 @@ export function ContractorRequestsPage({ go }) {
     }
   }, [])
 
+  const visibleItems = items.filter((item) => (
+    activeTab === 'quoted' ? Boolean(item.quoteId) : !item.quoteId
+  ))
+  const groupedItems = groupByRegion(visibleItems)
+  const regionNames = Object.keys(groupedItems)
+
   return (
     <ContractorPage title="시공 요청 목록" go={go} back={() => go(contractorScreens.home)}>
+      <div className="contractor-filter">
+        <button className={activeTab === 'new' ? 'active' : ''} type="button" onClick={() => setActiveTab('new')}>
+          새 요청
+        </button>
+        <button className={activeTab === 'quoted' ? 'active' : ''} type="button" onClick={() => setActiveTab('quoted')}>
+          보낸 견적
+        </button>
+      </div>
       {status === 'loading' ? <p className="muted center">시공 요청을 불러오는 중입니다.</p> : null}
-      {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 요청을 표시합니다.</p> : null}
+      {status === 'error' ? <p className="muted center">시공 요청을 불러오지 못했습니다.</p> : null}
+      {status === 'loaded' && visibleItems.length === 0 ? (
+        <p className="muted center">
+          {activeTab === 'quoted' ? '아직 보낸 견적이 없습니다.' : '현재 설정한 지역에 도착한 새 요청이 없습니다.'}
+        </p>
+      ) : null}
       <div className="contractor-list">
-        {items.map((item) => (
-          <RequestCard
-            key={item.id}
-            item={item}
-            onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: item.matchingRequestId })}
-          />
+        {regionNames.map((regionName) => (
+          <section className="contractor-region-request-group" key={regionName}>
+            <h2>{regionName}</h2>
+            <div className="contractor-list">
+              {groupedItems[regionName].map((item) => (
+                <RequestCard
+                  key={item.id}
+                  item={item}
+                  onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: item.matchingRequestId })}
+                />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </ContractorPage>
@@ -133,7 +177,7 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
         setItem(found ? mapRequest(found) : null)
       })
       .catch(() => {
-        if (!ignore) setItem(contractorRequests[0])
+        if (!ignore) setItem(null)
       })
 
     return () => {
@@ -148,10 +192,10 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
         <button type="button" onClick={() => go(contractorScreens.requests)}>닫기</button>
         <button
           type="button"
-          disabled={!item?.matchingRequestId || item?.quoteId}
-          onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: item.matchingRequestId })}
+          disabled={!item?.matchingRequestId}
+          onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: item.matchingRequestId, quoteId: item.quoteId })}
         >
-          {item?.quoteId ? '견적 전송 완료' : '견적서 작성하기'}
+          {item?.quoteId ? '내 견적 보기' : '견적서 작성하기'}
         </button>
       </div>
     </ContractorPage>
@@ -159,7 +203,7 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
 }
 
 export function ContractorAiEstimatePage({ go, routeState = {} }) {
-  const item = routeState.request || contractorRequests[0]
+  const item = routeState.request || null
 
   return (
     <ContractorPage title="AI 견적서 보기" go={go} back={() => go(contractorScreens.requestDetail)}>

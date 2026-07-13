@@ -56,9 +56,29 @@ const normalizeId = (value) => (value === undefined || value === null ? '' : Str
 const getOptionKey = (option) => normalizeId(typeof option === 'object' ? option.id : option)
 const getOptionLabel = (option) => (typeof option === 'object' ? option.label : option)
 const uniqueIds = (values = []) => [...new Set(values.map(normalizeId).filter(Boolean))]
+const numericIds = (values = []) => uniqueIds(values).filter((value) => /^\d+$/.test(value))
 const toApiId = (value) => (/^\d+$/.test(normalizeId(value)) ? Number(value) : value)
 const getServiceTaskId = (service) => service.service_task_id ?? service.serviceTaskId ?? service.task_id ?? service.taskId
 const getRegionCodeId = (service) => service.region_code_id ?? service.regionCodeId ?? service.code_id ?? service.codeId
+const PENDING_SERVICE_TASK_IDS_KEY = 'tuktak:contractor:pendingServiceTaskIds'
+const PENDING_REGION_CODE_IDS_KEY = 'tuktak:contractor:pendingRegionCodeIds'
+
+function readPendingIds(key) {
+  try {
+    return uniqueIds(JSON.parse(window.localStorage.getItem(key) || '[]'))
+  } catch {
+    return []
+  }
+}
+
+function writePendingIds(key, values) {
+  window.localStorage.setItem(key, JSON.stringify(uniqueIds(values)))
+}
+
+function clearPendingContractorServiceSelections() {
+  window.localStorage.removeItem(PENDING_SERVICE_TASK_IDS_KEY)
+  window.localStorage.removeItem(PENDING_REGION_CODE_IDS_KEY)
+}
 
 // 전문분야 목록 API를 카테고리/체크리스트 형태로 변환
 function buildServiceTree(tasks = []) {
@@ -352,10 +372,12 @@ export function ContractorMyInfoPage({ go }) {
 
 export function ContractorMyServicesPage({ go }) {
   const [tree, setTree] = useState(contractorServiceTree)
-  const [selected, setSelected] = useState(contractorProfile.services)
+  const [selected, setSelected] = useState([])
   const [savedServices, setSavedServices] = useState([])
   const [statusMessage, setStatusMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasServiceCatalog, setHasServiceCatalog] = useState(false)
 
   // 전문분야 목록과 가입 시 저장된 전문분야를 함께 조회
   useEffect(() => {
@@ -371,13 +393,35 @@ export function ContractorMyServicesPage({ go }) {
       if (nextTree.length > 0) {
         setTree(nextTree)
       }
+      setHasServiceCatalog(nextTree.length > 0)
 
-      if (services.length > 0) {
-        setSavedServices(services)
-        setSelected(uniqueIds(services.map(getServiceTaskId)))
+      const activeServices = services.filter((service) => service?.is_active !== false)
+      const savedServiceTaskIds = uniqueIds(activeServices.map(getServiceTaskId))
+      const pendingServiceTaskIds = readPendingIds(PENDING_SERVICE_TASK_IDS_KEY)
+
+      if (activeServices.length > 0) {
+        setSavedServices(activeServices)
+        setSelected(savedServiceTaskIds)
+        setStatusMessage(nextTree.length > 0 ? '' : '전문분야 목록 데이터가 비어 있습니다. 백엔드 service_tasks 데이터가 필요합니다.')
+      } else if (nextTree.length > 0) {
+        setSelected(pendingServiceTaskIds)
+        setSavedServices([])
+        setStatusMessage(pendingServiceTaskIds.length > 0 ? '아직 저장 전인 전문분야 선택값이 있습니다. 지역까지 선택하면 함께 저장됩니다.' : '저장된 전문분야가 없습니다. 전문분야를 선택해주세요.')
       } else if (nextTree.length === 0) {
         setStatusMessage('전문분야 API 연결 전이라 임시데이터를 표시함.')
+        setSelected([])
+        setSavedServices([])
+        setStatusMessage('전문분야 목록 데이터가 비어 있습니다. 백엔드 service_tasks 데이터가 필요합니다.')
       }
+    }).catch(() => {
+      if (!ignore) {
+        setSelected([])
+        setSavedServices([])
+        setHasServiceCatalog(false)
+        setStatusMessage('전문분야 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+      }
+    }).finally(() => {
+      if (!ignore) setIsLoading(false)
     })
 
     return () => {
@@ -393,21 +437,33 @@ export function ContractorMyServicesPage({ go }) {
 
   // 선택한 전문분야를 기존 지역 조합과 함께 저장
   const saveServices = async () => {
-    const selectedTaskIds = uniqueIds(selected)
-    const regionIds = uniqueIds(savedServices.map(getRegionCodeId))
-
-    if (selectedTaskIds.length === 0) {
-      setStatusMessage('현재는 임시 전문분야 데이터라 화면에서만 선택 상태가 반영돼요.')
+    if (!hasServiceCatalog) {
+      setStatusMessage('전문분야 목록 데이터가 비어 있습니다. 백엔드 service_tasks 데이터가 필요합니다.')
       return
     }
 
-    if (regionIds.length === 0) {
-      setStatusMessage('저장하려면 기존 서비스 지역 ID가 필요해요. 내 지역 API와 함께 연결하면 저장됩니다.')
+    const selectedTaskIds = numericIds(selected)
+    const regionIds = numericIds(savedServices.map(getRegionCodeId))
+    const pendingRegionIds = numericIds(readPendingIds(PENDING_REGION_CODE_IDS_KEY))
+    const targetRegionIds = regionIds.length > 0 ? regionIds : pendingRegionIds
+
+    if (selectedTaskIds.length === 0) {
+      writePendingIds(PENDING_SERVICE_TASK_IDS_KEY, [])
+      setStatusMessage('전문분야를 하나 이상 선택해주세요.')
+      return
+    }
+
+    writePendingIds(PENDING_SERVICE_TASK_IDS_KEY, selectedTaskIds)
+
+    if (targetRegionIds.length === 0) {
+      writePendingIds(PENDING_REGION_CODE_IDS_KEY, [])
+      setStatusMessage('전문분야 선택을 저장해뒀어요. 지역을 선택하면 함께 저장됩니다.')
+      go(contractorScreens.myRegions)
       return
     }
 
     const payload = selectedTaskIds.flatMap((serviceTaskId) => (
-      regionIds.map((regionCodeId) => {
+      targetRegionIds.map((regionCodeId) => {
         const previous =
           savedServices.find((service) => normalizeId(getServiceTaskId(service)) === serviceTaskId && normalizeId(getRegionCodeId(service)) === regionCodeId) ||
           savedServices.find((service) => normalizeId(getRegionCodeId(service)) === regionCodeId)
@@ -427,10 +483,11 @@ export function ContractorMyServicesPage({ go }) {
       setIsSaving(true)
       const result = await updateContractorServices(payload)
       setSavedServices(result.services || payload)
+      clearPendingContractorServiceSelections()
       setStatusMessage('전문분야가 저장됐어요.')
       go(contractorScreens.mypage)
-    } catch {
-      setStatusMessage('저장 API 연결 전이라 화면 선택만 유지했어요.')
+    } catch (error) {
+      setStatusMessage(error?.message || '전문분야 저장에 실패했어요. 선택값을 다시 확인해주세요.')
     } finally {
       setIsSaving(false)
     }
@@ -452,7 +509,7 @@ export function ContractorMyServicesPage({ go }) {
       {statusMessage ? <p className="contractor-helper-message">{statusMessage}</p> : null}
       <div className="contractor-bottom-actions sticky">
         <button type="button" onClick={() => go(contractorScreens.mypage)}>취소</button>
-        <button type="button" onClick={saveServices} disabled={isSaving}>
+        <button type="button" onClick={saveServices} disabled={isLoading || isSaving || !hasServiceCatalog}>
           {isSaving ? '저장중' : '완료'}
         </button>
       </div>
@@ -462,10 +519,12 @@ export function ContractorMyServicesPage({ go }) {
 
 export function ContractorMyRegionsPage({ go }) {
   const [tree, setTree] = useState(contractorRegionTree)
-  const [selected, setSelected] = useState(contractorProfile.regions)
+  const [selected, setSelected] = useState([])
   const [savedServices, setSavedServices] = useState([])
   const [statusMessage, setStatusMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasRegionCatalog, setHasRegionCatalog] = useState(false)
   const maxRegionCount = 10
 
   // 지역 목록과 가입 시 저장된 작업지역을 함께 조회
@@ -482,13 +541,40 @@ export function ContractorMyRegionsPage({ go }) {
       if (nextTree.length > 0) {
         setTree(nextTree)
       }
+      setHasRegionCatalog(nextTree.length > 0)
 
-      if (services.length > 0) {
-        setSavedServices(services)
-        setSelected(uniqueIds(services.map(getRegionCodeId)))
+      const activeServices = services.filter((service) => service?.is_active !== false)
+      const savedRegionIds = uniqueIds(activeServices.map(getRegionCodeId))
+      const pendingRegionIds = readPendingIds(PENDING_REGION_CODE_IDS_KEY)
+
+      if (activeServices.length > 0) {
+        setSavedServices(activeServices)
+        setSelected(savedRegionIds)
+        if (savedRegionIds.length === 0) {
+          setStatusMessage('저장된 작업 지역이 없습니다. 활동할 지역을 선택해주세요.')
+        } else {
+          setStatusMessage('')
+        }
+      } else if (activeServices.length === 0) {
+        setSelected(pendingRegionIds)
+        setSavedServices([])
+        if (nextTree.length === 0) {
+          setStatusMessage('지역 목록 데이터가 비어 있습니다. 백엔드 reference_codes REGION 데이터가 필요합니다.')
+        } else {
+          setStatusMessage(pendingRegionIds.length > 0 ? '아직 저장 전인 지역 선택값이 있습니다. 전문분야까지 선택하면 함께 저장됩니다.' : '저장된 작업 지역이 없습니다. 활동할 지역을 선택해주세요.')
+        }
       } else if (nextTree.length === 0) {
-        setStatusMessage('지역 API 연결 전이라 임시데이터를 표시함.')
+        setStatusMessage('지역 목록 데이터가 비어 있습니다. 백엔드 reference_codes REGION 데이터가 필요합니다.')
       }
+    }).catch(() => {
+      if (!ignore) {
+        setSelected([])
+        setSavedServices([])
+        setHasRegionCatalog(false)
+        setStatusMessage('지역 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+      }
+    }).finally(() => {
+      if (!ignore) setIsLoading(false)
     })
 
     return () => {
@@ -517,20 +603,32 @@ export function ContractorMyRegionsPage({ go }) {
 
   // 선택한 지역을 기존 전문분야 조합과 함께 저장
   const saveRegions = async () => {
-    const selectedRegionIds = uniqueIds(selected)
-    const serviceTaskIds = uniqueIds(savedServices.map(getServiceTaskId))
+    if (!hasRegionCatalog) {
+      setStatusMessage('지역 목록 데이터가 비어 있습니다. 백엔드 reference_codes REGION 데이터가 필요합니다.')
+      return
+    }
+
+    const selectedRegionIds = numericIds(selected)
+    const serviceTaskIds = numericIds(savedServices.map(getServiceTaskId))
+    const pendingServiceTaskIds = numericIds(readPendingIds(PENDING_SERVICE_TASK_IDS_KEY))
+    const targetServiceTaskIds = serviceTaskIds.length > 0 ? serviceTaskIds : pendingServiceTaskIds
 
     if (selectedRegionIds.length === 0) {
-      setStatusMessage('현재는 임시 지역 데이터라 화면에서만 선택 상태가 반영돼요.')
+      writePendingIds(PENDING_REGION_CODE_IDS_KEY, [])
+      setStatusMessage('지역을 하나 이상 선택해주세요.')
       return
     }
 
-    if (serviceTaskIds.length === 0) {
-      setStatusMessage('저장하려면 기존 전문분야 ID가 필요해요. 내 전문분야 API와 함께 연결하면 저장됩니다.')
+    writePendingIds(PENDING_REGION_CODE_IDS_KEY, selectedRegionIds)
+
+    if (targetServiceTaskIds.length === 0) {
+      writePendingIds(PENDING_SERVICE_TASK_IDS_KEY, [])
+      setStatusMessage('지역 선택을 저장해뒀어요. 전문분야를 선택하면 함께 저장됩니다.')
+      go(contractorScreens.myServices)
       return
     }
 
-    const payload = serviceTaskIds.flatMap((serviceTaskId) => (
+    const payload = targetServiceTaskIds.flatMap((serviceTaskId) => (
       selectedRegionIds.map((regionCodeId) => {
         const previous =
           savedServices.find((service) => normalizeId(getServiceTaskId(service)) === serviceTaskId && normalizeId(getRegionCodeId(service)) === regionCodeId) ||
@@ -551,10 +649,11 @@ export function ContractorMyRegionsPage({ go }) {
       setIsSaving(true)
       const result = await updateContractorServices(payload)
       setSavedServices(result.services || payload)
+      clearPendingContractorServiceSelections()
       setStatusMessage('지역이 저장됐어요.')
       go(contractorScreens.mypage)
-    } catch {
-      setStatusMessage('저장 API 연결 전이라 화면 선택만 유지했어요.')
+    } catch (error) {
+      setStatusMessage(error?.message || '지역 저장에 실패했어요. 선택값을 다시 확인해주세요.')
     } finally {
       setIsSaving(false)
     }
@@ -577,7 +676,7 @@ export function ContractorMyRegionsPage({ go }) {
       {statusMessage ? <p className="contractor-helper-message">{statusMessage}</p> : null}
       <div className="contractor-bottom-actions sticky">
         <button type="button" onClick={() => go(contractorScreens.mypage)}>취소</button>
-        <button type="button" onClick={saveRegions} disabled={isSaving}>
+        <button type="button" onClick={saveRegions} disabled={isLoading || isSaving || !hasRegionCatalog}>
           {isSaving ? '저장중' : '완료'}
         </button>
       </div>

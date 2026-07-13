@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { FaBell } from 'react-icons/fa'
 import { figmaAssets } from '../../components/contractor/figmaAssets'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { contractorActiveWork, contractorNotifications, contractorProfile, contractorScreens } from '../../data/contractorData'
+import { contractorActiveWork, contractorProfile, contractorScreens } from '../../data/contractorData'
 import {
+  fetchContractorMatchingRequests,
   fetchContractorMe,
   fetchContractorWorkOrders,
   updateContractorAlertSettings,
@@ -33,6 +34,42 @@ function mapActiveWork(item) {
       phone: '연락처는 작업 상세에서 확인',
     },
     status: item.work_order_status,
+  }
+}
+
+function formatNotificationTime(value) {
+  if (!value) return ''
+  return String(value).slice(0, 16).replace('T', ' ')
+}
+
+function mapMatchingNotification(item) {
+  const regionName = item.region_name || (item.region_code_id ? `지역 코드 ${item.region_code_id}` : '지역 미정')
+  return {
+    id: String(item.matching_target_id || item.matching_request_id),
+    title: '내 지역 새 시공 요청',
+    body: `${regionName} ${item.title} 요청이 도착했습니다.`,
+    time: formatNotificationTime(item.created_at),
+    request: {
+      id: String(item.matching_request_id),
+      matchingRequestId: item.matching_request_id,
+      matchingTargetId: item.matching_target_id,
+      quoteId: item.quote_id,
+      city: regionName,
+      region: item.address || regionName,
+      regionName,
+      title: item.title,
+      budget: item.budget_min || item.budget_max ? `${item.budget_min || '협의'} ~ ${item.budget_max || '협의'}` : '협의',
+      desiredDate: item.preferred_date ? String(item.preferred_date).slice(0, 10).replaceAll('-', '.') : '일정 협의',
+      time: item.preferred_time_start && item.preferred_time_end ? `${item.preferred_time_start} - ${item.preferred_time_end}` : '시간 협의',
+      status: item.target_status || item.matching_status,
+      aiEstimate: {
+        summary: '고객의 AI 견적 기반 매칭 요청입니다.',
+        priceRange: item.budget_min || item.budget_max ? `${item.budget_min || '협의'} ~ ${item.budget_max || '협의'}` : '협의',
+        expectedTime: '상세 협의',
+        note: item.request_message || `매칭 상태: ${item.matching_status}`,
+      },
+      photos: ['고객 첨부 사진', 'AI 견적 이미지'],
+    },
   }
 }
 
@@ -134,11 +171,43 @@ export function ContractorHomePage({ go }) {
 }
 
 export function ContractorNotificationsPage({ go }) {
+  const [items, setItems] = useState([])
+  const [status, setStatus] = useState('loading')
+
+  useEffect(() => {
+    let ignore = false
+
+    fetchContractorMatchingRequests({ target_status: 'NOTIFIED', page: 1, size: 50 })
+      .then((data) => {
+        if (ignore) return
+        setItems((data.items || []).map(mapMatchingNotification))
+        setStatus('loaded')
+      })
+      .catch(() => {
+        if (!ignore) {
+          setItems([])
+          setStatus('error')
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
   return (
     <ContractorPage title="알림 목록" go={go} back={() => go(contractorScreens.home)}>
+      {status === 'loading' ? <p className="muted center">알림을 불러오는 중입니다.</p> : null}
+      {status === 'error' ? <p className="muted center">알림을 불러오지 못했습니다.</p> : null}
+      {status === 'loaded' && items.length === 0 ? <p className="muted center">새 매칭 알림이 없습니다.</p> : null}
       <div className="contractor-list">
-        {contractorNotifications.map((item) => (
-          <button className="contractor-line-card clickable" type="button" key={item.id} onClick={() => go(item.targetScreen)}>
+        {items.map((item) => (
+          <button
+            className="contractor-line-card clickable"
+            type="button"
+            key={item.id}
+            onClick={() => go(contractorScreens.requestDetail, { request: item.request, matchingRequestId: item.request.matchingRequestId })}
+          >
             <FaBell />
             <div>
               <strong>{item.title}</strong>

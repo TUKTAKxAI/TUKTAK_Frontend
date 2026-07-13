@@ -27,12 +27,20 @@ export function setAuthTokens(tokens = {}) {
   if (tokens.refresh_token) storage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token)
 }
 
-export function clearAuthTokens() {
+export function clearAuthTokens({ redirectToLogin = false } = {}) {
   const storage = getStorage()
   if (!storage) return
 
   storage.removeItem(ACCESS_TOKEN_KEY)
   storage.removeItem(REFRESH_TOKEN_KEY)
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('tuktak:auth-cleared'))
+
+    if (redirectToLogin && window.location.pathname !== '/login') {
+      window.location.replace('/login')
+    }
+  }
 }
 
 export function clearLocalTestState() {
@@ -137,7 +145,7 @@ client.interceptors.response.use(
         }
         return client.request(originalRequest)
       } catch {
-        clearAuthTokens()
+        clearAuthTokens({ redirectToLogin: true })
         // Fall through to the normalized original error.
       }
     }

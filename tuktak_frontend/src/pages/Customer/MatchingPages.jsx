@@ -59,6 +59,7 @@ function buildMatchingRequestBody({ estimate, address, schedule, isEmergency }) 
 
   return {
     estimate_id: estimate.estimate_id,
+    service_task_id: estimate.service_task_id || estimate.serviceTaskId || estimate.task_id || estimate.taskId || null,
     title: estimateTitle(estimate),
     region_code_id: address.region_code_id,
     address: fullAddress,
@@ -340,12 +341,206 @@ function ServiceHero({ onClick, buttonLabel, go }) {
 }
 
 export function MatchingHomePage({ go }) {
+  const flow = useCustomerFlow()
+  const [matchingRequest, setMatchingRequest] = useState(null)
+  const [quotes, setQuotes] = useState([])
+  const [loadStatus, setLoadStatus] = useState('loading')
+  const [cancelStatus, setCancelStatus] = useState('')
+  const [showCancelModal, setShowCancelModal] = useState(false)
+
+  const loadCurrentMatching = async () => {
+    setLoadStatus('loading')
+    try {
+      const data = await api.get('/api/v1/matching-requests?page=1&size=20')
+
+      const activeRequest = (data.items || []).find((item) => (
+        ['REQUESTED', 'RECEIVING_QUOTES'].includes(item.matching_status)
+      ))
+
+      if (!activeRequest) {
+        setMatchingRequest(null)
+        setQuotes([])
+        setLoadStatus('empty')
+        return
+      }
+
+      setMatchingRequest(activeRequest)
+      flow.updateMatchingFlow({
+        matchingRequestId: activeRequest.matching_request_id,
+        matchingStatus: activeRequest.matching_status,
+      })
+
+      try {
+        const quoteData = await api.get(`/api/v1/matching-requests/${activeRequest.matching_request_id}/quotes`)
+        setQuotes(quoteData.quotes || [])
+      } catch {
+        setQuotes([])
+      }
+
+      setLoadStatus('loaded')
+    } catch {
+      setMatchingRequest(null)
+      setQuotes([])
+      setLoadStatus('error')
+    }
+  }
+
+  useEffect(() => {
+    let ignore = false
+
+    async function run() {
+      await loadCurrentMatching()
+    }
+
+    if (!ignore) run()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const cancelMatching = async () => {
+    if (!matchingRequest?.matching_request_id) return
+    setCancelStatus('submitting')
+
+    try {
+      await api.patch(`/api/v1/matching-requests/${matchingRequest.matching_request_id}/cancel`, {
+        cancel_reason: 'CUSTOMER_CANCELLED',
+      })
+      setShowCancelModal(false)
+      setCancelStatus('')
+      setMatchingRequest(null)
+      setQuotes([])
+      flow.updateMatchingFlow({
+        matchingRequestId: null,
+        matchingStatus: '매칭 취소됨',
+        selectedQuoteId: null,
+        selectedQuote: null,
+        selectedPartner: null,
+      })
+      setLoadStatus('empty')
+    } catch {
+      setCancelStatus('error')
+    }
+  }
+
+  if (loadStatus === 'loading') {
+    return (
+      <section className="selection-screen current-matching-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10">
+        <CustomerTopBar go={go} />
+        <div className="flex flex-col items-center justify-center flex-1">
+          <div className="w-44 h-44 flex justify-center items-center pointer-events-none [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: loadingSvg }} />
+          <p className="muted center">진행중인 매칭을 확인하는 중입니다.</p>
+        </div>
+      </section>
+    )
+  }
+
+  if (loadStatus === 'error') {
+    return (
+      <section className="selection-screen current-matching-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10">
+        <CustomerTopBar go={go} />
+        <article className="current-matching-panel mt-8">
+          <div className="current-matching-head">
+            <div>
+              <span className="latest-matching-label">매칭 상태</span>
+              <h2>매칭 정보를 불러오지 못했습니다</h2>
+            </div>
+          </div>
+          <p className="text-gray-500 font-semibold">서버 연결 또는 로그인 상태를 확인해주세요.</p>
+          <PrimaryButton onClick={loadCurrentMatching}>다시 불러오기</PrimaryButton>
+        </article>
+      </section>
+    )
+  }
+
+  if (!matchingRequest) {
+    return (
+      <ServiceHero
+        onClick={() => go(screens.matchingEstimateSelect)}
+        buttonLabel="매칭 시작하기"
+        go={go}
+      />
+    )
+  }
+
+  const quotePartners = quotes.map(quoteToPartner)
+
   return (
-    <ServiceHero
-      onClick={() => go(screens.matchingEstimateSelect)}
-      buttonLabel="매칭 시작하기"
-      go={go}
-    />
+    <section className="selection-screen current-matching-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10 overflow-y-auto">
+      <CustomerTopBar go={go} />
+
+      <div className="matching-title-row mt-4">
+        <h1 className="matching-history-title">현재 매칭</h1>
+      </div>
+
+      <article className="current-matching-panel">
+        <div className="current-matching-head">
+          <div>
+            <span className="latest-matching-label">진행중</span>
+            <h2>{matchingRequest.title}</h2>
+          </div>
+          <MatchingStatusBadge status={matchingRequest.matching_status} />
+        </div>
+
+        <div className="current-summary-grid">
+          <div>
+            <small>도착한 견적</small>
+            <strong>{quotes.length}개</strong>
+          </div>
+          <div>
+            <small>매칭 요청일</small>
+            <strong>{formatDate(matchingRequest.created_at)}</strong>
+          </div>
+        </div>
+
+        <div className="current-detail-section">
+          <h3>견적서 목록</h3>
+          {quotePartners.length > 0 ? (
+            <div className="matching-current-quote-list">
+              {quotePartners.map((partner) => (
+                <article className="matching-current-quote-card" key={partner.quote_id}>
+                  <div>
+                    <strong>{partner.contractor.business_name}</strong>
+                    <p>{partner.work_scope}</p>
+                    <small>{partner.arrival_time} · {partner.available_date ? formatDate(partner.available_date) : '날짜 협의'}</small>
+                  </div>
+                  <div>
+                    <b>{formatWon(partner.total_amount)}</b>
+                    <button type="button" onClick={() => go(screens.matchingAuction)}>자세히</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p>아직 견적서를 보낸 파트너가 없습니다.</p>
+          )}
+        </div>
+
+        <div className="bottom-actions">
+          <PrimaryButton ghost onClick={() => setShowCancelModal(true)}>매칭 취소</PrimaryButton>
+          <PrimaryButton onClick={() => go(quotes.length > 0 ? screens.matchingAuction : screens.matchingProgress)}>
+            {quotes.length > 0 ? '견적 비교하기' : '매칭 상황 보기'}
+          </PrimaryButton>
+        </div>
+        {cancelStatus === 'error' ? <p className="muted center">매칭 취소에 실패했습니다. 다시 시도해주세요.</p> : null}
+      </article>
+
+      {showCancelModal ? (
+        <div className="modal-overlay matching-modal-overlay">
+          <div className="modal-card matching-confirm-modal-card">
+            <h3>매칭을 취소할까요?</h3>
+            <p>취소하면 이 요청은 더 이상 파트너에게 노출되지 않고, 시공자 화면에서도 진행 가능한 요청으로 보이지 않습니다.</p>
+            <div className="button-row mt-5">
+              <PrimaryButton ghost onClick={() => setShowCancelModal(false)}>계속 진행</PrimaryButton>
+              <PrimaryButton onClick={cancelMatching}>
+                {cancelStatus === 'submitting' ? '취소중...' : '매칭 취소'}
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
