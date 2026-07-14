@@ -1,17 +1,16 @@
 import { api } from '../../api/apiClient'
 import { useEffect, useState, useRef } from 'react'
 import { searchJusoAddresses } from '../../api/jusoApi'
-import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { CustomerPage } from './CustomerPageShared'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
 import { screens } from '../../data/customerData'
 import { figmaAssets } from '../../components/customer/figmaAssets'
-import { Logo } from '../../components/customer/FormControls'
 import preview9 from '../../assets/figma/preview9.webp';
 import preview10 from '../../assets/figma/preview10.webp';
 import preview11 from '../../assets/figma/preview11.webp';
 import preview12 from '../../assets/figma/preview12.webp';
-import loadingSvg from '../../assets/figma/loading.svg?raw';
+import loadingCarbonSvg from '../../assets/figma/loading-carbon.svg?raw';
 import errorSvg from "../../assets/figma/error.svg?raw"
 
 const previewImages = [preview9, preview10, preview11, preview12];
@@ -281,62 +280,60 @@ function ServiceHero({ onClick, buttonLabel, go }) {
   };
 
   return (
-    <section className="service-hero flex flex-col h-full bg-[#F2F3F5]">
-      <CustomerTopBar go={go} />
-
-      <div className="flex flex-col items-center flex-1 py-0">
-        <h1 className="text-2xl font-bold text-gray-900 mt-0 text-center">매칭 서비스</h1>
-        
-        <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
-          <h2 className="text-base font-semibold text-gray-700 leading-snug">
+    <CustomerPage go={go} className="cds--white">
+      <div className="estimate-hero">
+      <div className="estimate-hero-body">
+        <div className="estimate-hero-head">
+          <span className="estimate-hero-eyebrow">매칭 서비스</span>
+          <h1 className="estimate-hero-title">
             근처 최고의 시공 업자와<br />매칭해보세요
-          </h2>
-          <p className="text-md font-semibold text-gray-700 mt-8 ml-3 leading-relaxed">
+          </h1>
+          <p className="estimate-hero-desc">
             AI 견적서, 지역 기반으로 근처 최고의<br />시공 업자와 매칭해드립니다
           </p>
         </div>
 
-        <div 
+        <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide py-8 gap-4 px-[25%] cursor-grab active:cursor-grabbing items-center"
+          className="estimate-hero-carousel"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {previewImages.map((img, index) => (
-            <div 
-              key={index} 
-              className={`min-w-[85%] ml-5 transition-all duration-500 snap-center flex justify-center items-center
-                ${activeIndex === index ? 'scale-100 opacity-100' : 'scale-70 opacity-40'}
-              `}
+            <div
+              key={index}
+              className={`estimate-hero-slide ${activeIndex === index ? 'is-active' : ''}`}
             >
-              <div className="w-full aspect-9/16 bg-white rounded-3xl shadow-lg border border-gray-300 overflow-hidden">
-                 <img 
-                   src={img} 
-                   alt={`미리보기 ${index + 1}`} 
-                   className="w-full h-full object-cover" 
-                   draggable="false" 
-                 />
+              <div className="estimate-hero-frame">
+                <img
+                  src={img}
+                  alt={`미리보기 ${index + 1}`}
+                  className="estimate-hero-frame-img"
+                  draggable="false"
+                />
               </div>
             </div>
           ))}
         </div>
 
         {/* 페이지네이션 도트 */}
-        <div className="flex justify-center space-x-2 mb-6">
+        <div className="estimate-hero-dots">
           {previewImages.map((_, i) => (
-            <button 
-              key={i} 
+            <button
+              key={i}
               onClick={() => goToIndex(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-blue-600' : 'w-2 bg-gray-300'}`} 
+              aria-label={`${i + 1}번째 미리보기`}
+              className={`estimate-hero-dot ${activeIndex === i ? 'is-active' : ''}`}
             />
           ))}
         </div>
 
-        <div className="w-full px-6 mt-auto pb-6">
+        <div className="estimate-hero-actions">
           <PrimaryButton onClick={onClick}>{buttonLabel}</PrimaryButton>
         </div>
       </div>
-    </section>
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -426,31 +423,28 @@ export function MatchingHomePage({ go }) {
 
   if (loadStatus === 'loading') {
     return (
-      <section className="selection-screen current-matching-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10">
-        <CustomerTopBar go={go} />
-        <div className="flex flex-col items-center justify-center flex-1">
-          <div className="w-44 h-44 flex justify-center items-center pointer-events-none [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: loadingSvg }} />
-          <p className="muted center">진행중인 매칭을 확인하는 중입니다.</p>
+      <CustomerPage go={go} className="cds--white">
+        <div className="estimate-loading">
+          <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+          <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+          <p className="estimate-loading-title">진행중인 매칭을 확인하는 중입니다.</p>
         </div>
-      </section>
+      </CustomerPage>
     )
   }
 
   if (loadStatus === 'error') {
     return (
-      <section className="selection-screen current-matching-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10">
-        <CustomerTopBar go={go} />
-        <article className="current-matching-panel mt-8">
-          <div className="current-matching-head">
-            <div>
-              <span className="latest-matching-label">매칭 상태</span>
-              <h2>매칭 정보를 불러오지 못했습니다</h2>
-            </div>
-          </div>
-          <p className="text-gray-500 font-semibold">서버 연결 또는 로그인 상태를 확인해주세요.</p>
-          <PrimaryButton onClick={loadCurrentMatching}>다시 불러오기</PrimaryButton>
-        </article>
-      </section>
+      <CustomerPage go={go} className="cds--white">
+        <div className="matching-current">
+          <article className="matching-current-card matching-current-card--error">
+            <span className="matching-current-eyebrow">매칭 상태</span>
+            <h2 className="matching-current-error-title">매칭 정보를 불러오지 못했습니다</h2>
+            <p className="matching-current-error-desc">서버 연결 또는 로그인 상태를 확인해주세요.</p>
+            <PrimaryButton onClick={loadCurrentMatching}>다시 불러오기</PrimaryButton>
+          </article>
+        </div>
+      </CustomerPage>
     )
   }
 
@@ -467,80 +461,78 @@ export function MatchingHomePage({ go }) {
   const quotePartners = quotes.map(quoteToPartner)
 
   return (
-    <section className="selection-screen current-matching-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10 overflow-y-auto">
-      <CustomerTopBar go={go} />
+    <CustomerPage go={go} className="cds--white">
+      <div className="matching-current">
+        <h1 className="matching-current-heading">현재 매칭</h1>
 
-      <div className="matching-title-row mt-4">
-        <h1 className="matching-history-title">현재 매칭</h1>
+        <article className="matching-current-card">
+          <div className="matching-current-card-head">
+            <div>
+              <span className="matching-current-eyebrow">진행중</span>
+              <h2>{matchingRequest.title}</h2>
+            </div>
+            <MatchingStatusBadge status={matchingRequest.matching_status} />
+          </div>
+
+          <div className="matching-current-stats">
+            <div className="matching-current-stat">
+              <span>도착한 견적</span>
+              <strong>{quotes.length}개</strong>
+            </div>
+            <div className="matching-current-stat">
+              <span>매칭 요청일</span>
+              <strong>{formatDate(matchingRequest.created_at)}</strong>
+            </div>
+          </div>
+
+          <div className="matching-current-section">
+            <h3>견적서 목록</h3>
+            {quotePartners.length > 0 ? (
+              <div className="matching-current-quotes">
+                {quotePartners.map((partner) => (
+                  <article className="matching-current-quote" key={partner.quote_id}>
+                    <div>
+                      <strong>{partner.contractor.business_name}</strong>
+                      <p>{partner.work_scope}</p>
+                      <small>{partner.arrival_time} · {partner.available_date ? formatDate(partner.available_date) : '날짜 협의'}</small>
+                    </div>
+                    <div className="matching-current-quote-price">
+                      <b>{formatWon(partner.total_amount)}</b>
+                      <button type="button" onClick={() => go(screens.matchingAuction)}>자세히</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="matching-current-empty">아직 견적서를 보낸 파트너가 없습니다.</p>
+            )}
+          </div>
+
+          <div className="matching-current-actions">
+            <button type="button" className="matching-current-ghost" onClick={() => setShowCancelModal(true)}>매칭 취소</button>
+            <PrimaryButton onClick={() => go(quotes.length > 0 ? screens.matchingAuction : screens.matchingProgress)}>
+              {quotes.length > 0 ? '견적 비교하기' : '매칭 상황 보기'}
+            </PrimaryButton>
+          </div>
+          {cancelStatus === 'error' ? <p className="matching-current-error-msg">매칭 취소에 실패했습니다. 다시 시도해주세요.</p> : null}
+        </article>
+
+        {showCancelModal ? (
+          <div className="modal-overlay matching-modal-overlay">
+            <div className="modal-card matching-current-cancel-modal">
+              <h3>매칭을 취소할까요?</h3>
+              <p>취소하면 이 요청은 더 이상 파트너에게 노출되지 않고, 시공자 화면에서도 진행 가능한 요청으로 보이지 않습니다.</p>
+              <div className="matching-current-cancel-actions">
+                <button type="button" className="matching-current-ghost" onClick={() => setShowCancelModal(false)}>계속 진행</button>
+                <PrimaryButton onClick={cancelMatching}>
+                  {cancelStatus === 'submitting' ? '취소중...' : '매칭 취소'}
+                </PrimaryButton>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
-
-      <article className="current-matching-panel">
-        <div className="current-matching-head">
-          <div>
-            <span className="latest-matching-label">진행중</span>
-            <h2>{matchingRequest.title}</h2>
-          </div>
-          <MatchingStatusBadge status={matchingRequest.matching_status} />
-        </div>
-
-        <div className="current-summary-grid">
-          <div>
-            <small>도착한 견적</small>
-            <strong>{quotes.length}개</strong>
-          </div>
-          <div>
-            <small>매칭 요청일</small>
-            <strong>{formatDate(matchingRequest.created_at)}</strong>
-          </div>
-        </div>
-
-        <div className="current-detail-section">
-          <h3>견적서 목록</h3>
-          {quotePartners.length > 0 ? (
-            <div className="matching-current-quote-list">
-              {quotePartners.map((partner) => (
-                <article className="matching-current-quote-card" key={partner.quote_id}>
-                  <div>
-                    <strong>{partner.contractor.business_name}</strong>
-                    <p>{partner.work_scope}</p>
-                    <small>{partner.arrival_time} · {partner.available_date ? formatDate(partner.available_date) : '날짜 협의'}</small>
-                  </div>
-                  <div>
-                    <b>{formatWon(partner.total_amount)}</b>
-                    <button type="button" onClick={() => go(screens.matchingAuction)}>자세히</button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p>아직 견적서를 보낸 파트너가 없습니다.</p>
-          )}
-        </div>
-
-        <div className="bottom-actions">
-          <PrimaryButton ghost onClick={() => setShowCancelModal(true)}>매칭 취소</PrimaryButton>
-          <PrimaryButton onClick={() => go(quotes.length > 0 ? screens.matchingAuction : screens.matchingProgress)}>
-            {quotes.length > 0 ? '견적 비교하기' : '매칭 상황 보기'}
-          </PrimaryButton>
-        </div>
-        {cancelStatus === 'error' ? <p className="muted center">매칭 취소에 실패했습니다. 다시 시도해주세요.</p> : null}
-      </article>
-
-      {showCancelModal ? (
-        <div className="modal-overlay matching-modal-overlay">
-          <div className="modal-card matching-confirm-modal-card">
-            <h3>매칭을 취소할까요?</h3>
-            <p>취소하면 이 요청은 더 이상 파트너에게 노출되지 않고, 시공자 화면에서도 진행 가능한 요청으로 보이지 않습니다.</p>
-            <div className="button-row mt-5">
-              <PrimaryButton ghost onClick={() => setShowCancelModal(false)}>계속 진행</PrimaryButton>
-              <PrimaryButton onClick={cancelMatching}>
-                {cancelStatus === 'submitting' ? '취소중...' : '매칭 취소'}
-              </PrimaryButton>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </section>
+    </CustomerPage>
   )
 }
 
@@ -580,99 +572,58 @@ export function MatchingEstimateSelectPage({ go }) {
     go(screens.matchingAddressList)
   }
 
+  if (loadStatus === 'loading') {
+    return (
+      <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
+        <div className="estimate-loading">
+          <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+          <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+          <p className="estimate-loading-title">AI 견적서 불러오는 중...</p>
+        </div>
+      </CustomerPage>
+    )
+  }
+
+  if (loadStatus === 'error' || loadStatus === 'empty') {
+    return (
+      <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
+        <div className="matching-select-status">
+          <div className="matching-select-status-icon" dangerouslySetInnerHTML={{ __html: errorSvg }} />
+          <h2 className="matching-select-status-title">
+            {loadStatus === 'error' ? '견적서를 불러오지 못했습니다' : '생성된 AI 견적서가 없습니다'}
+          </h2>
+          <p className="matching-select-status-desc">
+            {loadStatus === 'error' ? '서버 연결 상태를 다시 확인해주세요.' : 'AI 견적서를 새로 만들어 볼까요?'}
+          </p>
+          <PrimaryButton narrow onClick={() => go(screens.estimateStart)}>AI 견적서 생성</PrimaryButton>
+        </div>
+      </CustomerPage>
+    )
+  }
+
   return (
-    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5]">
-      <CustomerTopBar go={go} />
-      
-      <div className="flex flex-col flex-1 px-6 pt-4">
-        
-        <div className="flex items-center mb-0">
-          <button 
-            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
-            onClick={() => go(screens.matchingHome)}
-          >
-            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">매칭 시작하기</h1>
-        </div>
+    <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
+      <div className="matching-select">
+        <h1 className="matching-select-heading">매칭 시작하기</h1>
+        <p className="matching-select-subheading">AI 견적서를 선택해주세요</p>
 
-        <div className="overflow-y-auto pb-6">
-          
-          {loadStatus === 'loading' ? (
-            <div className="flex flex-col items-center justify-center mt-16">
-              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                   dangerouslySetInnerHTML={{ __html: loadingSvg }} 
-              />
-              <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서 불러오는 중 ...</p>
-            </div>
-          
-          ) : loadStatus === 'error' || loadStatus === 'empty' ? (
-            <div className="flex flex-col items-center justify-center mt-16">
-              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                   dangerouslySetInnerHTML={{ __html: errorSvg }} 
-              />
-              <p className="text-center font-bold text-[20px] text-gray-900 mt-1">
-                {loadStatus === 'error' ? '견적서를 불러오지 못했습니다!' : '생성된 AI 견적서가 없습니다 !'}
-              </p>
-              <p className="text-center font-medium text-[15px] text-gray-900 mt-5">
-                {loadStatus === 'error' ? '서버 연결 상태를 다시 확인해주세요.' : 'AI 견적서를 새로 만들어 볼까요?'}
-              </p>
-              <button 
-                onClick={() => go(screens.estimateStart)}
-                className="w-3/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700 mt-2"
-                style={{ fontSize: '16px', fontWeight: 'bold' }} 
-              >
-                AI 견적서 생성
+        <div className="matching-select-list">
+          {estimates.map((estimate) => (
+            <article key={estimate.estimate_id} className="matching-select-card">
+              <div className="matching-select-card-head">
+                <span className="matching-select-card-date">{formatDate(estimate.created_at)}</span>
+                <MatchingStatusBadge status={estimate.estimate_status === 'COMPLETED' ? '완료' : estimate.estimate_status} />
+              </div>
+              <h3 className="matching-select-card-title">{estimateTitle(estimate)}</h3>
+              <p className="matching-select-card-cost">예상 시공 비용 : {estimateCost(estimate)}</p>
+              <button type="button" className="matching-select-card-button" onClick={() => selectEstimate(estimate)}>
+                매칭 요청하기
               </button>
-            </div>
-
-          ) : (
-            <>
-              <h2 
-                className="text-gray-700 text-center mt-4 mb-6 font-bold"
-                style={{ fontSize: '20px' }}
-              >
-                AI 견적서를 선택해주세요
-              </h2>
-              {estimates.map((estimate) => (
-                <article key={estimate.estimate_id} className="bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex flex-col mb-4">
-                  
-                  <div className="flex justify-between items-start mb-4 border-b border-gray-300 pb-3">
-                    <span className="text-[13px] text-gray-500">
-                      {formatDate(estimate.created_at)}
-                    </span>
-                    <small className="text-xs text-blue-500 font-semibold bg-blue-50 px-2 py-1 rounded">
-                      {estimate.estimate_status === 'COMPLETED' ? '완료' : estimate.estimate_status}
-                    </small>
-                  </div>
-                  
-                  <div className="flex flex-col text-left">
-                    <h3 className="text-[22px] font-bold text-gray-900 mb-1.5 tracking-tight">
-                      {estimateTitle(estimate)}
-                    </h3>
-                    <p className="text-[13px] font-bold text-gray-500 mb-4.5">
-                      예상 시공 비용 : {estimateCost(estimate)}
-                    </p>
-                    
-                    <div className="flex justify-center w-full">
-                      <button 
-                        onClick={() => selectEstimate(estimate)}
-                        className="w-4/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700"
-                        style={{ fontSize: '16px', fontWeight: 'bold' }} 
-                      >
-                        매칭 요청하기
-                      </button>
-                    </div>
-                  </div>
-
-                </article>
-              ))}
-            </>
-          )}
+            </article>
+          ))}
         </div>
-
       </div>
-    </section>
+    </CustomerPage>
   )
 }
 
@@ -757,17 +708,11 @@ export function MatchingAddressListPage({ go }) {
   }
 
   return (
-    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10 overflow-y-auto">
-      <CustomerTopBar go={go} />
-      
+    <CustomerPage go={go} back={() => go(screens.matchingEstimateSelect)}>
+      <div className="selection-screen flex flex-col flex-1 bg-[#F2F3F5] px-6 pt-4 pb-10 overflow-y-auto">
+
       {/* 상단 헤더 영역 */}
       <div className="flex items-center mb-6">
-        <button 
-          className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
-          onClick={() => go(screens.matchingEstimateSelect)}
-        >
-          <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-        </button>
         <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">시공 지역 선택</h1>
       </div>
 
@@ -870,7 +815,8 @@ export function MatchingAddressListPage({ go }) {
           다음 단계로
         </PrimaryButton>
       </div>
-    </section>
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -1143,30 +1089,14 @@ useEffect(() => {
   }, [go, updateMatchingFlow, matchingRequestId])
 
   return (
-    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5] relative">
-      
-      <div className="transform scale-[2.5] mt-32 flex justify-center">
-        <Logo />
-      </div>
-
-      <div className="flex flex-col items-center justify-center flex-1 px-6">
-        
-        <div 
-          className="w-48 h-48 flex justify-center items-center pointer-events-none [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: loadingSvg }} 
-        />
-        
-        <h2 className="text-[24px] font-bold text-gray-900 mb-4 tracking-tight">
-          매칭 진행중 ...
-        </h2>
-        
-        <p className="text-[15px] font-medium text-gray-600 mt-4 text-center leading-relaxed whitespace-nowrap">
-          조건에 맞는 파트너의 견적을 기다리는 중 ...<br />
-          이 화면을 나가셔도 매칭은 계속 진행돼요
-        </p>
-
-      </div>
-
+    <section className="estimate-loading">
+      <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+      <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+      <h2 className="estimate-loading-title">매칭 진행중 ...</h2>
+      <p className="estimate-loading-desc matching-progress-desc">
+        <span className="matching-progress-desc-main">조건에 맞는 파트너의 견적을 기다리는 중 ...</span>
+        <span className="matching-progress-desc-sub">이 화면을 나가셔도 매칭은 계속 진행돼요</span>
+      </p>
     </section>
   )
 }
@@ -1237,7 +1167,8 @@ export function MatchingAuctionPage({ go }) {
   }
 
   return (
-    <section className="selection-screen auction-screen flex flex-col h-full bg-[#F2F3F5] overflow-hidden">
+    <CustomerPage go={go} back={() => go(screens.matchingHome)}>
+      <div className="selection-screen auction-screen flex flex-col flex-1 bg-[#F2F3F5] overflow-hidden">
       <style>{`
         @keyframes slideInFromRight {
           0% { 
@@ -1253,14 +1184,6 @@ export function MatchingAuctionPage({ go }) {
           animation: slideInFromRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
-
-      <CustomerTopBar go={go} />
-      <button 
-        className="mr-3 flex items-left justify-left transition-transform active:scale-90" 
-        onClick={() => go(screens.matchingHome)}
-      >
-        <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-      </button>
 
       <h1 className='text-center font-bold text-2xl pt-5 pb-8'>{title}</h1>
 
@@ -1299,7 +1222,8 @@ export function MatchingAuctionPage({ go }) {
 
       <ProposalModal partner={proposalPartner} onClose={() => setProposalPartner(null)} onSelect={selectPartner} isSelecting={isSelecting} />
       <ProfileModal partner={profilePartner} onClose={() => setProfilePartner(null)} />
-    </section>
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -1354,9 +1278,8 @@ export function MatchingDonePage({ go }) {
 
   if (!selectedPartner) {
     return (
-      <section className="subpage-screen current-matching-screen">
-        <CustomerTopBar go={go} />
-        <button className="inline-back-arrow" onClick={() => go(screens.home)}>‹</button>
+      <CustomerPage go={go} back={() => go(screens.home)}>
+        <div className="subpage-screen current-matching-screen">
         <h1 className="matching-history-title">현재 매칭</h1>
         <article className="current-matching-panel">
           <MatchingStatusBadge status={flow.matchingFlow.matchingStatus || '진행중인 매칭 없음'} />
@@ -1364,14 +1287,14 @@ export function MatchingDonePage({ go }) {
           <p>AI 견적서를 선택하고 주소 정보를 연결한 뒤 매칭을 요청해보세요.</p>
           <PrimaryButton narrow onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
         </article>
-      </section>
+        </div>
+      </CustomerPage>
     )
   }
 
   return (
-    <section className="subpage-screen current-matching-screen">
-      <CustomerTopBar go={go} />
-      <button className="inline-back-arrow" onClick={() => go(screens.home)}>‹</button>
+    <CustomerPage go={go} back={() => go(screens.home)}>
+      <div className="subpage-screen current-matching-screen">
       <h1 className="matching-history-title">현재 매칭</h1>
       <article className="current-matching-panel">
         <div className="current-matching-head">
@@ -1430,7 +1353,8 @@ export function MatchingDonePage({ go }) {
           <PrimaryButton onClick={() => go(screens.chatRoom)}>1:1 채팅 상담</PrimaryButton>
         </div>
       </article>
-    </section>
+      </div>
+    </CustomerPage>
   )
 }
 

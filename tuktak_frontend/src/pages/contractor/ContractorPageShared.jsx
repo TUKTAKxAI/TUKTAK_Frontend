@@ -1,5 +1,5 @@
 import { FaChevronRight } from 'react-icons/fa'
-import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { TopBar } from '../../components/customer/TopBar'
 import { screens } from '../../data/customerData'
 import { contractorScreens } from '../../data/contractorData'
 
@@ -18,7 +18,7 @@ export function ContractorPage({ title, children, go, back, action }) {
 
   return (
     <section className="home-layout">
-      <CustomerTopBar go={handleGo} />
+      <TopBar go={handleGo} />
 
       <div className="flex flex-col flex-1">
         {(title || back || action) ? (

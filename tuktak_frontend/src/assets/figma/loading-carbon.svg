@@ -1,0 +1,14 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="로딩 중">
+  <style>
+    .cds-spin {
+      animation: cds-spin 0.9s linear infinite;
+      transform-origin: 16px 16px;
+    }
+    @keyframes cds-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <circle cx="16" cy="16" r="14" fill="none" stroke="#e0e0e0" stroke-width="3" />
+  <circle class="cds-spin" cx="16" cy="16" r="14" fill="none" stroke="#0f62fe" stroke-width="3" stroke-linecap="round" stroke-dasharray="46 88" />
+</svg>

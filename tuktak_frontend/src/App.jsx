@@ -113,7 +113,7 @@ function CustomerLayout({ screen, children }) {
 
   return (
     <>
-      <div className={`scroll-area app-flow ${fixedListScreens.includes(screen) ? 'history-layout-scroll' : ''}`}>{children}</div>
+      <div className={`scroll-area app-flow app-flow-white ${fixedListScreens.includes(screen) ? 'history-layout-scroll' : ''}`}>{children}</div>
       <BottomNav current={screen} go={go} />
       <UrgentDialog />
     </>

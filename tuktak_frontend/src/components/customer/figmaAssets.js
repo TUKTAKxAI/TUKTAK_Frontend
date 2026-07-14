@@ -1,4 +1,5 @@
 import logo from '../../assets/figma/tuktak-logo.webp'
+import logoMark from '../../assets/figma/tuktak-logo-mark.webp'
 import kakao from '../../assets/figma/kakao.png'
 import google from '../../assets/figma/google.webp'
 import naver from '../../assets/figma/naver.png'
@@ -28,6 +29,7 @@ import siren from '../../assets/figma/siren.png'
 
 export const figmaAssets = {
   logo,
+  logoMark,
   kakao,
   google,
   naver,

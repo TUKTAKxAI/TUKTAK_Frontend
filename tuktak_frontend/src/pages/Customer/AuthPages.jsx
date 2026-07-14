@@ -1183,13 +1183,16 @@ export function AuthPages({
 
   if (screen === screens.login) {
     return (
-      <section className="auth-screen login-screen">
-        <Logo size="large" />
+      <section className="login-screen cds--white">
+        <header className="login-shell-bar">
+          <img src={figmaAssets.logoMark} alt="TUKTAK" className="login-shell-logo" />
+          <span className="login-shell-wordmark">TUKTAK</span>
+        </header>
 
-        <div className="login-row">
-          <h1>로그인</h1>
+        <div className="login-body">
+          <h1 className="login-heading">로그인</h1>
 
-          <div className="role-toggle">
+          <div className="login-role-switcher" role="group" aria-label="로그인 유형">
             <button
               type="button"
               className={selectedRole === "customer" ? "active" : ""}
@@ -1206,85 +1209,93 @@ export function AuthPages({
               파트너
             </button>
           </div>
-        </div>
 
-        <label className="field">
-          <input
-            type="email"
-            placeholder="아이디"
-            value={loginData.email}
-            onChange={(e) =>
-              setLoginData({
-                ...loginData,
-                email: e.target.value,
-              })
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleLogin();
-            }}
-          />
-        </label>
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="login-email">아이디</label>
+            <div className="carbon-field-control">
+              <input
+                id="login-email"
+                type="email"
+                placeholder="아이디"
+                value={loginData.email}
+                onChange={(e) =>
+                  setLoginData({
+                    ...loginData,
+                    email: e.target.value,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLogin();
+                }}
+              />
+            </div>
+          </div>
 
-        <label className="field">
-          <input
-            type={showLoginPassword ? "text" : "password"}
-            placeholder="비밀번호"
-            value={loginData.password}
-            onChange={(e) =>
-              setLoginData({
-                ...loginData,
-                password: e.target.value,
-              })
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleLogin();
-            }}
-          />
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="login-password">비밀번호</label>
+            <div className="carbon-field-control">
+              <input
+                id="login-password"
+                type={showLoginPassword ? "text" : "password"}
+                placeholder="비밀번호"
+                value={loginData.password}
+                onChange={(e) =>
+                  setLoginData({
+                    ...loginData,
+                    password: e.target.value,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLogin();
+                }}
+              />
+
+              <button
+                type="button"
+                className="carbon-password-toggle"
+                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                aria-label={showLoginPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+              >
+                {showLoginPassword ? (
+                  <FaEyeSlash size={18} />
+                ) : (
+                  <FaEye size={18} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <PrimaryButton onClick={handleLogin}>
+            로그인
+          </PrimaryButton>
+
+          <div className="carbon-divider">또는</div>
+
+          <p className="carbon-sns-label">SNS로 로그인</p>
+
+          <div className="carbon-sns-row">
+            <button type="button">
+              <img src={figmaAssets.kakao} alt="카카오" />
+            </button>
+            <button type="button">
+              <img src={figmaAssets.google} alt="구글" />
+            </button>
+            <button type="button">
+              <img src={figmaAssets.naver} alt="네이버" />
+            </button>
+          </div>
 
           <button
             type="button"
-            className="password-toggle"
-            onClick={() => setShowLoginPassword(!showLoginPassword)}
+            className="carbon-link-row"
+            onClick={() => {
+              resetSignupForm();
+              go(screens.signup);
+            }}
           >
-            {showLoginPassword ? (
-              <FaEyeSlash size={20} />
-            ) : (
-              <FaEye size={20} />
-            )}
-          </button>
-        </label>
-
-        <PrimaryButton onClick={handleLogin}>
-          로그인
-        </PrimaryButton>
-
-        <div className="divider">- 혹은 -</div>
-
-        <p className="muted center">SNS로 로그인</p>
-
-        <div className="sns-row">
-          <button>
-            <img src={figmaAssets.kakao} alt="카카오" />
-          </button>
-          <span />
-          <button>
-            <img src={figmaAssets.google} alt="구글" />
-          </button>
-          <span />
-          <button>
-            <img src={figmaAssets.naver} alt="네이버" />
+            회원가입 | 아이디 찾기 | 비밀번호 찾기
           </button>
         </div>
-
-        <button
-          className="link-row"
-          onClick={() => {
-            resetSignupForm();
-            go(screens.signup);
-          }}
-        >
-          회원가입 | 아이디 찾기 | 비밀번호 찾기
-        </button>
       </section>
     )
   }

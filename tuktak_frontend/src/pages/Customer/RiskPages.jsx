@@ -1,5 +1,5 @@
 import { api } from '../../api/apiClient'
-import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { CustomerPage } from './CustomerPageShared'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { Logo, PrimaryButton } from '../../components/customer/FormControls'
 import { screens } from '../../data/customerData'
@@ -56,9 +56,8 @@ function ServiceHero({ onClick, buttonLabel, go }) {
   };
 
   return (
-    <section className="service-hero flex flex-col h-full bg-[#F2F3F5]">
-      <CustomerTopBar go={go} />
-
+    <CustomerPage go={go}>
+      <div className="service-hero flex flex-col flex-1 bg-[#F2F3F5]">
       <div className="flex flex-col items-center flex-1 py-0">
         <h1 className="text-2xl font-bold text-gray-900 mt-4 text-center">AI 리스크리포트 서비스</h1>
         
@@ -111,7 +110,8 @@ function ServiceHero({ onClick, buttonLabel, go }) {
           <PrimaryButton onClick={onClick}>{buttonLabel}</PrimaryButton>
         </div>
       </div>
-    </section>
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -151,37 +151,19 @@ export function RiskSelectPage({ go }) {
     fetchMyEstimates();
   }, []);
 
-const requestRiskReport = async (estimateId) => {
-    try {
-      const data = await api.post('/api/v1/risk-reports', { estimate_id: estimateId });
-
-      if (data && data.risk_report_id) {
-        navigate(screenPaths[screens.riskLoading], { 
-          state: { riskReportId: data.risk_report_id } 
-        });
-      } else {
-        alert('리스크 리포트 요청에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('요청 실패:', error);
-      // 에러 메시지도 클라이언트가 던져주는 예쁜 메시지로 출력합니다.
-      alert(`백엔드 서버와 통신하는 중 오류가 발생했습니다: ${error.message}`);
-    }
+  // 요청하기를 누르는 즉시 로딩 화면으로 이동하고, 실제 API 호출은 로딩 화면에서 처리함
+  const requestRiskReport = (estimateId) => {
+    navigate(screenPaths[screens.riskLoading], {
+      state: { estimateId }
+    });
   };
 
   return (
-    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5]">
-      <CustomerTopBar go={go} />
-
+    <CustomerPage go={go} back={() => go(screens.riskHome)}>
+      <div className="selection-screen flex flex-col flex-1 bg-[#F2F3F5]">
       <div className="flex flex-col flex-1 px-6 pt-4">
 
         <div className="flex items-center mb-0">
-          <button
-            className="mr-3 flex items-center justify-center transition-transform active:scale-90"
-            onClick={() => go(screens.riskHome)}
-          >
-            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-          </button>
           <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">AI 리스크 리포트</h1>
         </div>
 
@@ -260,7 +242,8 @@ const requestRiskReport = async (estimateId) => {
         </div>
 
       </div>
-    </section>
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -268,33 +251,59 @@ const requestRiskReport = async (estimateId) => {
 export function RiskLoadingPage({ go }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const riskReportId = location.state?.riskReportId;
+  const estimateId = location.state?.estimateId;
 
   useEffect(() => {
-    if (!riskReportId) {
+    if (!estimateId) {
       alert('잘못된 접근입니다.');
       go(screens.riskHome);
       return;
     }
 
-    
-    const interval = setInterval(async () => {
-      try {
-        const data = await api.get(`/api/v1/risk-reports/${riskReportId}`);
-        
-        if (data.success && data.report && (data.report.report_status === 'COMPLETED' || data.report.report_status === 'SUCCESS')) {
-          clearInterval(interval);
-          navigate(screenPaths[screens.riskDone], {
-            state: { resultData: data.report }
-          });
-        }
-      } catch (error) {
-        console.error('상태 확인 실패:', error);
-      }
-    }, 3000);
+    let cancelled = false;
+    let pollTimer;
 
-    return () => clearInterval(interval);
-  }, [riskReportId, navigate, go]);
+    // 로딩 화면에 진입하자마자 실제 리스크 리포트 생성 요청을 보내고, 완료될 때까지 상태를 폴링함
+    const createRiskReport = async () => {
+      try {
+        const data = await api.post('/api/v1/risk-reports', { estimate_id: estimateId });
+        if (cancelled) return;
+
+        if (!data || !data.risk_report_id) {
+          alert('리스크 리포트 요청에 실패했습니다.');
+          go(screens.riskSelect);
+          return;
+        }
+
+        pollTimer = setInterval(async () => {
+          try {
+            const statusData = await api.get(`/api/v1/risk-reports/${data.risk_report_id}`);
+
+            if (statusData.success && statusData.report && (statusData.report.report_status === 'COMPLETED' || statusData.report.report_status === 'SUCCESS')) {
+              clearInterval(pollTimer);
+              navigate(screenPaths[screens.riskDone], {
+                state: { resultData: statusData.report }
+              });
+            }
+          } catch (error) {
+            console.error('상태 확인 실패:', error);
+          }
+        }, 3000);
+      } catch (error) {
+        console.error('요청 실패:', error);
+        // 에러 메시지도 클라이언트가 던져주는 예쁜 메시지로 출력합니다.
+        alert(`백엔드 서버와 통신하는 중 오류가 발생했습니다: ${error.message}`);
+        go(screens.riskSelect);
+      }
+    };
+
+    createRiskReport();
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollTimer);
+    };
+  }, [estimateId, navigate, go]);
 
   return (
     <section className="status-screen flex flex-col items-center justify-center h-full bg-[#F2F3F5] overflow-hidden">

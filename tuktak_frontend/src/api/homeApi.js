@@ -17,7 +17,7 @@ export const defaultActiveWorkSummary = {
   activeCount: 0,
 }
 
-function getDistrictFromAddress(address) {
+export function getDistrictFromAddress(address) {
   const match = String(address || '').match(/[가-힣]+구/)
   return match?.[0] ?? '주소'
 }

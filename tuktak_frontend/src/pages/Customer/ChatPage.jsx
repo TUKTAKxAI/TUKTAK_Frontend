@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { Avatar } from '../../components/customer/FormControls'
-import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { CustomerPage } from './CustomerPageShared'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import chatIcon from '../../assets/figma/chat.png'
 
@@ -66,14 +66,8 @@ export function ChatListPage({
     }
 
     return (
-        <section className="chat-list-screen">
-            <CustomerTopBar
-                title="채팅"
-                go={go}
-                compact
-                hideTitle
-            />
-
+        <CustomerPage go={go}>
+            <div className="chat-list-screen">
             <div className="chat-page-title">
                 <img
                     src={chatIcon}
@@ -166,7 +160,8 @@ export function ChatListPage({
                     )
                 )}
             </div>
-        </section>
+            </div>
+        </CustomerPage>
     )
 }
 

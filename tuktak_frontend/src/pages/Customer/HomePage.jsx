@@ -5,14 +5,26 @@ import {
   fetchActiveWorkSummary,
   fetchHomeAddress,
   fetchNearbySummary,
-  mapJusoPayloadToHomeAddress,
+  getDistrictFromAddress,
   saveHomeAddress,
 } from '../../api/homeApi'
-import { getJusoPopupUrl, hasJusoConfirmKey } from '../../api/jusoApi'
-import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
+import { CustomerPage } from './CustomerPageShared'
 import { screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
 import { useNavigate } from 'react-router-dom'
+import {
+  FaCamera,
+  FaExclamationTriangle,
+  FaHandshake,
+  FaMapMarkerAlt,
+  FaChevronRight,
+  FaChevronDown,
+  FaSearch,
+  FaHardHat,
+  FaTimes,
+  FaPen,
+} from 'react-icons/fa'
 
 // 최신 리뷰 탭에서 사용할 카테고리 목록
 const reviewCategories = ['도어락', '목공', '배관', '보일러', '전기']
@@ -124,6 +136,8 @@ export function HomePage({ go }) {
   const [nearbySummary, setNearbySummary] = useState(defaultNearbySummary)
   // 주소 관리 모달 열림 여부
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
+  // 주소 검색 모달(JusoSearchModal) 열림 여부
+  const [showAddressSearch, setShowAddressSearch] = useState(false)
   // 주소 검색/저장 과정에서 발생한 에러 메시지
   const [addressError, setAddressError] = useState('')
   // 진행중 시공 요약. undefined는 API 확인 전 상태라서 임의 카드를 보여주지 않음
@@ -175,72 +189,49 @@ export function HomePage({ go }) {
     }
   }, [])
 
-  // 주소 검색 팝업에서 선택한 주소를 postMessage로 받아 처리함
-  useEffect(() => {
-    const handleMessage = async (event) => {
-      // 같은 출처에서 보낸 메시지만 허용
-      if (event.origin !== window.location.origin) return
-      // 주소 선택 메시지가 아니면 무시
-      if (event.data?.type !== 'TUKTAK_JUSO_SELECTED') return
-
-      // 주소 API payload를 홈 화면에서 쓰는 주소 객체 형태로 변환
-      const nextAddress = mapJusoPayloadToHomeAddress(event.data.payload)
-
-      if (!nextAddress) {
-        setAddressError('주소 정보를 받아오지 못했습니다. 다시 검색해주세요.')
-        return
-      }
-
-      // 선택된 주소를 화면에 반영하고 모달을 닫음
-      setSelectedAddress(nextAddress)
-      setAddressError('')
-      setIsAddressModalOpen(false)
-
-      // 선택한 주소를 저장한 뒤, 새 주소 기준으로 근처 시공자 정보를 다시 조회
-      const savedAddress = await saveHomeAddress(nextAddress)
-      const summary = await fetchNearbySummary(savedAddress)
-      setNearbySummary(summary)
+  // JusoSearchModal에서 주소를 선택했을 때 처리함 (다른 페이지들과 동일한 주소 검색 API 사용)
+  const handleAddressSelect = async (item) => {
+    // 검색 결과 항목을 홈 화면에서 쓰는 주소 객체 형태로 변환
+    const nextAddress = {
+      district: getDistrictFromAddress(item.roadAddr),
+      title: item.roadAddrPart1 || item.roadAddr,
+      detail: item.roadAddr,
+      zipNo: item.zipNo || '',
+      regionCodeId: item.admCd || null,
     }
 
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [])
-
-  // 주소 검색 팝업을 여는 함수
-  const openAddressSearch = () => {
-    // 도로명주소 API 키가 없으면 팝업을 열지 않고 에러 표시
-    if (!hasJusoConfirmKey()) {
-      setAddressError('.env에 VITE_JUSO_CONFIRM_KEY를 설정한 뒤 다시 실행해주세요.')
-      return
-    }
-
+    // 선택된 주소를 화면에 반영하고 모달을 닫음
+    setSelectedAddress(nextAddress)
     setAddressError('')
-    // 도로명주소 검색 팝업 실행
-    window.open(getJusoPopupUrl(), 'jusoSearch', 'width=430,height=760,scrollbars=yes,resizable=yes')
+    setShowAddressSearch(false)
+    setIsAddressModalOpen(false)
+
+    // 선택한 주소를 저장한 뒤, 새 주소 기준으로 근처 시공자 정보를 다시 조회
+    const savedAddress = await saveHomeAddress(nextAddress)
+    const summary = await fetchNearbySummary(savedAddress)
+    setNearbySummary(summary)
   }
 
   return (
-    <section className="home-layout">
-      {/* 상단 헤더 영역: 로고, 알림, 마이페이지 버튼 */}
-      <CustomerTopBar go={go} />
+    <CustomerPage go={go} className="cds--white">
 
       {activeMatching === undefined ? (
-        <div className="home-alert-card home-alert-placeholder" aria-hidden="true" />
+        <div className="home-hero-skeleton" aria-hidden="true" />
       ) : activeMatching ? (
         // 진행중 시공 카드: 매칭 히스토리로 이동하면서 진행중 필터를 자동 선택
         <button
-          className="home-alert-card home-progress-card"
+          className="home-hero home-hero-progress"
           type="button"
           onClick={() => go(screens.estimateHome)}
         >
-          <div className="home-alert-copy">
-            <span>{activeMatching.status}</span>
-            <h2>진행중인 시공이 있어요</h2>
-            <p>현재 시공은 매칭 히스토리에서 확인하고, 새 견적도 바로 받을 수 있어요.</p>
-            <strong className="home-alert-cta">새 AI 견적 받기</strong>
+          <div className="home-hero-body">
+            <span className="home-hero-eyebrow">{activeMatching.status}</span>
+            <h2 className="home-hero-title">진행중인 시공이 있어요</h2>
+            <p className="home-hero-desc">현재 시공은 매칭 히스토리에서 확인하고, 새 견적도 바로 받을 수 있어요.</p>
+            <span className="home-hero-cta">새 AI 견적 받기 <FaChevronRight aria-hidden="true" /></span>
           </div>
           <div
-            className="home-progress-visual"
+            className="home-hero-stat"
             role="button"
             tabIndex={0}
             onClick={(event) => {
@@ -265,14 +256,14 @@ export function HomePage({ go }) {
         </button>
       ) : (
         // 메인 CTA 카드: AI 견적 시작 화면으로 이동
-        <button className="home-alert-card" type="button" onClick={() => go(screens.estimateHome)}>
-          <div className="home-alert-copy">
-            <span>AI 견적 시작</span>
-            <h2>수리가 필요하다면?</h2>
-            <p>사진과 설명을 올리면 예상 비용과 시간을 확인할 수 있어요.</p>
-            <strong className="home-alert-cta">무료 AI 견적 받기</strong>
+        <button className="home-hero" type="button" onClick={() => go(screens.estimateHome)}>
+          <div className="home-hero-body">
+            <span className="home-hero-eyebrow">AI 견적 시작</span>
+            <h2 className="home-hero-title">수리가 필요하다면?</h2>
+            <p className="home-hero-desc">사진과 설명을 올리면 예상 비용과 시간을 확인할 수 있어요.</p>
+            <span className="home-hero-cta">무료 AI 견적 받기 <FaChevronRight aria-hidden="true" /></span>
           </div>
-          <div className="home-alert-visual">
+          <div className="home-hero-stat">
             <strong>AI</strong>
             <small>무료 AI 견적 3회</small>
           </div>
@@ -280,10 +271,10 @@ export function HomePage({ go }) {
       )}
 
       {/* 근처 시공자 요약 카드: 매칭 홈으로 이동 */}
-      <button className="home-near-card" type="button" onClick={() => go(screens.matchingHome)}>
+      <button className="home-location-tile" type="button" onClick={() => go(screens.matchingHome)}>
         {/* 주소 영역만 클릭하면 카드 이동 대신 주소 관리 모달을 열어야 하므로 이벤트 전파를 막음 */}
         <div
-          className="home-location"
+          className="home-location-row"
           role="button"
           tabIndex={0}
           onClick={(event) => {
@@ -298,57 +289,65 @@ export function HomePage({ go }) {
             }
           }}
         >
+          <FaMapMarkerAlt className="home-location-pin" aria-hidden="true" />
           <span>{selectedAddress.district}</span>
-          <b aria-hidden="true" />
+          <FaChevronDown className="home-location-caret" aria-hidden="true" />
         </div>
         <div className="home-worker-row">
-          <div className="home-worker-icon" />
-          <h2>근처 {nearbySummary.contractorCount}명의 시공자가 작업을 기다리고 있어요</h2>
+          <span className="home-worker-icon" aria-hidden="true"><FaHardHat /></span>
+          <h2>근처 {nearbySummary.contractorCount}명의 시공자가 작업을 <br />기다리고 있어요</h2>
         </div>
         <p>내 주변 가능한 파트너를 빠르게 확인해보세요.</p>
       </button>
 
       {/* 서비스 절차 안내 섹션 */}
-      <section className="home-flow-section">
+      <section className="home-steps">
         <div className="home-section-head">
           <h2>서비스 절차</h2>
         </div>
-        <div className="home-flow-grid">
-          {/* serviceSteps 배열을 카드 UI로 반복 렌더링 */}
+        <div className="home-steps-scroll">
+          {/* serviceSteps 배열을 가로 스와이프 타일 UI로 반복 렌더링 */}
           {serviceSteps.map(([step, icon, title, description]) => (
-            <article className="home-flow-card" key={step}>
-              <div className={`home-flow-icon ${icon}`} aria-hidden="true" />
-              <span>{step}</span>
-              <strong>{title}</strong>
-              <p>{description}</p>
+            <article className="home-step-tile" key={step}>
+              <span className="home-step-icon" aria-hidden="true">
+                {icon === 'photo' ? <FaCamera /> : null}
+                {icon === 'ai' ? 'AI' : null}
+                {icon === 'risk' ? <FaExclamationTriangle /> : null}
+                {icon === 'match' ? <FaHandshake /> : null}
+              </span>
+              <span className="home-step-index">STEP {step}</span>
+              <strong className="home-step-title">{title}</strong>
+              <p className="home-step-desc">{description}</p>
             </article>
           ))}
         </div>
       </section>
 
       {/* 최신 리뷰 섹션 */}
-      <section className="home-review-section">
+      <section className="home-reviews">
         <div className="home-section-head">
           <h2>최신 리뷰</h2>
-          <button type="button" onClick={() => go(screens.myReviews)}>내 리뷰</button>
+          <button className="home-section-link" type="button" onClick={() => go(screens.myReviews)}>
+            내 리뷰 <FaChevronRight aria-hidden="true" />
+          </button>
         </div>
-        <div className="home-review-panel">
-          <div className="home-review-tabs">
-            {/* 리뷰 카테고리 탭 */}
-            {reviewCategories.map((category) => (
-              <button
-                className={activeCategory === category ? 'active' : ''}
-                key={category}
-                type="button"
-                onClick={() => setActiveCategory(category)}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
+        <div className="home-reviews-tabs">
+          {/* 리뷰 카테고리 탭 */}
+          {reviewCategories.map((category) => (
+            <button
+              className={activeCategory === category ? 'active' : ''}
+              key={category}
+              type="button"
+              onClick={() => setActiveCategory(category)}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+        <div className="home-reviews-list">
           {/* 선택된 카테고리의 리뷰 목록 */}
           {visibleReviews.map((review) => (
-            <article className="home-review-item" key={`${review.partner}-${review.time}`}>
+            <article className="home-review-row" key={`${review.partner}-${review.time}`}>
               <div className="home-review-meta">
                 <div>
                   <small>{review.time}</small>
@@ -376,30 +375,38 @@ export function HomePage({ go }) {
             <div className="home-address-head">
               <h2 id="home-address-title">주소 관리</h2>
               <button type="button" onClick={() => setIsAddressModalOpen(false)} aria-label="닫기">
-                ×
+                <FaTimes />
               </button>
             </div>
-            <button className="home-address-search" type="button" onClick={openAddressSearch}>
-              <span aria-hidden="true" />
+            <button className="home-address-search" type="button" onClick={() => setShowAddressSearch(true)}>
+              <FaSearch aria-hidden="true" />
               <strong>도로명, 지번 또는 건물명으로 검색</strong>
             </button>
             {addressError ? <p className="home-address-error">{addressError}</p> : null}
             <div className="home-address-divider" />
             <article className="home-current-address">
-              <i aria-hidden="true" />
+              <FaMapMarkerAlt className="home-current-address-icon" aria-hidden="true" />
               <div>
                 <em>현재 설정된 주소</em>
                 <h3>{selectedAddress.title}</h3>
                 <p>{selectedAddress.detail}</p>
               </div>
-              <button type="button" onClick={openAddressSearch} aria-label="주소 수정">
-                ✎
+              <button type="button" onClick={() => setShowAddressSearch(true)} aria-label="주소 수정">
+                <FaPen />
               </button>
             </article>
           </section>
         </div>
       )}
 
-    </section>
+      {/* 주소 검색 모달: mypage/profile 등 다른 화면과 동일한 주소 검색 API(JusoSearchModal)를 사용함 */}
+      {showAddressSearch ? (
+        <JusoSearchModal
+          onClose={() => setShowAddressSearch(false)}
+          onSelect={handleAddressSelect}
+        />
+      ) : null}
+
+    </CustomerPage>
   )
 }
