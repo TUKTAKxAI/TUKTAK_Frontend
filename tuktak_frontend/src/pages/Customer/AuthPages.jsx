@@ -1,7 +1,8 @@
 import { ChoiceCard } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
-import { BackButton, Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { BackButton, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
+import confirmCarbonSvg from '../../assets/figma/confirm-carbon.svg?raw'
 import { screens, signupTerms } from '../../data/customerData'
 import { contractorScreens, partnerSignupTerms } from '../../data/contractorData'
 import { contractorScreenPaths } from '../../routes/contractorRoutes'
@@ -28,10 +29,24 @@ function setPreferredRole(role) {
 }
 
 // ----------------------------------------------------------------------------
+// 회원가입 온보딩 단계 화면들이 공유하는 상단 헤더 (뒤로가기 + 로고 마크 + 워드마크)
+// 로그인 화면의 .login-shell-bar 와 동일한 룩을 씀
+// ----------------------------------------------------------------------------
+function AuthStepHeader({ back }) {
+  return (
+    <div className="auth-step-header">
+      <BackButton onClick={back} />
+      <img src={figmaAssets.logoMark} alt="TUKTAK" className="auth-step-header-logo" />
+      <span className="auth-step-header-wordmark">TUKTAK</span>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------------------
 // 분야 선택 / 작업지역 선택에 공용으로 쓰는 좌-우 패널 컴포넌트
 // (파트너 "전문 분야" 화면과 "작업 지역" 화면이 동일한 UI 패턴이라 재사용)
 // ----------------------------------------------------------------------------
-function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, maxCount }) {
+function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, maxCount, hideCount }) {
   const [activeGroupKey, setActiveGroupKey] = useState(groups[0]?.key)
 
   const activeGroup = groups.find((g) => g.key === activeGroupKey) || groups[0]
@@ -82,10 +97,12 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
       </div>
 
       <div className="select-panel-footer">
-        <div className="footer-count-row">
-          <span>
-            {footerLabel} {selected.length} / {maxCount}
-          </span>
+        <div className={`footer-count-row ${hideCount ? "reset-only" : ""}`}>
+          {!hideCount && (
+            <span>
+              {footerLabel} {selected.length} / {maxCount}
+            </span>
+          )}
 
           <button type="button" className="reset-button" onClick={onReset}>
             ↻ 초기화
@@ -731,8 +748,6 @@ export function AuthPages({
   })
   const [partnerServiceGroups, setPartnerServiceGroups] = useState(categoryGroups)
   const [partnerRegionGroups, setPartnerRegionGroups] = useState(regionGroups)
-  const [hasPartnerServiceCatalog, setHasPartnerServiceCatalog] = useState(false)
-  const [hasPartnerRegionCatalog, setHasPartnerRegionCatalog] = useState(false)
 
   useEffect(() => {
     let ignore = false
@@ -748,16 +763,10 @@ export function AuthPages({
 
       if (nextServiceGroups.length > 0) {
         setPartnerServiceGroups(nextServiceGroups)
-        setHasPartnerServiceCatalog(true)
-      } else {
-        setHasPartnerServiceCatalog(false)
       }
 
       if (nextRegionGroups.length > 0) {
         setPartnerRegionGroups(nextRegionGroups)
-        setHasPartnerRegionCatalog(true)
-      } else {
-        setHasPartnerRegionCatalog(false)
       }
     })
 
@@ -1003,10 +1012,6 @@ export function AuthPages({
     }
 
     const selectedServiceTaskIds = numericSignupIds(partnerSignupData.categories.map((category) => category.id))
-    if (!hasPartnerServiceCatalog || selectedServiceTaskIds.length === 0) {
-      alert("전문 분야 목록을 불러오지 못했습니다. 새로고침 후 다시 선택해주세요.")
-      return
-    }
 
     if (!partnerSignupData.businessRegFile) {
       alert("사업자등록증을 업로드해주세요.")
@@ -1039,10 +1044,6 @@ export function AuthPages({
     }
 
     const selectedRegionCodeIds = numericSignupIds(partnerSignupData.workRegions.map((region) => region.id))
-    if (!hasPartnerRegionCatalog || selectedRegionCodeIds.length === 0) {
-      alert("작업 지역 목록을 불러오지 못했습니다. 새로고침 후 다시 선택해주세요.")
-      return
-    }
 
     const agreements = buildAgreementsPayload()
 
@@ -1257,9 +1258,9 @@ export function AuthPages({
                 aria-label={showLoginPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
               >
                 {showLoginPassword ? (
-                  <FaEyeSlash size={18} />
-                ) : (
                   <FaEye size={18} />
+                ) : (
+                  <FaEyeSlash size={18} />
                 )}
               </button>
             </div>
@@ -1269,25 +1270,29 @@ export function AuthPages({
             로그인
           </PrimaryButton>
 
-          <div className="carbon-divider">또는</div>
+          {selectedRole === "customer" && (
+            <>
+              <div className="carbon-divider">또는</div>
 
-          <p className="carbon-sns-label">SNS로 로그인</p>
+              <p className="carbon-sns-label">SNS로 로그인</p>
 
-          <div className="carbon-sns-row">
-            <button type="button">
-              <img src={figmaAssets.kakao} alt="카카오" />
-            </button>
-            <button type="button">
-              <img src={figmaAssets.google} alt="구글" />
-            </button>
-            <button type="button">
-              <img src={figmaAssets.naver} alt="네이버" />
-            </button>
-          </div>
+              <div className="carbon-sns-row">
+                <button type="button">
+                  <img src={figmaAssets.kakao} alt="카카오" />
+                </button>
+                <button type="button">
+                  <img src={figmaAssets.google} alt="구글" />
+                </button>
+                <button type="button">
+                  <img src={figmaAssets.naver} alt="네이버" />
+                </button>
+              </div>
+            </>
+          )}
 
           <button
             type="button"
-            className="carbon-link-row"
+            className={`carbon-link-row ${selectedRole === "partner" ? "carbon-link-row-spaced" : ""}`}
             onClick={() => {
               resetSignupForm();
               go(screens.signup);
@@ -1302,212 +1307,240 @@ export function AuthPages({
 
   if (screen === screens.signup) {
     return (
-      <section className="auth-screen signup-screen">
-        <Logo />
-        <h2 className="hero-copy">
-          회원가입을 통해<br />
-          수리 관련 서비스를<br />
-          경험하세요
-        </h2>
+      <section className="signup-screen cds--white">
+        <header className="signup-shell-bar">
+          <img src={figmaAssets.logoMark} alt="TUKTAK" className="signup-shell-logo" />
+          <span className="signup-shell-wordmark">TUKTAK</span>
+        </header>
 
-        <label className="field">
-          <input
-            placeholder="이름"
-            value={signupData.name}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                name: e.target.value,
-              })
-            }
-          />
-        </label>
+        <div className="signup-body">
+          <h1 className="signup-heading">회원가입</h1>
+          <p className="signup-subheading">
+            회원가입을 통해 수리 관련 서비스를 경험하세요
+          </p>
 
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-name">이름</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-name"
+                placeholder="이름"
+                value={signupData.name}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    name: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
 
-        <label className="field">
-          <input
-            type="email"
-            placeholder="이메일"
-            value={signupData.email}
-            onChange={(e) => {
-              setSignupData({
-                ...signupData,
-                email: e.target.value,
-              });
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-email">이메일</label>
+            <div className="carbon-field-control carbon-field-control-action">
+              <input
+                id="signup-email"
+                type="email"
+                placeholder="이메일"
+                value={signupData.email}
+                onChange={(e) => {
+                  setSignupData({
+                    ...signupData,
+                    email: e.target.value,
+                  });
 
-              setEmailCheckResult(null);
-              setCheckedEmail("");
+                  setEmailCheckResult(null);
+                  setCheckedEmail("");
+                }}
+              />
+              <button
+                type="button"
+                className="signup-inline-action"
+                onClick={handleCheckEmail}
+              >
+                중복확인
+              </button>
+            </div>
+          </div>
+
+          {emailCheckResult === true && (
+            <p className="signup-helper-text success">
+              사용 가능한 이메일입니다.
+            </p>
+          )}
+
+          {emailCheckResult === false && (
+            <p className="signup-helper-text error">
+              이미 가입된 이메일입니다. 기존 계정 비밀번호가 맞으면 선택한 역할을 추가로 등록할 수 있어요.
+            </p>
+          )}
+
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-password">비밀번호</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-password"
+                type={showSignupPassword ? "text" : "password"}
+                placeholder="비밀번호"
+                value={signupData.password}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    password: e.target.value,
+                  })
+                }
+              />
+
+              <button
+                type="button"
+                className="carbon-password-toggle"
+                onClick={() => setShowSignupPassword(!showSignupPassword)}
+                aria-label={showSignupPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+              >
+                {showSignupPassword ? (
+                  <FaEye size={18} />
+                ) : (
+                  <FaEyeSlash size={18} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <p
+            className={`signup-helper-text ${signupData.password &&
+              !isValidPassword(signupData.password)
+              ? "error"
+              : ""
+              }`}
+          >
+            영문, 숫자, 특수문자를 포함한 8~20자
+          </p>
+
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-password-confirm">비밀번호 확인</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-password-confirm"
+                type={showSignupPasswordConfirm ? "text" : "password"}
+                placeholder="비밀번호 확인"
+                value={signupData.passwordConfirm}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    passwordConfirm: e.target.value,
+                  })
+                }
+              />
+
+              <button
+                type="button"
+                className="carbon-password-toggle"
+                onClick={() =>
+                  setShowSignupPasswordConfirm(!showSignupPasswordConfirm)
+                }
+                aria-label={showSignupPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 표시"}
+              >
+                {showSignupPasswordConfirm ? (
+                  <FaEye size={18} />
+                ) : (
+                  <FaEyeSlash size={18} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-nickname">닉네임</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-nickname"
+                placeholder="닉네임"
+                value={signupData.nickname}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    nickname: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <p
+            className={`signup-helper-text ${signupData.nickname &&
+              !isValidNickname(signupData.nickname)
+              ? "error"
+              : ""
+              }`}
+          >
+            닉네임은 2글자 이상 입력해주세요.
+          </p>
+
+          <PrimaryButton
+            onClick={() => {
+              if (!signupData.name.trim()) {
+                alert("이름을 입력해주세요.")
+                return
+              }
+
+              if (!signupData.email.trim()) {
+                alert("이메일을 입력해주세요.")
+                return
+              }
+
+              if (
+                emailCheckResult === null ||
+                checkedEmail !== signupData.email
+              ) {
+                alert("이메일 중복확인을 진행해주세요.");
+                return
+              }
+
+              if (!signupData.password) {
+                alert("비밀번호를 입력해주세요.")
+                return
+              }
+
+              if (!isValidPassword(signupData.password)) {
+                alert(
+                  "비밀번호는 8~20자의 영문, 숫자, 특수문자를 모두 포함해야 합니다."
+                );
+                return
+              }
+
+              if (signupData.password !== signupData.passwordConfirm) {
+                alert("비밀번호가 일치하지 않습니다.")
+                return
+              }
+
+              if (!signupData.nickname.trim()) {
+                alert("닉네임을 입력해주세요.")
+                return
+              }
+
+              if (!isValidNickname(signupData.nickname)) {
+                alert("닉네임은 2글자 이상 입력해주세요.");
+                return;
+              }
+
+              go(screens.userType)
             }}
-          />
-          <button
-            type="button"
-            onClick={handleCheckEmail}
           >
-            중복확인
-          </button>
-        </label>
-
-        {emailCheckResult === true && (
-          <p className="email-guide success">
-            사용 가능한 이메일입니다.
-          </p>
-        )}
-
-        {emailCheckResult === false && (
-          <p className="email-guide invalid">
-            이미 가입된 이메일입니다. 기존 계정 비밀번호가 맞으면 선택한 역할을 추가로 등록할 수 있어요.
-          </p>
-        )}
-
-        <label className="field">
-          <input
-            type={showSignupPassword ? "text" : "password"}
-            placeholder="비밀번호"
-            value={signupData.password}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                password: e.target.value,
-              })
-            }
-          />
+            회원가입 하기
+          </PrimaryButton>
 
           <button
             type="button"
-            className="password-toggle"
-            onClick={() => setShowSignupPassword(!showSignupPassword)}
+            className="carbon-link-row"
+            onClick={() => {
+              resetSignupForm();
+              setScreen(screens.login);
+            }}
           >
-            {showSignupPassword ? (
-              <FaEyeSlash size={20} />
-            ) : (
-              <FaEye size={20} />
-            )}
+            이미 아이디가 있어요
           </button>
-        </label>
-
-        <p
-          className={`password-guide ${signupData.password &&
-            !isValidPassword(signupData.password)
-            ? "invalid"
-            : ""
-            }`}
-        >
-          영문, 숫자, 특수문자를 포함한 8~20자
-        </p>
-
-        <label className="field">
-          <input
-            type={showSignupPasswordConfirm ? "text" : "password"}
-            placeholder="비밀번호 확인"
-            value={signupData.passwordConfirm}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                passwordConfirm: e.target.value,
-              })
-            }
-          />
-
-          <button
-            type="button"
-            className="password-toggle"
-            onClick={() =>
-              setShowSignupPasswordConfirm(!showSignupPasswordConfirm)
-            }
-          >
-            {showSignupPasswordConfirm ? (
-              <FaEyeSlash size={20} />
-            ) : (
-              <FaEye size={20} />
-            )}
-          </button>
-        </label>
-
-        <label className="field">
-          <input
-            placeholder="닉네임"
-            value={signupData.nickname}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                nickname: e.target.value,
-              })
-            }
-          />
-        </label>
-
-        <p
-          className={`password-guide ${signupData.nickname &&
-            !isValidNickname(signupData.nickname)
-            ? "invalid"
-            : ""
-            }`}
-        >
-          닉네임은 2글자 이상 입력해주세요.
-        </p>
-
-        <PrimaryButton
-          onClick={() => {
-            if (!signupData.name.trim()) {
-              alert("이름을 입력해주세요.")
-              return
-            }
-
-            if (!signupData.email.trim()) {
-              alert("이메일을 입력해주세요.")
-              return
-            }
-
-            if (
-              emailCheckResult === null ||
-              checkedEmail !== signupData.email
-            ) {
-              alert("이메일 중복확인을 진행해주세요.");
-              return
-            }
-
-            if (!signupData.password) {
-              alert("비밀번호를 입력해주세요.")
-              return
-            }
-
-            if (!isValidPassword(signupData.password)) {
-              alert(
-                "비밀번호는 8~20자의 영문, 숫자, 특수문자를 모두 포함해야 합니다."
-              );
-              return
-            }
-
-            if (signupData.password !== signupData.passwordConfirm) {
-              alert("비밀번호가 일치하지 않습니다.")
-              return
-            }
-
-            if (!signupData.nickname.trim()) {
-              alert("닉네임을 입력해주세요.")
-              return
-            }
-
-            if (!isValidNickname(signupData.nickname)) {
-              alert("닉네임은 2글자 이상 입력해주세요.");
-              return;
-            }
-
-            go(screens.userType)
-          }}
-        >
-          회원가입 하기
-        </PrimaryButton>
-
-        <button
-          className="link-row"
-          onClick={() => {
-            resetSignupForm();
-            setScreen(screens.login);
-          }}
-        >
-          이미 아이디가 있어요
-        </button>
+        </div>
       </section>
     )
   }
@@ -1516,13 +1549,18 @@ export function AuthPages({
   // (terms 화면 안에서 userType 에 따라 문구/약관/다음 이동지가 분기됩니다)
   if (screen === screens.userType) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">어떤 사용자신가요?</h2>
-        <ChoiceCard active={userType === 'customer'} onClick={() => setUserType('customer')} title="고객" text="시공자에게 수리를 맡겨보세요" />
-        <ChoiceCard active={userType === 'partner'} onClick={() => setUserType('partner')} title="파트너" text="시공이 필요한 고객을 만나보세요" />
-        <PrimaryButton narrow onClick={() => go(screens.terms)}>다음</PrimaryButton>
+      <section className="auth-screen auth-step-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">어떤 사용자신가요?</h2>
+
+        <div className="auth-usertype-cards">
+          <ChoiceCard active={userType === 'customer'} onClick={() => setUserType('customer')} title="고객" text="시공자에게 수리를 맡겨보세요" />
+          <ChoiceCard active={userType === 'partner'} onClick={() => setUserType('partner')} title="파트너" text="시공이 필요한 고객을 만나보세요" />
+        </div>
+
+        <div className="auth-step-actions">
+          <PrimaryButton narrow onClick={() => go(screens.terms)}>다음</PrimaryButton>
+        </div>
       </section>
     )
   }
@@ -1530,70 +1568,71 @@ export function AuthPages({
   // 약관 동의 - 고객/파트너 공용 화면, 문구/약관목록/다음 이동지만 분기
   if (screen === screens.terms) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
+      <section className="auth-screen auth-step-screen">
+        <AuthStepHeader back={back} />
 
-        <h2 className="hero-copy huge">
+        <h2 className="auth-step-title">
           <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 가입을 위해 약관에 동의해주세요
         </h2>
 
-        <div className="terms-panel docked">
+        <div className="auth-terms-panel">
+          <div className="auth-terms-list">
+            {currentSignupTerms.map((item, index) => (
+              <label className="auth-terms-check-line" key={item}>
+                <input
+                  type="checkbox"
+                  checked={terms[index]}
+                  onChange={() =>
+                    setTerms((current) =>
+                      current.map((value, valueIndex) =>
+                        valueIndex === index ? !value : value
+                      )
+                    )
+                  }
+                />
+                <span>{item}</span>
+              </label>
+            ))}
+          </div>
+
           <button
-            className="small-outline"
+            className="auth-outline-button"
             onClick={() => setShowTermsModal(true)}
           >
             약관 자세히보기
           </button>
+        </div>
 
-          {currentSignupTerms.map((item, index) => (
-            <label className="check-line" key={item}>
-              <input
-                type="checkbox"
-                checked={terms[index]}
-                onChange={() =>
-                  setTerms((current) =>
-                    current.map((value, valueIndex) =>
-                      valueIndex === index ? !value : value
-                    )
-                  )
-                }
-              />
-              <span>{item}</span>
-            </label>
-          ))}
+        <div className="auth-step-actions">
+          <PrimaryButton
+            orange
+            onClick={back}
+          >
+            취소
+          </PrimaryButton>
 
-          <div className="button-row sticky-row">
-            <PrimaryButton
-              orange
-              onClick={back}
-            >
-              취소
-            </PrimaryButton>
-
-            <PrimaryButton
-              onClick={() =>
-                go(userType === 'partner' ? screens.category : screens.phone)
-              }
-              disabled={!isRequiredTermsChecked}
-            >
-              동의 및 진행
-            </PrimaryButton>
-          </div>
+          <PrimaryButton
+            onClick={() =>
+              go(userType === 'partner' ? screens.category : screens.phone)
+            }
+            disabled={!isRequiredTermsChecked}
+          >
+            동의 및 진행
+          </PrimaryButton>
         </div>
 
         {showTermsModal && (
           <div
-            className="terms-modal-overlay"
+            className="auth-terms-modal-overlay"
             onClick={() => setShowTermsModal(false)}
           >
             <div
-              className="terms-modal"
+              className="auth-terms-modal"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3>서비스 이용약관</h3>
+              <h3 className="auth-terms-modal-title">서비스 이용약관</h3>
 
-              <div className="terms-modal-content">
+              <div className="auth-terms-modal-body">
                 <p>
                   여기는 임시 약관 내용입니다.
                 </p>
@@ -1604,7 +1643,7 @@ export function AuthPages({
                 </p>
 
                 {userType !== 'partner' && (
-                  <div className="terms-modal-content">
+                  <div>
                     <h4>1. [필수] 개인정보 수집 및 이용 동의</h4>
 
                     <p><strong>1) 수집 항목</strong></p>
@@ -1713,7 +1752,7 @@ export function AuthPages({
                 )}
 
                 {userType === 'partner' && (
-                  <div className="terms-modal-content">
+                  <div>
                     <p>
                       {/* TODO: 파트너용 약관 상세 내용으로 교체 */}
                       파트너 서비스 이용약관 / 시공 표준(시방서) 준수 및
@@ -1725,7 +1764,7 @@ export function AuthPages({
               </div>
 
               <button
-                className="primary-button narrow"
+                className="auth-terms-modal-close"
                 onClick={() => setShowTermsModal(false)}
               >
                 닫기
@@ -1742,11 +1781,10 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.category) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의 전문 분야를<br />알려주세요
+      <section className="auth-screen auth-step-screen auth-select-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 전문 분야를 알려주세요
         </h2>
 
         <MultiSelectPanel
@@ -1756,15 +1794,18 @@ export function AuthPages({
           onReset={() => setPartnerSignupData((prev) => ({ ...prev, categories: [] }))}
           footerLabel="선택한 분야"
           maxCount={999}
+          hideCount
         />
 
-        <PrimaryButton
-          narrow
-          onClick={() => go(screens.bizReg)}
-          disabled={!hasPartnerServiceCatalog || partnerSignupData.categories.length === 0}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() => go(screens.bizReg)}
+            disabled={partnerSignupData.categories.length === 0}
+          >
+            다음
+          </PrimaryButton>
+        </div>
       </section>
     )
   }
@@ -1774,11 +1815,10 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.bizReg) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의<br />사업자등록증을<br />업로드해주세요
+      <section className="auth-screen auth-step-screen auth-bizreg-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 사업자등록증을 업로드해주세요
         </h2>
 
         <label className="upload-box">
@@ -1809,7 +1849,7 @@ export function AuthPages({
           )}
         </label>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             inputMode="numeric"
             maxLength={12}
@@ -1832,18 +1872,20 @@ export function AuthPages({
               }))
             }}
           />
-        </label>
+        </div>
 
-        <PrimaryButton
-          narrow
-          onClick={() => go(screens.companyInfo)}
-          disabled={
-            !partnerSignupData.businessRegFile ||
-            !partnerSignupData.businessNumber.trim()
-          }
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() => go(screens.companyInfo)}
+            disabled={
+              !partnerSignupData.businessRegFile ||
+              !partnerSignupData.businessNumber.trim()
+            }
+          >
+            다음
+          </PrimaryButton>
+        </div>
       </section>
     )
   }
@@ -1853,14 +1895,13 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.companyInfo) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의<br />업체 정보를<br />입력해주세요
+      <section className="auth-screen auth-step-screen auth-companyinfo-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 업체 정보를 입력해주세요
         </h2>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             placeholder="업체명"
             value={partnerSignupData.companyName}
@@ -1868,9 +1909,9 @@ export function AuthPages({
               setPartnerSignupData({ ...partnerSignupData, companyName: e.target.value })
             }
           />
-        </label>
+        </div>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             placeholder="업체 대표 이름"
             value={partnerSignupData.ownerName}
@@ -1878,9 +1919,9 @@ export function AuthPages({
               setPartnerSignupData({ ...partnerSignupData, ownerName: e.target.value })
             }
           />
-        </label>
+        </div>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             type="tel"
             inputMode="numeric"
@@ -1901,40 +1942,39 @@ export function AuthPages({
               setPartnerSignupData({ ...partnerSignupData, companyPhone: formatted });
             }}
           />
-        </label>
+        </div>
 
         {/* TODO: 실제 백엔드가 허용하는 business_status 값 목록으로 옵션을 맞춰주세요 */}
-        <label className="field">
+        <div className="carbon-field-control">
           <select
             value={partnerSignupData.businessStatus}
             onChange={(e) =>
               setPartnerSignupData({ ...partnerSignupData, businessStatus: e.target.value })
             }
-            style={{ width: '100%', border: 0, background: 'transparent' }}
           >
             <option value="">사업자 구분 선택</option>
             <option value="INDIVIDUAL">개인사업자</option>
             <option value="CORPORATE">법인사업자</option>
           </select>
-        </label>
+        </div>
 
         <button
-          className="input-like"
+          className="auth-outline-button"
           type="button"
           onClick={() => setShowCompanyAddressModal(true)}
         >
           주소 검색
         </button>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             value={partnerSignupData.companyAddress}
             placeholder="검색한 주소가 표시됩니다."
             readOnly
           />
-        </label>
+        </div>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             placeholder="업체 상세 주소"
             value={partnerSignupData.companyDetailAddress}
@@ -1945,19 +1985,21 @@ export function AuthPages({
               })
             }
           />
-        </label>
+        </div>
 
-        <PrimaryButton
-          narrow
-          onClick={() => go(screens.phone)}
-          disabled={
-            !partnerSignupData.companyName.trim() ||
-            !partnerSignupData.businessStatus ||
-            !partnerSignupData.companyAddress.trim()
-          }
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() => go(screens.phone)}
+            disabled={
+              !partnerSignupData.companyName.trim() ||
+              !partnerSignupData.businessStatus ||
+              !partnerSignupData.companyAddress.trim()
+            }
+          >
+            다음
+          </PrimaryButton>
+        </div>
 
         {showCompanyAddressModal ? (
           <JusoSearchModal
@@ -1980,15 +2022,15 @@ export function AuthPages({
   // 전화번호 - 고객/파트너 공용 (문구, 다음 이동지, 건너뛰기 노출 여부만 분기)
   if (screen === screens.phone) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 전화번호를 <br />알려주세요
+      <section className="auth-screen auth-step-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 전화번호를 알려주세요
         </h2>
 
-        <div className="phone-row">
+        <div className="auth-phone-row">
           <select
+            className="auth-phone-carrier"
             value={signupData.phoneCarrier}
             onChange={(e) =>
               setSignupData({
@@ -2002,7 +2044,7 @@ export function AuthPages({
             <option value="LG U+">LG U+</option>
           </select>
 
-          <label className="field compact">
+          <div className="carbon-field-control">
             <input
               type="tel"
               inputMode="numeric"
@@ -2026,23 +2068,25 @@ export function AuthPages({
                 });
               }}
             />
-          </label>
+          </div>
         </div>
 
-        <PrimaryButton
-          narrow
-          onClick={() =>
-            go(userType === 'partner' ? screens.region : screens.address)
-          }
-          disabled={!signupData.phone.trim()}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() =>
+              go(userType === 'partner' ? screens.region : screens.address)
+            }
+            disabled={!signupData.phone.trim()}
+          >
+            다음
+          </PrimaryButton>
+        </div>
 
         {/* 파트너는 시안상 건너뛰기 노출 안 됨 (필수 단계) */}
         {userType !== 'partner' && (
           <button
-            className="link-row"
+            className="auth-step-skip"
             onClick={() => go(screens.address)}
           >
             건너뛰기
@@ -2055,31 +2099,30 @@ export function AuthPages({
   // 고객 전용: 주소 입력
   if (screen === screens.address) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
+      <section className="auth-screen auth-step-screen auth-address-screen">
+        <AuthStepHeader back={back} />
 
-        <h2 className="hero-copy compact">
-          고객님의 주소를 <br />알려주세요
+        <h2 className="auth-step-title">
+          고객님의 주소를 알려주세요
         </h2>
 
         <button
-          className="input-like"
+          className="auth-outline-button"
           type="button"
           onClick={() => setShowAddressModal(true)}
         >
           주소 검색
         </button>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             value={signupData.address}
             placeholder="검색한 주소가 표시됩니다."
             readOnly
           />
-        </label>
+        </div>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             placeholder="상세 주소 입력 (ex : 202동 301호)"
             value={signupData.detailAddress}
@@ -2090,18 +2133,20 @@ export function AuthPages({
               })
             }
           />
-        </label>
+        </div>
 
-        <PrimaryButton
-          narrow
-          onClick={handleSignup}
-          disabled={!signupData.address.trim()}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={handleSignup}
+            disabled={!signupData.address.trim()}
+          >
+            다음
+          </PrimaryButton>
+        </div>
 
         <button
-          className="link-row"
+          className="auth-step-skip"
           onClick={handleSignup}
         >
           건너뛰기
@@ -2132,11 +2177,10 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.region) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의 작업 지역을<br />선택하세요
+      <section className="auth-screen auth-step-screen auth-select-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 작업 지역을 선택하세요
         </h2>
 
         <MultiSelectPanel
@@ -2148,36 +2192,39 @@ export function AuthPages({
           maxCount={10}
         />
 
-        <PrimaryButton
-          narrow
-          onClick={handlePartnerSignup}
-          disabled={!hasPartnerRegionCatalog || partnerSignupData.workRegions.length === 0}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={handlePartnerSignup}
+            disabled={partnerSignupData.workRegions.length === 0}
+          >
+            다음
+          </PrimaryButton>
+        </div>
       </section>
     )
   }
 
   // 완료 화면 - 고객/파트너 공용, 문구만 분기
+  // EstimateDonePage 와 동일한 "처리 완료" 포맷(.estimate-done-*)을 그대로 재사용
   return (
-    <section className="auth-screen complete-screen">
-      <Logo />
-      <div className="complete-copy">
-        <h2>{userType === 'partner' ? '파트너' : '고객'}님, 환영합니다 !</h2>
-        <p>회원가입이 완료되었어요</p>
+    <section className="estimate-done">
+      <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+      <div className="estimate-done-icon" dangerouslySetInnerHTML={{ __html: confirmCarbonSvg }} />
+      <h2 className="estimate-done-title">{userType === 'partner' ? '파트너' : '고객'}님, 환영합니다!</h2>
+      <p className="estimate-done-desc">회원가입이 완료되었어요</p>
+      <div className="estimate-done-actions">
+        <PrimaryButton
+          narrow
+          onClick={() =>
+            userType === 'partner'
+              ? go(contractorScreenPaths[contractorScreens.home])
+              : go(screens.home)
+          }
+        >
+          완료
+        </PrimaryButton>
       </div>
-      <div className="status-ring success">✓</div>
-      <PrimaryButton
-        narrow
-        onClick={() =>
-          userType === 'partner'
-            ? go(contractorScreenPaths[contractorScreens.home])
-            : go(screens.home)
-        }
-      >
-        완료
-      </PrimaryButton>
     </section>
   )
 }

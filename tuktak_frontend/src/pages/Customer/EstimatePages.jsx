@@ -6,7 +6,7 @@ import { EstimateCard, SearchBar } from '../../components/customer/Cards'
 import { CustomerPage } from './CustomerPageShared'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { FaCloudUploadAlt, FaChevronLeft } from 'react-icons/fa'
+import { FaCloudUploadAlt, FaChevronLeft, FaTimes } from 'react-icons/fa'
 import { screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
 import preview1 from '../../assets/figma/preview1.webp';
@@ -495,19 +495,15 @@ export function MyEstimateListPage({ go }) {
   };
 
   return (
-    <section className="subpage-screen history-page estimate-list-page">
-      <div className="subpage-title-row">          
-        <button 
-            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
-            onClick={() => go(screens.mypage)}
-          >
-            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-          </button>
-        <img className="subpage-title-icon estimate-title-icon" src={figmaAssets.mypageAiEstimateTitle} alt="" />
+    <section className="subpage-screen history-page estimate-list-page cds--white">
+      <header className="mypage-list-header">
+        <button type="button" className="mypage-list-back" onClick={() => go(screens.mypage)} aria-label="뒤로가기">
+          <FaChevronLeft />
+        </button>
         <h1>내 AI 견적서</h1>
-      </div>
-      
-      
+        <span className="mypage-list-header-spacer" aria-hidden="true" />
+      </header>
+
       <div className="history-search-row estimate-search-row">
         <SearchBar value={query} onChange={setQuery} />
         <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="AI 견적서 정렬">
@@ -548,24 +544,16 @@ function EstimateResultModal({ item, onClose, onStartMatching }) {
       <article className="estimate-result-modal">
         <div className="estimate-result-head">
           <div>
-            <span>{item.date}</span>
-            <small>{item.status}</small>
+            <span>AI 견적서</span>
+            <small>{item.date} · {item.status}</small>
           </div>
-          <button 
-            onClick={onClose} 
-            aria-label="닫기"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors"
-            style={{ fontSize: '18px', paddingBottom: '2px' }}
-          >
-            ✕
+          <button type="button" onClick={onClose} aria-label="닫기">
+            <FaTimes />
           </button>
         </div>
         <div className="estimate-result-title">
-          <img src={figmaAssets.mypageAiEstimateTitle} alt="" />
-          <div>
-            <h2>{item.title}</h2>
-            <p>{item.subtitle}</p>
-          </div>
+          <h2>{item.title}</h2>
+          <p>{item.subtitle}</p>
         </div>
         <div className="estimate-result-body">
           <section>
@@ -580,8 +568,7 @@ function EstimateResultModal({ item, onClose, onStartMatching }) {
             <span>예상 시간</span>
             <strong>{item.details?.estimatedTime}</strong>
           </section>
-          <p>{item.details?.summary}</p>
-          <div className="document-art estimate compact" />
+          {item.details?.summary ? <p>{item.details.summary}</p> : null}
         </div>
         <div className="estimate-result-actions">
           <PrimaryButton ghost onClick={onClose}>확인</PrimaryButton>

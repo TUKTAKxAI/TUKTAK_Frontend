@@ -1,18 +1,19 @@
 import { api } from '../../api/apiClient'
 import { CustomerPage } from './CustomerPageShared'
 import { figmaAssets } from '../../components/customer/figmaAssets'
-import { Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { PrimaryButton } from '../../components/customer/FormControls'
 import { screens } from '../../data/customerData'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { RiskCard, SearchBar } from '../../components/customer/Cards'
 import { screenPaths } from '../../routes/customerRoutes'
+import { FaChevronLeft, FaExclamationTriangle, FaCoins, FaShieldAlt, FaFileContract, FaSearch, FaTimes } from 'react-icons/fa'
 import preview5 from '../../assets/figma/preview5.webp';
 import preview6 from '../../assets/figma/preview6.webp';
 import preview7 from '../../assets/figma/preview7.webp';
 import preview8 from '../../assets/figma/preview8.webp';
-import loadingSvg from '../../assets/figma/loading.svg?raw';
-import confirmSvg from '../../assets/figma/confirm.svg?raw';
+import loadingCarbonSvg from '../../assets/figma/loading-carbon.svg?raw';
+import confirmCarbonSvg from '../../assets/figma/confirm-carbon.svg?raw';
 import errorSvg from "../../assets/figma/error.svg?raw"
 
 const previewImages = [preview5, preview6, preview7, preview8];
@@ -56,16 +57,15 @@ function ServiceHero({ onClick, buttonLabel, go }) {
   };
 
   return (
-    <CustomerPage go={go}>
-      <div className="service-hero flex flex-col flex-1 bg-[#F2F3F5]">
-      <div className="flex flex-col items-center flex-1 py-0">
-        <h1 className="text-2xl font-bold text-gray-900 mt-4 text-center">AI 리스크리포트 서비스</h1>
-        
-        <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
-          <h2 className="text-base font-semibold text-gray-700 leading-snug">
+    <CustomerPage go={go} className="cds--white">
+      <div className="estimate-hero">
+      <div className="estimate-hero-body">
+        <div className="estimate-hero-head">
+          <span className="estimate-hero-eyebrow">AI 리스크 리포트 서비스</span>
+          <h1 className="estimate-hero-title">
             AI로 발생할 리스크를<br />미리 확인해 보세요
-          </h2>
-          <p className="text-md font-semibold text-gray-700 mt-8 ml-3 leading-relaxed">
+          </h1>
+          <p className="estimate-hero-desc">
             매칭이 시작되면 견적서에 기반하여<br />리스크를 계산해 리포트를 작성해드립니다.
           </p>
         </div>
@@ -73,21 +73,19 @@ function ServiceHero({ onClick, buttonLabel, go }) {
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide py-8 gap-4 px-[25%] cursor-grab active:cursor-grabbing items-center"
+          className="estimate-hero-carousel"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {previewImages.map((img, index) => (
             <div
               key={index}
-              className={`min-w-[85%] ml-5 transition-all duration-500 snap-center flex justify-center items-center
-                ${activeIndex === index ? 'scale-100 opacity-100' : 'scale-70 opacity-40'}
-              `}
+              className={`estimate-hero-slide ${activeIndex === index ? 'is-active' : ''}`}
             >
-              <div className="w-full aspect-9/16 bg-white rounded-3xl shadow-lg border border-gray-300 overflow-hidden">
+              <div className="estimate-hero-frame">
                 <img
                   src={img}
                   alt={`미리보기 ${index + 1}`}
-                  className="w-full h-full object-cover"
+                  className="estimate-hero-frame-img"
                   draggable="false"
                 />
               </div>
@@ -96,17 +94,18 @@ function ServiceHero({ onClick, buttonLabel, go }) {
         </div>
 
         {/* 페이지네이션 도트 */}
-        <div className="flex justify-center space-x-2 mb-6">
+        <div className="estimate-hero-dots">
           {previewImages.map((_, i) => (
             <button
               key={i}
               onClick={() => goToIndex(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-blue-600' : 'w-2 bg-gray-300'}`}
+              aria-label={`${i + 1}번째 미리보기`}
+              className={`estimate-hero-dot ${activeIndex === i ? 'is-active' : ''}`}
             />
           ))}
         </div>
 
-        <div className="w-full px-6 mt-auto pb-6">
+        <div className="estimate-hero-actions">
           <PrimaryButton onClick={onClick}>{buttonLabel}</PrimaryButton>
         </div>
       </div>
@@ -158,90 +157,63 @@ export function RiskSelectPage({ go }) {
     });
   };
 
+  if (isLoading) {
+    return (
+      <CustomerPage go={go} back={() => go(screens.riskHome)} className="cds--white">
+        <div className="estimate-loading">
+          <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+          <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+          <p className="estimate-loading-title">AI 견적서 불러오는 중...</p>
+        </div>
+      </CustomerPage>
+    );
+  }
+
+  if (estimates.length === 0) {
+    return (
+      <CustomerPage go={go} back={() => go(screens.riskHome)} className="cds--white">
+        <div className="matching-select-status">
+          <div className="matching-select-status-icon" dangerouslySetInnerHTML={{ __html: errorSvg }} />
+          <h2 className="matching-select-status-title">생성된 AI 견적서가 없습니다</h2>
+          <p className="matching-select-status-desc">AI 견적서를 새로 만들어 볼까요?</p>
+          <PrimaryButton narrow onClick={() => go(screens.estimateStart)}>AI 견적서 생성</PrimaryButton>
+        </div>
+      </CustomerPage>
+    );
+  }
+
   return (
-    <CustomerPage go={go} back={() => go(screens.riskHome)}>
-      <div className="selection-screen flex flex-col flex-1 bg-[#F2F3F5]">
-      <div className="flex flex-col flex-1 px-6 pt-4">
+    <CustomerPage go={go} back={() => go(screens.riskHome)} className="cds--white">
+      <div className="risk-select">
+        <h1 className="risk-select-heading">AI 리스크 리포트</h1>
+        <p className="risk-select-subheading">AI 견적서를 선택해주세요</p>
 
-        <div className="flex items-center mb-0">
-          <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">AI 리스크 리포트</h1>
-        </div>
-
-        {/* 💡 백엔드 연동: 로딩 중이거나 데이터가 없을 때의 처리 */}
-        <div className="overflow-y-auto pb-6">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center mt-16">
-              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                dangerouslySetInnerHTML={{ __html: loadingSvg }}
-              />
-              <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서 불러오는 중 ...</p>
-            </div>
-          ) : estimates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center mt-16">
-              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                dangerouslySetInnerHTML={{ __html: errorSvg }}
-              />
-              <p className="text-center font-bold text-[20px] text-gray-900 mt-1">생성된 AI 견적서가 없습니다 !</p>
-              <p className="text-center font-medium text-[15px] text-gray-900 mt-5">AI 견적서를 새로 만들어 볼까요?</p>
+        <div className="risk-select-list">
+          {estimates.map((estimate) => (
+            <article key={estimate.estimate_id} className="risk-select-card">
+              <div className="risk-select-card-head">
+                <span className="risk-select-card-date">
+                  {estimate.created_at ? estimate.created_at.split('T')[0] : '날짜 없음'}
+                </span>
+                <span className="matching-status-badge">
+                  {estimate.estimate_status === 'COMPLETED' ? '완료' : '진행중'}
+                </span>
+              </div>
+              <h3 className="risk-select-card-title">{estimate.repair_task_name || 'AI 시공 견적'}</h3>
+              <p className="risk-select-card-meta">담당 시공자 : {estimate.contractor_name || '미정'}</p>
+              <p className="risk-select-card-cost">
+                확정 시공 비용 : {estimate.min_price ? Number(estimate.min_price).toLocaleString() : '0'}원
+              </p>
               <button
-                onClick={() => go(screens.estimateStart)}
-                className="w-3/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700 mt-2"
-                style={{ fontSize: '16px', fontWeight: 'bold' }}
+                type="button"
+                className="risk-select-card-button"
+                onClick={() => requestRiskReport(estimate.estimate_id)}
               >
-                AI 견적서 생성
+                리스크 리포트 요청하기
               </button>
-            </div>
-
-          ) : (
-            <>
-              <h2
-                className="text-gray-700 text-center mb-6 font-bold"
-                style={{ fontSize: '20px' }}
-              >
-                AI 견적서를 선택해주세요
-              </h2>
-              {
-                estimates.map((estimate) => (
-                  <article key={estimate.estimate_id} className="bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex flex-col mb-4">
-
-                    <div className="flex justify-between items-start mb-4 border-b border-gray-300 pb-3">
-                      <span className="text-[13px] text-gray-500">
-                        {estimate.created_at ? estimate.created_at.split('T')[0] : '날짜 없음'}
-                      </span>
-                      <small className="text-xs text-blue-500 font-semibold bg-blue-50 px-2 py-1 rounded">
-                        {estimate.estimate_status === 'COMPLETED' ? '완료' : '진행중'}
-                      </small>
-                    </div>
-
-                    <div className="flex flex-col text-left ">
-                      <h3 className="text-[22px] font-bold text-gray-900 mb-1.5 tracking-tight">
-                        {estimate.repair_task_name || 'AI 시공 견적'}
-                      </h3>
-                      <p className="text-[13px] text-gray-500 mb-0.5">
-                        담당 시공자 : {estimate.contractor_name || '미정'}
-                      </p>
-                      <p className="text-[13px] font-bold text-gray-500 mb-4.5">
-                        확정 시공 비용 : {estimate.min_price ? Number(estimate.min_price).toLocaleString() : '0'}원
-                      </p>
-
-                      <div className="flex justify-center w-full">
-                        <button
-                          onClick={() => requestRiskReport(estimate.estimate_id)}
-                          className="w-4/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700"
-                          style={{ fontSize: '16px', fontWeight: 'bold' }}
-                        >
-                          리스크 리포트 요청하기
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))
-              }
-            </>
-          )}
+            </article>
+          ))}
         </div>
-
-      </div>
       </div>
     </CustomerPage>
   )
@@ -306,28 +278,14 @@ export function RiskLoadingPage({ go }) {
   }, [estimateId, navigate, go]);
 
   return (
-    <section className="status-screen flex flex-col items-center justify-center h-full bg-[#F2F3F5] overflow-hidden">
-      <div className="transform scale-[2.5] mb-16 flex justify-center">
-        <Logo />
-      </div>
-
-      <h2
-        className="mb-5 w-full px-4 font-bold text-gray-800 text-center whitespace-nowrap tracking-tighter"
-        style={{ fontSize: '24px' }}
-      >
-        리스크 리포트 생성중 ...
-      </h2>
-
-      <div className="w-48 h-48 mb-12 flex justify-center items-center pointer-events-none">
-        <div
-          className="w-full h-full flex justify-center items-center [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: loadingSvg }}
-        />
-      </div>
-
-      <PrimaryButton narrow orange className="relative z-10" onClick={() => go(screens.riskSelect)}>
+    <section className="estimate-loading">
+      <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+      <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+      <h2 className="estimate-loading-title">리스크 리포트 생성중...</h2>
+      <p className="estimate-loading-desc">견적서 데이터를 분석해서<br />리스크를 계산하고 있어요</p>
+      <button type="button" className="estimate-loading-cancel" onClick={() => go(screens.riskSelect)}>
         취소
-      </PrimaryButton>
+      </button>
     </section>
   )
 }
@@ -345,28 +303,14 @@ export function RiskDonePage() {
   };
 
   return (
-    <section className="status-screen flex flex-col items-center justify-center h-full bg-[#F2F3F5] overflow-hidden">
-      <div className="transform scale-[2.5] mb-16 flex justify-center">
-        <Logo />
+    <section className="estimate-done">
+      <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+      <div className="estimate-done-icon" dangerouslySetInnerHTML={{ __html: confirmCarbonSvg }} />
+      <h2 className="estimate-done-title">리스크 리포트가 생성됐어요</h2>
+      <p className="estimate-done-desc">핵심 리스크와 체크리스트를<br />확인해보세요</p>
+      <div className="estimate-done-actions">
+        <PrimaryButton narrow onClick={goToOutput}>확인하기</PrimaryButton>
       </div>
-
-      <h2
-        className="mb-5 w-full px-4 font-bold text-gray-800 text-center whitespace-nowrap tracking-tighter"
-        style={{ fontSize: '24px' }}
-      >
-        리스크 리포트가 생성되었습니다 !
-      </h2>
-
-      <div className="w-48 h-48 mb-12 flex justify-center items-center pointer-events-none">
-        <div
-          className="w-full h-full flex justify-center items-center transform scale-[2] [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: confirmSvg }}
-        />
-      </div>
-
-      <PrimaryButton narrow className="relative z-10" onClick={goToOutput}>
-        확인하기
-      </PrimaryButton>
     </section>
   )
 }
@@ -377,8 +321,8 @@ export function RiskOutputPage({ go }) {
 
   if (!resultData) {
     return (
-      <section className="flex flex-col h-full bg-[#F2F3F5] items-center justify-center">
-        <p className="mb-4 text-gray-600">리포트 데이터를 불러올 수 없습니다.</p>
+      <section className="risk-output-empty">
+        <p>리포트 데이터를 불러올 수 없습니다.</p>
         <PrimaryButton narrow onClick={() => go(screens.riskHome)}>홈으로</PrimaryButton>
       </section>
     );
@@ -392,54 +336,53 @@ export function RiskOutputPage({ go }) {
   const contractRisks = resultData.contract_risks || resultData.contract_risks_json || [];
   const fieldVariableRisks = resultData.field_variable_risks || resultData.field_variable_risks_json || [];
 
+  const riskGradeClass = resultData.risk_level === 'LOW' ? 'is-low' : resultData.risk_level === 'MEDIUM' ? 'is-medium' : 'is-high';
+
   return (
-    <section className="flex flex-col h-full bg-[#F2F3F5]">
-      {/* 상단 고정 헤더 */}
-      <header className="flex justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
-        <button onClick={() => go(screens.riskHome)} className="p-2 -ml-2">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+    <section className="risk-output">
+      <header className="risk-output-header">
+        <button type="button" className="risk-output-back" onClick={() => go(screens.riskHome)} aria-label="뒤로가기">
+          <FaChevronLeft />
         </button>
-        <div className="text-center">
-          <h1 className="text-[17px] font-bold text-gray-900">시공 리스크 리포트</h1>
-          <p className="text-[10px] text-gray-400 mt-0.5">{resultData.created_at?.split('T')[0]}</p>
+        <div className="risk-output-header-title">
+          <h1>시공 리스크 리포트</h1>
+          <p>{resultData.created_at?.split('T')[0]}</p>
         </div>
-        <div className='w-10' />
+        <div className="risk-output-header-spacer" aria-hidden="true" />
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 space-y-4">
+      <main className="risk-output-body">
 
-        {/* 1. 리스크 점수 & 등급 (기존 유지) */}
-        <div className="flex gap-4">
-            <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-                <p className="text-[11px] text-gray-400 mb-1">리스크 점수</p>
-                <strong className="text-[20px] font-bold text-gray-900">{resultData.risk_score}점</strong>
-            </div>
-            <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-                <p className="text-[11px] text-gray-400 mb-1">리스크 등급</p>
-                <strong className={`text-[20px] font-bold ${resultData.risk_level === 'LOW' ? 'text-green-500' : resultData.risk_level === 'MEDIUM' ? 'text-yellow-500' : 'text-red-500'}`}>
-                  {resultData.risk_level}
-                </strong>
-            </div>
+        {/* 1. 리스크 점수 & 등급 */}
+        <div className="risk-output-stat-row">
+          <div className="risk-output-stat">
+            <span>리스크 점수</span>
+            <strong>{resultData.risk_score}점</strong>
+          </div>
+          <div className="risk-output-stat">
+            <span>리스크 등급</span>
+            <strong className={`risk-output-grade ${riskGradeClass}`}>{resultData.risk_level}</strong>
+          </div>
         </div>
 
         {/* ======================================================= */}
         {/* 💡 첫 번째 버블: 주요 위험 요소 (핵심 요약)               */}
         {/* ======================================================= */}
         {riskItems.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-[16px] font-bold text-gray-800 mb-4 flex items-center">
-              <span className="mr-2">🚨</span> 핵심 리스크 요약
+          <div className="risk-output-card">
+            <h3 className="risk-output-card-title">
+              <FaExclamationTriangle aria-hidden="true" /> 핵심 리스크 요약
             </h3>
-            <ul className="space-y-3">
+            <ul className="risk-output-alert-list">
               {riskItems.map((item, idx) => (
-                <li key={idx} className="flex flex-col text-[14px] text-gray-700 bg-red-50 p-4 rounded-xl border border-red-100">
-                  <span className="font-bold text-gray-900 mb-1">
-                    {item.title || "주의 사항"}
-                    {item.level && <span className="ml-2 text-[10px] bg-white px-2 py-0.5 rounded text-red-500 border border-red-200">{item.level}</span>}
-                  </span>
-                  <span className="text-[13px] text-gray-600 leading-relaxed">
+                <li key={idx} className="risk-output-alert">
+                  <div className="risk-output-alert-head">
+                    <span className="risk-output-alert-title">{item.title || "주의 사항"}</span>
+                    {item.level && <span className="risk-output-alert-level">{item.level}</span>}
+                  </div>
+                  <p className="risk-output-alert-desc">
                     {item.description || "상세 내용이 없습니다."}
-                  </span>
+                  </p>
                 </li>
               ))}
             </ul>
@@ -449,26 +392,24 @@ export function RiskOutputPage({ go }) {
         {/* ======================================================= */}
         {/* 💡 두 번째 버블: 요약 -> 체크리스트 -> 4대 세부 위험 요소 */}
         {/* ======================================================= */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-8">
-          
+        <div className="risk-output-card">
+
           {/* 1. 종합 요약 */}
-          <section>
-            <h3 className="text-[16px] font-bold text-gray-800 mb-2">상세 요약</h3>
-            <p className="text-[14px] text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
+          <section className="risk-output-section">
+            <h3>상세 요약</h3>
+            <p className="risk-output-block">
               {resultData.summary || "요약 정보가 없습니다."}
             </p>
           </section>
 
           {/* 2. 확인 체크리스트 */}
           {checklist.length > 0 && (
-            <section className="border-t border-gray-300 pt-6">
-              <h3 className="text-[16px] font-bold text-gray-800 mb-4">확인 체크리스트</h3>
-              <ul className="space-y-3">
+            <section className="risk-output-section">
+              <h3>확인 체크리스트</h3>
+              <ul className="risk-output-checklist">
                 {checklist.map((item, idx) => (
-                  <li key={idx} className="flex items-center text-[14px] text-gray-700">
-                    <span className="flex items-center justify-center w-5 h-5 mr-3 bg-blue-100 text-blue-600 rounded-full text-[10px] font-bold shrink-0">
-                      {idx + 1}
-                    </span>
+                  <li key={idx}>
+                    <span className="risk-output-checklist-index">{idx + 1}</span>
                     {/* 💡 백엔드 JSON에서 'label'이라는 이름표로 보내주므로 item.label을 1순위로 찾습니다. */}
                     <span>{item.label || item.task || item.title || (typeof item === 'string' ? item : '')}</span>
                   </li>
@@ -479,16 +420,14 @@ export function RiskOutputPage({ go }) {
 
           {/* 3. 세부 카테고리 1: 추가 비용 위험 요소 */}
           {additionalCostRisks.length > 0 && (
-            <section className="border-t border-gray-300 pt-6">
-              <h3 className="text-[16px] font-bold text-gray-800 mb-4 flex items-center">
-                <span className="mr-2">💰</span> 추가 비용 위험 요소
-              </h3>
-              <ul className="space-y-3">
+            <section className="risk-output-section">
+              <h3><FaCoins aria-hidden="true" /> 추가 비용 위험 요소</h3>
+              <ul className="risk-output-bullet-list">
                 {additionalCostRisks.map((item, idx) => (
-                  <li key={idx} className="flex items-start text-[14px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {item.title && <strong className="text-gray-900">{item.title}</strong>}
+                      {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
                       {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
                     </span>
@@ -500,16 +439,14 @@ export function RiskOutputPage({ go }) {
 
           {/* 4. 세부 카테고리 2: 안전 및 자격 위험 요소 */}
           {safetyRisks.length > 0 && (
-            <section className="border-t border-gray-300 pt-6">
-              <h3 className="text-[16px] font-bold text-gray-800 mb-4 flex items-center">
-                <span className="mr-2">⚠️</span> 안전 및 자격 위험 요소
-              </h3>
-              <ul className="space-y-3">
+            <section className="risk-output-section">
+              <h3><FaShieldAlt aria-hidden="true" /> 안전 및 자격 위험 요소</h3>
+              <ul className="risk-output-bullet-list">
                 {safetyRisks.map((item, idx) => (
-                  <li key={idx} className="flex items-start text-[14px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {item.title && <strong className="text-gray-900">{item.title}</strong>}
+                      {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
                       {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
                     </span>
@@ -521,16 +458,14 @@ export function RiskOutputPage({ go }) {
 
           {/* 5. 세부 카테고리 3: 계약 및 분쟁 위험 요소 */}
           {contractRisks.length > 0 && (
-            <section className="border-t border-gray-300 pt-6">
-              <h3 className="text-[16px] font-bold text-gray-800 mb-4 flex items-center">
-                <span className="mr-2">📝</span> 계약 및 분쟁 위험 요소
-              </h3>
-              <ul className="space-y-3">
+            <section className="risk-output-section">
+              <h3><FaFileContract aria-hidden="true" /> 계약 및 분쟁 위험 요소</h3>
+              <ul className="risk-output-bullet-list">
                 {contractRisks.map((item, idx) => (
-                  <li key={idx} className="flex items-start text-[14px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {item.title && <strong className="text-gray-900">{item.title}</strong>}
+                      {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
                       {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
                     </span>
@@ -542,16 +477,14 @@ export function RiskOutputPage({ go }) {
 
           {/* 6. 세부 카테고리 4: 확인 어려운 현장 변수 */}
           {fieldVariableRisks.length > 0 && (
-            <section className="border-t border-gray-300 pt-6">
-              <h3 className="text-[16px] font-bold text-gray-800 mb-4 flex items-center">
-                <span className="mr-2">🔍</span> 확인 어려운 현장 변수
-              </h3>
-              <ul className="space-y-3">
+            <section className="risk-output-section">
+              <h3><FaSearch aria-hidden="true" /> 확인 어려운 현장 변수</h3>
+              <ul className="risk-output-bullet-list">
                 {fieldVariableRisks.map((item, idx) => (
-                  <li key={idx} className="flex items-start text-[14px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {item.title && <strong className="text-gray-900">{item.title}</strong>}
+                      {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
                       {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
                     </span>
@@ -564,7 +497,7 @@ export function RiskOutputPage({ go }) {
         </div>
       </main>
 
-      <div className="px-6 pt-6 pb-0 bg-F2F3F5 border-gray-200">
+      <div className="risk-output-actions">
         <PrimaryButton onClick={() => go(screens.riskHome)}>확인</PrimaryButton>
       </div>
     </section>
@@ -623,41 +556,45 @@ export function MyRiskListPage({ go }) {
   };
 
   return (
-    <section className="subpage-screen history-page risk-list-page">
-      <div className="subpage-title-row">          
-        <button 
-            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
-            onClick={() => go(screens.mypage)}
-          >
-            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-          </button>
-        <img className="subpage-title-icon risk-title-icon" src={figmaAssets.mypageRiskReportTitle} alt="" />
+    <section className="subpage-screen history-page risk-list-page cds--white">
+      <header className="mypage-list-header">
+        <button type="button" className="mypage-list-back" onClick={() => go(screens.mypage)} aria-label="뒤로가기">
+          <FaChevronLeft />
+        </button>
         <h1>내 리스크리포트</h1>
+        <span className="mypage-list-header-spacer" aria-hidden="true" />
+      </header>
+
+      <div className="mypage-search-only-row">
+        <SearchBar />
       </div>
-      
-      <SearchBar />
-      
-      <div className="list-stack overflow-y-auto pb-10">
-        {isLoading ? (
-          <p className="text-center text-gray-500 mt-10">목록을 불러오는 중 ...</p>
-        ) : riskReports.length === 0 ? (
-          <p className="text-center text-gray-500 mt-10">생성된 리스크 리포트가 없습니다.</p>
-        ) : (
-          riskReports.map((item) => (
-            <RiskCard 
-              key={item.id} 
-              item={item} 
-              onClick={() => handleCardClick(item.id)} 
-            />
-          ))
-        )}
+
+      <div className="history-scroll-area">
+        <div className="list-stack">
+          {isLoading ? (
+            <p className="empty-list-message">목록을 불러오는 중...</p>
+          ) : riskReports.length === 0 ? (
+            <div className="history-empty-state">
+              <span className="history-empty-state-icon" aria-hidden="true"><FaShieldAlt /></span>
+              <strong>생성된 리스크 리포트가 없습니다</strong>
+            </div>
+          ) : (
+            riskReports.map((item) => (
+              <RiskCard
+                key={item.id}
+                item={item}
+                onClick={() => handleCardClick(item.id)}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* 💡 상자에 데이터가 들어가면 팝업(모달)을 화면 최상단에 띄워줍니다! */}
       {selectedRisk ? (
-        <RiskReportModal 
-          item={selectedRisk} 
-          onClose={() => setSelectedRisk(null)} 
+        <RiskReportModal
+          item={selectedRisk}
+          onClose={() => setSelectedRisk(null)}
         />
       ) : null}
     </section>
@@ -674,62 +611,47 @@ function RiskReportModal({ item, onClose }) {
   const safetyRisks = item.safety_risks || item.safety_risks_json || [];
   const contractRisks = item.contract_risks || item.contract_risks_json || [];
   const fieldVariableRisks = item.field_variable_risks || item.field_variable_risks_json || [];
+  const riskGradeClass = item.risk_level === 'LOW' ? 'is-low' : item.risk_level === 'MEDIUM' ? 'is-medium' : 'is-high';
 
   return (
     <div className="estimate-result-overlay">
-      <article className="estimate-result-modal" style={{ maxHeight: '85vh', overflowY: 'auto', padding: '24px' }}>
-        
-        {/* 모달 상단 헤더 (날짜, 상태, 닫기 버튼) */}
-        <div className="flex justify-between items-center mb-6">
+      <article className="estimate-result-modal is-wide">
+        <div className="estimate-result-head">
           <div>
-            <span className="text-[13px] text-gray-500 mr-2">{item.created_at?.split('T')[0]}</span>
-            <small className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[11px] font-bold">
-              {item.report_status === 'COMPLETED' ? '완료' : '진행중'}
-            </small>
+            <span>시공 리스크 리포트</span>
+            <small>{item.created_at?.split('T')[0]} · {item.report_status === 'COMPLETED' ? '완료' : '진행중'}</small>
           </div>
-          {/* 💡 여기서도 X 버튼을 정가운데로 예쁘게 정렬했습니다! */}
-          <button 
-            onClick={onClose} 
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-            style={{ fontSize: '18px', paddingBottom: '2px' }}
-          >
-            ✕
+          <button type="button" onClick={onClose} aria-label="닫기">
+            <FaTimes />
           </button>
         </div>
 
-        {/* 1. 점수 및 등급 */}
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1 bg-gray-50 rounded-2xl p-4 text-center border border-gray-100">
-            <p className="text-[11px] text-gray-400 mb-1">리스크 점수</p>
-            <strong className="text-[20px] font-bold text-gray-900">{item.risk_score}점</strong>
+        <div className="risk-output-stat-row" style={{ marginTop: '16px' }}>
+          <div className="risk-output-stat">
+            <span>리스크 점수</span>
+            <strong>{item.risk_score}점</strong>
           </div>
-          <div className="flex-1 bg-gray-50 rounded-2xl p-4 text-center border border-gray-100">
-            <p className="text-[11px] text-gray-400 mb-1">리스크 등급</p>
-            <strong className={`text-[20px] font-bold ${item.risk_level === 'LOW' ? 'text-green-500' : item.risk_level === 'MEDIUM' ? 'text-yellow-500' : 'text-red-500'}`}>
-              {item.risk_level}
-            </strong>
+          <div className="risk-output-stat">
+            <span>리스크 등급</span>
+            <strong className={`risk-output-grade ${riskGradeClass}`}>{item.risk_level}</strong>
           </div>
         </div>
 
-        {/* 2. 상세 요약 */}
-        <div className="space-y-6 text-left">
-          <section>
-            <h3 className="text-[15px] font-bold text-gray-800 mb-2">상세 요약</h3>
-            <p className="text-[13px] text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
+        <div className="risk-output-card" style={{ marginTop: '16px' }}>
+          <section className="risk-output-section">
+            <h3>상세 요약</h3>
+            <p className="risk-output-block">
               {item.summary || "요약 정보가 없습니다."}
             </p>
           </section>
 
-          {/* 3. 체크리스트 */}
           {checklist.length > 0 && (
-            <section className="border-t border-gray-100 pt-5">
-              <h3 className="text-[15px] font-bold text-gray-800 mb-3">확인 체크리스트</h3>
-              <ul className="space-y-2">
+            <section className="risk-output-section">
+              <h3>확인 체크리스트</h3>
+              <ul className="risk-output-checklist">
                 {checklist.map((c, idx) => (
-                  <li key={idx} className="flex items-center text-[13px] text-gray-700">
-                    <span className="flex items-center justify-center w-5 h-5 mr-3 bg-blue-100 text-blue-600 rounded-full text-[10px] font-bold shrink-0">
-                      {idx + 1}
-                    </span>
+                  <li key={idx}>
+                    <span className="risk-output-checklist-index">{idx + 1}</span>
                     <span>{c.label || c.task || c.title || (typeof c === 'string' ? c : '')}</span>
                   </li>
                 ))}
@@ -737,18 +659,15 @@ function RiskReportModal({ item, onClose }) {
             </section>
           )}
 
-          {/* 4. 세부 위험 요소 모음 */}
           {additionalCostRisks.length > 0 && (
-            <section className="border-t border-gray-100 pt-5">
-              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
-                <span className="mr-2">💰</span> 추가 비용 위험
-              </h3>
-              <ul className="space-y-2">
+            <section className="risk-output-section">
+              <h3><FaCoins aria-hidden="true" /> 추가 비용 위험 요소</h3>
+              <ul className="risk-output-bullet-list">
                 {additionalCostRisks.map((r, idx) => (
-                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && <strong>{r.title}</strong>}
                       {r.title && r.expected_impact && " : "}
                       {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
                     </span>
@@ -759,16 +678,14 @@ function RiskReportModal({ item, onClose }) {
           )}
 
           {safetyRisks.length > 0 && (
-            <section className="border-t border-gray-100 pt-5">
-              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
-                <span className="mr-2">⚠️</span> 안전 및 자격 위험
-              </h3>
-              <ul className="space-y-2">
+            <section className="risk-output-section">
+              <h3><FaShieldAlt aria-hidden="true" /> 안전 및 자격 위험 요소</h3>
+              <ul className="risk-output-bullet-list">
                 {safetyRisks.map((r, idx) => (
-                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && <strong>{r.title}</strong>}
                       {r.title && r.expected_impact && " : "}
                       {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
                     </span>
@@ -779,16 +696,14 @@ function RiskReportModal({ item, onClose }) {
           )}
 
           {contractRisks.length > 0 && (
-            <section className="border-t border-gray-100 pt-5">
-              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
-                <span className="mr-2">📝</span> 계약 및 분쟁 위험
-              </h3>
-              <ul className="space-y-2">
+            <section className="risk-output-section">
+              <h3><FaFileContract aria-hidden="true" /> 계약 및 분쟁 위험 요소</h3>
+              <ul className="risk-output-bullet-list">
                 {contractRisks.map((r, idx) => (
-                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && <strong>{r.title}</strong>}
                       {r.title && r.expected_impact && " : "}
                       {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
                     </span>
@@ -799,16 +714,14 @@ function RiskReportModal({ item, onClose }) {
           )}
 
           {fieldVariableRisks.length > 0 && (
-            <section className="border-t border-gray-100 pt-5">
-              <h3 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center">
-                <span className="mr-2">🔍</span> 확인 어려운 현장 변수
-              </h3>
-              <ul className="space-y-2">
+            <section className="risk-output-section">
+              <h3><FaSearch aria-hidden="true" /> 확인 어려운 현장 변수</h3>
+              <ul className="risk-output-bullet-list">
                 {fieldVariableRisks.map((r, idx) => (
-                  <li key={idx} className="flex items-start text-[13px] text-gray-700">
-                    <span className="mr-2 text-red-500 shrink-0">•</span>
+                  <li key={idx}>
+                    <span className="risk-output-bullet">•</span>
                     <span>
-                      {r.title && <strong className="text-gray-900">{r.title}</strong>}
+                      {r.title && <strong>{r.title}</strong>}
                       {r.title && r.expected_impact && " : "}
                       {r.expected_impact || r.description || (typeof r === 'string' ? r : '')}
                     </span>
@@ -819,13 +732,9 @@ function RiskReportModal({ item, onClose }) {
           )}
         </div>
 
-        {/* 확인 버튼 */}
-        <div className="mt-8 flex justify-center">
-          <PrimaryButton onClick={onClose} style={{ width: '100%', height: '52px', fontSize: '16px', fontWeight: 'bold' }}>
-            확인
-          </PrimaryButton>
+        <div className="estimate-result-actions single">
+          <PrimaryButton onClick={onClose}>확인</PrimaryButton>
         </div>
-
       </article>
     </div>
   )

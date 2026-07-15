@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { FaTimes } from 'react-icons/fa'
 import { figmaAssets } from '../components/customer/figmaAssets'
 import notificationEmptyBell from '../assets/figma/notification-empty-bell-gray.svg'
 import { NotificationContext } from './notificationContext'
@@ -56,7 +57,7 @@ export function CustomerNotificationProvider({ children }) {
             <div className="home-address-head">
               <h2 id="home-notification-title">알림</h2>
               <button type="button" onClick={() => setIsOpen(false)} aria-label="닫기">
-                ×
+                <FaTimes />
               </button>
             </div>
             <div className="home-notification-summary">

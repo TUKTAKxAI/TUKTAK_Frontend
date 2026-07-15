@@ -1,0 +1,17 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="긴급 안내">
+  <style>
+    .urgent-alert-ring {
+      transform-origin: 32px 32px;
+      animation: urgent-alert-pulse 1.8s ease-out infinite;
+    }
+    @keyframes urgent-alert-pulse {
+      0% { transform: scale(0.9); opacity: 0.5; }
+      70% { transform: scale(1.35); opacity: 0; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+  </style>
+  <circle class="urgent-alert-ring" cx="32" cy="32" r="22" fill="none" stroke="#ff832b" stroke-width="3" />
+  <circle cx="32" cy="32" r="22" fill="#ff832b" />
+  <rect x="29" y="18" width="6" height="18" rx="3" fill="#ffffff" />
+  <circle cx="32" cy="44" r="3.4" fill="#ffffff" />
+</svg>

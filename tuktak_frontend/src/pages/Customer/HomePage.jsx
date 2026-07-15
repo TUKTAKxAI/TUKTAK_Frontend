@@ -114,11 +114,12 @@ const homeReviews = {
 }
 
 // 별점 표시용 컴포넌트
-// rating 숫자만큼 ★ 문자를 반복해서 보여줌
+// rating 숫자만큼 ★, 나머지는 ☆로 채워 5개를 항상 보여줌
 function StarRating({ rating }) {
   return (
     <span className="home-stars">
       {'★'.repeat(rating)}
+      {'☆'.repeat(5 - rating)}
       <em>{rating}/5</em>
     </span>
   )
