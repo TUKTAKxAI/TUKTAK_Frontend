@@ -3,6 +3,7 @@ import { FaCamera, FaChevronLeft, FaFileInvoice } from 'react-icons/fa'
 import { contractorScreens } from '../../data/contractorData'
 import { fetchContractorMatchingRequests } from '../../services/contractorService'
 import { ContractorPage, RequestCard, StatusBadge } from './ContractorPageShared'
+import './ContractorPages.css'
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -60,22 +61,22 @@ function groupByRegion(items) {
 
 function RequestEstimatePreview({ item }) {
   if (!item) {
-    return <p className="muted center">요청 정보를 불러오지 못했습니다.</p>
+    return <p className="contractor-requests-status">요청 정보를 불러오지 못했습니다.</p>
   }
 
   return (
     <article className="contractor-detail-card">
       <StatusBadge>{item.status}</StatusBadge>
-      <h1>{item.title}</h1>
-      <p>{item.region}</p>
-      <dl>
+      <h2 className="contractor-detail-card-title">{item.title}</h2>
+      <p className="contractor-detail-card-region">{item.region}</p>
+      <dl className="contractor-active-info">
         <div><dt>요청 일시</dt><dd>{item.desiredDate} {item.time}</dd></div>
         <div><dt>고객 예산</dt><dd>{item.budget}</dd></div>
         <div><dt>AI 예상 비용</dt><dd>{item.aiEstimate.priceRange}</dd></div>
         <div><dt>예상 소요시간</dt><dd>{item.aiEstimate.expectedTime}</dd></div>
       </dl>
       <div className="contractor-ai-summary">
-        <FaFileInvoice />
+        <span className="contractor-ai-summary-icon" aria-hidden="true"><FaFileInvoice /></span>
         <div>
           <strong>AI 견적 요약</strong>
           <p>{item.aiEstimate.summary}</p>
@@ -214,17 +215,35 @@ export function ContractorRequestDetailPage({ go, routeState = {} }) {
   }, [item, routeState.matchingRequestId])
 
   return (
-    <ContractorPage title="시공 요청 상세" go={go} back={() => go(contractorScreens.requests)}>
-      <RequestEstimatePreview item={item} />
-      <div className="contractor-bottom-actions">
-        <button type="button" onClick={() => go(contractorScreens.requests)}>닫기</button>
-        <button
-          type="button"
-          disabled={!item?.matchingRequestId}
-          onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: item.matchingRequestId, quoteId: item.quoteId })}
-        >
-          {item?.quoteId ? '내 견적 보기' : '견적서 작성하기'}
-        </button>
+    <ContractorPage go={go}>
+      <div className="contractor-request-detail cds--white">
+        <header className="contractor-active-header">
+          <button
+            type="button"
+            className="contractor-active-back"
+            onClick={() => go(contractorScreens.requests)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft aria-hidden="true" />
+          </button>
+          <div className="contractor-active-header-title">
+            <p className="contractor-active-eyebrow">시공자</p>
+            <h1>시공 요청 상세</h1>
+          </div>
+          <span className="contractor-active-header-spacer" aria-hidden="true" />
+        </header>
+
+        <RequestEstimatePreview item={item} />
+        <div className="contractor-bottom-actions">
+          <button type="button" onClick={() => go(contractorScreens.requests)}>닫기</button>
+          <button
+            type="button"
+            disabled={!item?.matchingRequestId}
+            onClick={() => go(contractorScreens.quoteForm, { request: item, matchingRequestId: item.matchingRequestId, quoteId: item.quoteId })}
+          >
+            {item?.quoteId ? '내 견적 보기' : '견적서 작성하기'}
+          </button>
+        </div>
       </div>
     </ContractorPage>
   )
@@ -234,8 +253,26 @@ export function ContractorAiEstimatePage({ go, routeState = {} }) {
   const item = routeState.request || null
 
   return (
-    <ContractorPage title="AI 견적서 보기" go={go} back={() => go(contractorScreens.requestDetail)}>
-      <RequestEstimatePreview item={item} />
+    <ContractorPage go={go}>
+      <div className="contractor-request-detail cds--white">
+        <header className="contractor-active-header">
+          <button
+            type="button"
+            className="contractor-active-back"
+            onClick={() => go(contractorScreens.requestDetail)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft aria-hidden="true" />
+          </button>
+          <div className="contractor-active-header-title">
+            <p className="contractor-active-eyebrow">시공자</p>
+            <h1>AI 견적서 보기</h1>
+          </div>
+          <span className="contractor-active-header-spacer" aria-hidden="true" />
+        </header>
+
+        <RequestEstimatePreview item={item} />
+      </div>
     </ContractorPage>
   )
 }

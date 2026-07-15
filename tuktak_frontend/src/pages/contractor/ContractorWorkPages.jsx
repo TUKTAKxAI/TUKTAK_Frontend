@@ -7,6 +7,8 @@ import {
   fetchContractorWorkOrders,
   startContractorWorkOrder,
 } from '../../services/contractorService'
+import { figmaAssets } from '../../components/customer/figmaAssets'
+import loadingCarbonSvg from '../../assets/figma/loading-carbon.svg?raw'
 import { ContractorPage } from './ContractorPageShared'
 
 function formatDate(value) {
@@ -69,6 +71,18 @@ export function ContractorRecordsPage({ go }) {
     }
   }, [])
 
+  if (status === 'loading') {
+    return (
+      <ContractorPage go={go}>
+        <section className="estimate-loading">
+          <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+          <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+          <p className="estimate-loading-title">시공 기록을 불러오는 중...</p>
+        </section>
+      </ContractorPage>
+    )
+  }
+
   return (
     <ContractorPage go={go}>
       <div className="contractor-records cds--white">
@@ -88,7 +102,6 @@ export function ContractorRecordsPage({ go }) {
           <span className="contractor-active-header-spacer" aria-hidden="true" />
         </header>
 
-        {status === 'loading' ? <p className="contractor-requests-status">시공 기록을 불러오는 중입니다.</p> : null}
         {status === 'fallback' ? <p className="contractor-requests-status">서버 연결 전이라 예시 기록을 표시합니다.</p> : null}
         {status === 'loaded' && items.length === 0 ? <p className="contractor-requests-status">아직 시공 기록이 없습니다.</p> : null}
 

@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FaCheckCircle, FaFileInvoice } from 'react-icons/fa'
+import { FaChevronLeft, FaFileInvoice } from 'react-icons/fa'
 import { PrimaryButton } from '../../components/customer/FormControls'
+import { figmaAssets } from '../../components/customer/figmaAssets'
+import confirmCarbonSvg from '../../assets/figma/confirm-carbon.svg?raw'
 import { contractorQuotes, contractorScreens } from '../../data/contractorData'
 import { fetchContractorQuote, fetchContractorQuotes, submitContractorQuote } from '../../services/contractorService'
 import { ContractorPage, StatusBadge } from './ContractorPageShared'
+import './ContractorPages.css'
 
 const quoteFilters = ['전체', '전송완료', '선택대기']
 
@@ -118,85 +121,124 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
 
   if (quoteId) {
     return (
-      <ContractorPage title="내 견적 보기" go={go} back={() => go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })}>
-        {loadStatus === 'loading' ? <p className="muted center">견적서를 불러오는 중입니다.</p> : null}
-        {loadStatus === 'error' ? <p className="muted center">견적서를 불러오지 못했습니다.</p> : null}
-        {quoteDetail ? (
-          <article className="contractor-detail-card">
-            <StatusBadge>{quoteDetail.quote_status === 'SENT' ? '전송완료' : quoteDetail.quote_status}</StatusBadge>
-            <h1>{quoteDetail.matching_request_title}</h1>
-            <dl>
-              <div><dt>시공 비용</dt><dd>{formatWon(quoteDetail.total_amount)}</dd></div>
-              <div><dt>작업 범위</dt><dd>{quoteDetail.work_scope || '상세 협의'}</dd></div>
-              <div><dt>예상 소요시간</dt><dd>{quoteDetail.estimated_minutes ? `${quoteDetail.estimated_minutes}분` : '상세 협의'}</dd></div>
-              <div><dt>방문 횟수</dt><dd>{quoteDetail.visit_count ? `${quoteDetail.visit_count}회` : '상세 협의'}</dd></div>
-              <div><dt>가능 날짜</dt><dd>{formatDate(quoteDetail.available_date)}</dd></div>
-              <div><dt>도착 시간</dt><dd>{quoteDetail.arrival_time || '협의'}</dd></div>
-            </dl>
-            {quoteDetail.additional_note ? (
-              <div className="contractor-ai-summary">
-                <FaFileInvoice />
-                <div>
-                  <strong>추가 메모</strong>
-                  <p>{quoteDetail.additional_note}</p>
+      <ContractorPage go={go}>
+        <div className="contractor-quote cds--white">
+          <header className="contractor-active-header">
+            <button
+              type="button"
+              className="contractor-active-back"
+              onClick={() => go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })}
+              aria-label="뒤로가기"
+            >
+              <FaChevronLeft aria-hidden="true" />
+            </button>
+            <div className="contractor-active-header-title">
+              <p className="contractor-active-eyebrow">시공자</p>
+              <h1>내 견적 보기</h1>
+            </div>
+            <span className="contractor-active-header-spacer" aria-hidden="true" />
+          </header>
+
+          {loadStatus === 'loading' ? <p className="contractor-requests-status">견적서를 불러오는 중입니다.</p> : null}
+          {loadStatus === 'error' ? <p className="contractor-requests-status">견적서를 불러오지 못했습니다.</p> : null}
+          {quoteDetail ? (
+            <article className="contractor-detail-card">
+              <StatusBadge>{quoteDetail.quote_status === 'SENT' ? '전송완료' : quoteDetail.quote_status}</StatusBadge>
+              <h2 className="contractor-detail-card-title">{quoteDetail.matching_request_title}</h2>
+              <dl className="contractor-active-info">
+                <div><dt>시공 비용</dt><dd>{formatWon(quoteDetail.total_amount)}</dd></div>
+                <div><dt>작업 범위</dt><dd>{quoteDetail.work_scope || '상세 협의'}</dd></div>
+                <div><dt>예상 소요시간</dt><dd>{quoteDetail.estimated_minutes ? `${quoteDetail.estimated_minutes}분` : '상세 협의'}</dd></div>
+                <div><dt>방문 횟수</dt><dd>{quoteDetail.visit_count ? `${quoteDetail.visit_count}회` : '상세 협의'}</dd></div>
+                <div><dt>가능 날짜</dt><dd>{formatDate(quoteDetail.available_date)}</dd></div>
+                <div><dt>도착 시간</dt><dd>{quoteDetail.arrival_time || '협의'}</dd></div>
+              </dl>
+              {quoteDetail.additional_note ? (
+                <div className="contractor-ai-summary">
+                  <span className="contractor-ai-summary-icon" aria-hidden="true"><FaFileInvoice /></span>
+                  <div>
+                    <strong>추가 메모</strong>
+                    <p>{quoteDetail.additional_note}</p>
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </article>
-        ) : null}
-        <div className="contractor-bottom-actions">
-          <button type="button" onClick={() => go(contractorScreens.requests)}>목록으로</button>
-          <button type="button" onClick={() => go(contractorScreens.quotes)}>견적 관리</button>
+              ) : null}
+            </article>
+          ) : null}
+          <div className="contractor-bottom-actions">
+            <button type="button" onClick={() => go(contractorScreens.requests)}>목록으로</button>
+            <button type="button" onClick={() => go(contractorScreens.quotes)}>견적 관리</button>
+          </div>
         </div>
       </ContractorPage>
     )
   }
 
   return (
-    <ContractorPage title="견적서 작성" go={go} back={() => go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })}>
-      {routeState.request ? <p className="muted center">{routeState.request.title} 요청에 견적서를 작성합니다.</p> : null}
-      <div className="contractor-form">
-        <label><span>시공 비용</span><input value={form.amount} onChange={(event) => update('amount', event.target.value)} placeholder="100,000" /></label>
-        <label><span>작업 범위</span><input value={form.scope} onChange={(event) => update('scope', event.target.value)} placeholder="도어락 점검 및 부품 교체" /></label>
-        <label><span>소요 시간</span><select value={form.duration} onChange={(event) => update('duration', event.target.value)}><option>1시간</option><option>2시간</option><option>3시간</option></select></label>
-        <label><span>방문 횟수</span><select value={form.visits} onChange={(event) => update('visits', event.target.value)}><option>1회</option><option>2회</option><option>3회</option></select></label>
-        <label><span>가능 날짜</span><input type="date" value={form.availableDate} onChange={(event) => update('availableDate', event.target.value)} /></label>
-        <label><span>도착 시간</span><select value={form.arrivalTime} onChange={(event) => update('arrivalTime', event.target.value)}><option>09:00</option><option>12:00</option><option>15:00</option></select></label>
-        <label><span>추가 메모</span><textarea value={form.memo} onChange={(event) => update('memo', event.target.value)} placeholder="고객에게 전달할 내용을 입력해주세요." /></label>
-      </div>
-      <div className="contractor-bottom-actions">
-        <button type="button" onClick={() => go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })}>취소</button>
-        <button type="button" disabled={submitStatus === 'submitting'} onClick={sendQuote}>
-          {submitStatus === 'submitting' ? '전송중...' : '전송'}
-        </button>
-      </div>
-      {submitMessage ? <p className="muted center">{submitMessage}</p> : null}
+    <ContractorPage go={go}>
+      <div className="contractor-quote cds--white">
+        <header className="contractor-active-header">
+          <button
+            type="button"
+            className="contractor-active-back"
+            onClick={() => go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft aria-hidden="true" />
+          </button>
+          <div className="contractor-active-header-title">
+            <p className="contractor-active-eyebrow">시공자</p>
+            <h1>견적서 작성</h1>
+          </div>
+          <span className="contractor-active-header-spacer" aria-hidden="true" />
+        </header>
 
-      {showSuccessModal ? (
-        <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="contractor-modal">
-            <h2>견적서 전송 완료</h2>
-            <p>견적서가 요청자에게 보내졌습니다.</p>
-            <div className="contractor-bottom-actions">
-              <button type="button" onClick={() => go(contractorScreens.requests)}>목록으로 이동</button>
-              <button type="button" onClick={() => go(contractorScreens.quotes)}>견적 관리 보기</button>
+        {routeState.request ? <p className="contractor-requests-status">{routeState.request.title} 요청에 견적서를 작성합니다.</p> : null}
+        <div className="contractor-form">
+          <label><span>시공 비용</span><input value={form.amount} onChange={(event) => update('amount', event.target.value)} placeholder="100,000" /></label>
+          <label><span>작업 범위</span><input value={form.scope} onChange={(event) => update('scope', event.target.value)} placeholder="도어락 점검 및 부품 교체" /></label>
+          <label><span>소요 시간</span><select value={form.duration} onChange={(event) => update('duration', event.target.value)}><option>1시간</option><option>2시간</option><option>3시간</option></select></label>
+          <label><span>방문 횟수</span><select value={form.visits} onChange={(event) => update('visits', event.target.value)}><option>1회</option><option>2회</option><option>3회</option></select></label>
+          <label><span>가능 날짜</span><input type="date" value={form.availableDate} onChange={(event) => update('availableDate', event.target.value)} /></label>
+          <label><span>도착 시간</span><select value={form.arrivalTime} onChange={(event) => update('arrivalTime', event.target.value)}><option>09:00</option><option>12:00</option><option>15:00</option></select></label>
+          <label><span>추가 메모</span><textarea value={form.memo} onChange={(event) => update('memo', event.target.value)} placeholder="고객에게 전달할 내용을 입력해주세요." /></label>
+        </div>
+        <div className="contractor-bottom-actions">
+          <button type="button" onClick={() => go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })}>취소</button>
+          <button type="button" disabled={submitStatus === 'submitting'} onClick={sendQuote}>
+            {submitStatus === 'submitting' ? '전송중...' : '전송'}
+          </button>
+        </div>
+        {submitMessage ? <p className="contractor-requests-status">{submitMessage}</p> : null}
+
+        {showSuccessModal ? (
+          <div className="contractor-modal-backdrop" role="dialog" aria-modal="true">
+            <div className="contractor-modal">
+              <h2>견적서 전송 완료</h2>
+              <p>견적서가 요청자에게 보내졌습니다.</p>
+              <div className="contractor-bottom-actions">
+                <button type="button" onClick={() => go(contractorScreens.requests)}>목록으로 이동</button>
+                <button type="button" onClick={() => go(contractorScreens.quotes)}>견적 관리 보기</button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </ContractorPage>
   )
 }
 
 export function ContractorQuoteDonePage({ go }) {
   return (
-    <ContractorPage title="견적서 전송 완료" go={go}>
-      <article className="contractor-done-card">
-        <FaCheckCircle />
-        <h1>견적서가 전송되었습니다</h1>
-        <p>고객이 견적서를 확인하면 알림으로 알려드릴게요.</p>
-        <PrimaryButton onClick={() => go(contractorScreens.requests)}>시공 요청 목록으로 이동</PrimaryButton>
-      </article>
+    <ContractorPage go={go}>
+      <section className="estimate-done">
+        <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+        <div className="estimate-done-icon" dangerouslySetInnerHTML={{ __html: confirmCarbonSvg }} />
+        <h2 className="estimate-done-title">견적서가 전송되었습니다</h2>
+        <p className="estimate-done-desc">고객이 견적서를 확인하면 알림으로 알려드릴게요.</p>
+        <div className="estimate-done-actions">
+          <PrimaryButton narrow onClick={() => go(contractorScreens.requests)}>시공 요청 목록으로 이동</PrimaryButton>
+        </div>
+      </section>
     </ContractorPage>
   )
 }
@@ -229,22 +271,44 @@ export function ContractorQuotesPage({ go }) {
   }, [])
 
   return (
-    <ContractorPage title="견적 관리" go={go}>
-      {status === 'loading' ? <p className="muted center">견적 목록을 불러오는 중입니다.</p> : null}
-      {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 견적을 표시합니다.</p> : null}
-      <div className="contractor-filter">
-        {quoteFilters.map((item) => (
-          <button key={item} className={filter === item ? 'active' : ''} type="button" onClick={() => setFilter(item)}>{item}</button>
-        ))}
-      </div>
-      <div className="contractor-list">
-        {filtered.map((quote) => (
-          <article className="contractor-line-card" key={quote.id}>
-            <FaFileInvoice />
-            <div><strong>{quote.requestTitle}</strong><p>{quote.amount}</p><small>유효기간 {quote.validUntil}</small></div>
-            <StatusBadge>{quote.status}</StatusBadge>
-          </article>
-        ))}
+    <ContractorPage go={go}>
+      <div className="contractor-quote cds--white">
+        <header className="contractor-active-header">
+          <button
+            type="button"
+            className="contractor-active-back"
+            onClick={() => go(contractorScreens.home)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft aria-hidden="true" />
+          </button>
+          <div className="contractor-active-header-title">
+            <p className="contractor-active-eyebrow">시공자</p>
+            <h1>견적 관리</h1>
+          </div>
+          <span className="contractor-active-header-spacer" aria-hidden="true" />
+        </header>
+
+        {status === 'loading' ? <p className="contractor-requests-status">견적 목록을 불러오는 중입니다.</p> : null}
+        {status === 'fallback' ? <p className="contractor-requests-status">서버 연결 전이라 예시 견적을 표시합니다.</p> : null}
+        <div className="contractor-requests-tabs" role="tablist">
+          {quoteFilters.map((item) => (
+            <button key={item} className={filter === item ? 'is-active' : ''} type="button" onClick={() => setFilter(item)}>{item}</button>
+          ))}
+        </div>
+        <div className="contractor-quotes-list">
+          {filtered.map((quote) => (
+            <article className="contractor-quotes-card" key={quote.id}>
+              <span className="contractor-quotes-card-icon" aria-hidden="true"><FaFileInvoice /></span>
+              <div className="contractor-quotes-card-body">
+                <strong>{quote.requestTitle}</strong>
+                <p>{quote.amount}</p>
+                <small>유효기간 {quote.validUntil}</small>
+              </div>
+              <StatusBadge>{quote.status}</StatusBadge>
+            </article>
+          ))}
+        </div>
       </div>
     </ContractorPage>
   )
