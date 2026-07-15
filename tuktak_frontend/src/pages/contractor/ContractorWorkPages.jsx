@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FaTools } from 'react-icons/fa'
+import { FaChevronLeft, FaTools } from 'react-icons/fa'
 import { contractorScreens, contractorWorkOrders } from '../../data/contractorData'
 import {
   completeContractorWorkOrder,
@@ -7,7 +7,7 @@ import {
   fetchContractorWorkOrders,
   startContractorWorkOrder,
 } from '../../services/contractorService'
-import { ContractorPage, StatusBadge } from './ContractorPageShared'
+import { ContractorPage } from './ContractorPageShared'
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -70,21 +70,43 @@ export function ContractorRecordsPage({ go }) {
   }, [])
 
   return (
-    <ContractorPage title="시공 기록" go={go} back={() => go(contractorScreens.home)}>
-      {status === 'loading' ? <p className="muted center">시공 기록을 불러오는 중입니다.</p> : null}
-      {status === 'fallback' ? <p className="muted center">서버 연결 전이라 예시 기록을 표시합니다.</p> : null}
-      <div className="contractor-list">
-        {items.map((item) => (
-          <button className="contractor-line-card clickable" type="button" key={item.id} onClick={() => go(contractorScreens.recordDetail, { workOrder: item, workOrderId: item.workOrderId })}>
-            <FaTools />
-            <div>
-              <strong>{item.title}</strong>
-              <p>{item.region}</p>
-              <small>{item.date} {item.time}</small>
-            </div>
-            <StatusBadge tone={item.status === '완료' ? 'gray' : 'blue'}>{item.status}</StatusBadge>
+    <ContractorPage go={go}>
+      <div className="contractor-records cds--white">
+        <header className="contractor-active-header">
+          <button
+            type="button"
+            className="contractor-active-back"
+            onClick={() => go(contractorScreens.home)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft aria-hidden="true" />
           </button>
-        ))}
+          <div className="contractor-active-header-title">
+            <p className="contractor-active-eyebrow">시공자</p>
+            <h1>시공 기록</h1>
+          </div>
+          <span className="contractor-active-header-spacer" aria-hidden="true" />
+        </header>
+
+        {status === 'loading' ? <p className="contractor-requests-status">시공 기록을 불러오는 중입니다.</p> : null}
+        {status === 'fallback' ? <p className="contractor-requests-status">서버 연결 전이라 예시 기록을 표시합니다.</p> : null}
+        {status === 'loaded' && items.length === 0 ? <p className="contractor-requests-status">아직 시공 기록이 없습니다.</p> : null}
+
+        <div className="contractor-records-list">
+          {items.map((item) => (
+            <button className="contractor-records-card" type="button" key={item.id} onClick={() => go(contractorScreens.recordDetail, { workOrder: item, workOrderId: item.workOrderId })}>
+              <span className="contractor-records-card-icon" aria-hidden="true">
+                <FaTools />
+              </span>
+              <span className="contractor-records-card-body">
+                <span className="contractor-records-card-title">{item.title}</span>
+                <span className="contractor-records-card-region">{item.region}</span>
+                <span className="contractor-records-card-meta">{item.date} {item.time}</span>
+              </span>
+              <span className={`contractor-records-badge${item.status === '완료' ? ' is-done' : ''}`}>{item.status}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </ContractorPage>
   )
@@ -125,28 +147,66 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
 
   if (!item) {
     return (
-      <ContractorPage title="작업 상세" go={go} back={() => go(contractorScreens.records)}>
-        <p className="muted center">작업 정보를 불러오는 중입니다.</p>
+      <ContractorPage go={go}>
+        <div className="contractor-records cds--white">
+          <header className="contractor-active-header">
+            <button
+              type="button"
+              className="contractor-active-back"
+              onClick={() => go(contractorScreens.records)}
+              aria-label="뒤로가기"
+            >
+              <FaChevronLeft aria-hidden="true" />
+            </button>
+            <div className="contractor-active-header-title">
+              <p className="contractor-active-eyebrow">작업 상세</p>
+              <h1>작업 상세</h1>
+            </div>
+            <span className="contractor-active-header-spacer" aria-hidden="true" />
+          </header>
+          <p className="contractor-requests-status">작업 정보를 불러오는 중입니다.</p>
+        </div>
       </ContractorPage>
     )
   }
 
   return (
-    <ContractorPage title="작업 상세" go={go} back={() => go(contractorScreens.records)}>
-      <article className="contractor-detail-card">
-        <StatusBadge>{item.status}</StatusBadge>
-        <h1>{item.title}</h1>
-        <p>{item.region}</p>
-        <dl>
-          <div><dt>일정</dt><dd>{item.date} {item.time}</dd></div>
-          <div><dt>금액</dt><dd>{item.amount}</dd></div>
-        </dl>
-        <div className="contractor-button-row">
-          <button type="button" disabled={!item.workOrderId || actionStatus === 'submitting'} onClick={() => updateStatus('start')}>시작 처리</button>
-          <button type="button" disabled={!item.workOrderId || actionStatus === 'submitting'} onClick={() => updateStatus('complete')}>완료 처리</button>
+    <ContractorPage go={go}>
+      <div className="contractor-records cds--white">
+        <header className="contractor-active-header">
+          <button
+            type="button"
+            className="contractor-active-back"
+            onClick={() => go(contractorScreens.records)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft aria-hidden="true" />
+          </button>
+          <div className="contractor-active-header-title">
+            <p className="contractor-active-eyebrow">작업 상세</p>
+            <h1>{item.title}</h1>
+          </div>
+          <span className="contractor-active-header-spacer" aria-hidden="true" />
+        </header>
+
+        <div className="contractor-records-detail-top">
+          <span className="contractor-records-badge">{item.status}</span>
+          <p className="contractor-records-detail-region">{item.region}</p>
         </div>
-        {actionStatus === 'error' ? <p className="muted center">상태 변경에 실패했습니다.</p> : null}
-      </article>
+
+        <article className="contractor-active-card">
+          <dl className="contractor-active-info">
+            <div><dt>일정</dt><dd>{item.date} {item.time}</dd></div>
+            <div><dt>금액</dt><dd>{item.amount}</dd></div>
+          </dl>
+        </article>
+
+        <div className="contractor-records-actions">
+          <button className="is-ghost" type="button" disabled={!item.workOrderId || actionStatus === 'submitting'} onClick={() => updateStatus('start')}>시작 처리</button>
+          <button className="is-primary" type="button" disabled={!item.workOrderId || actionStatus === 'submitting'} onClick={() => updateStatus('complete')}>완료 처리</button>
+        </div>
+        {actionStatus === 'error' ? <p className="contractor-requests-status">상태 변경에 실패했습니다.</p> : null}
+      </div>
     </ContractorPage>
   )
 }

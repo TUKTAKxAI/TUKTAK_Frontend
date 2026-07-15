@@ -45,6 +45,7 @@ export function ContractorChatsPage({ go }) {
       }}
       go={handleGo}
       clearUnread={clearUnread}
+      back={() => go?.(contractorScreens.home)}
     />
   )
 }

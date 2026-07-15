@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FaCamera, FaFileInvoice } from 'react-icons/fa'
+import { FaCamera, FaChevronLeft, FaFileInvoice } from 'react-icons/fa'
 import { contractorScreens } from '../../data/contractorData'
 import { fetchContractorMatchingRequests } from '../../services/contractorService'
 import { ContractorPage, RequestCard, StatusBadge } from './ContractorPageShared'
@@ -127,37 +127,65 @@ export function ContractorRequestsPage({ go }) {
   const regionNames = Object.keys(groupedItems)
 
   return (
-    <ContractorPage title="시공 요청 목록" go={go} back={() => go(contractorScreens.home)}>
-      <div className="contractor-filter">
-        <button className={activeTab === 'new' ? 'active' : ''} type="button" onClick={() => setActiveTab('new')}>
-          새 요청
-        </button>
-        <button className={activeTab === 'quoted' ? 'active' : ''} type="button" onClick={() => setActiveTab('quoted')}>
-          보낸 견적
-        </button>
-      </div>
-      {status === 'loading' ? <p className="muted center">시공 요청을 불러오는 중입니다.</p> : null}
-      {status === 'error' ? <p className="muted center">시공 요청을 불러오지 못했습니다.</p> : null}
-      {status === 'loaded' && visibleItems.length === 0 ? (
-        <p className="muted center">
-          {activeTab === 'quoted' ? '아직 보낸 견적이 없습니다.' : '현재 설정한 지역에 도착한 새 요청이 없습니다.'}
-        </p>
-      ) : null}
-      <div className="contractor-list">
-        {regionNames.map((regionName) => (
-          <section className="contractor-region-request-group" key={regionName}>
-            <h2>{regionName}</h2>
-            <div className="contractor-list">
-              {groupedItems[regionName].map((item) => (
-                <RequestCard
-                  key={item.id}
-                  item={item}
-                  onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: item.matchingRequestId })}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
+    <ContractorPage go={go}>
+      <div className="contractor-requests cds--white">
+        <header className="contractor-active-header">
+          <button
+            type="button"
+            className="contractor-active-back"
+            onClick={() => go(contractorScreens.home)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft aria-hidden="true" />
+          </button>
+          <div className="contractor-active-header-title">
+            <p className="contractor-active-eyebrow">시공자</p>
+            <h1>시공 요청 목록</h1>
+          </div>
+          <span className="contractor-active-header-spacer" aria-hidden="true" />
+        </header>
+
+        <div className="contractor-requests-tabs" role="tablist">
+          <button
+            className={activeTab === 'new' ? 'is-active' : ''}
+            type="button"
+            onClick={() => setActiveTab('new')}
+          >
+            새 요청
+          </button>
+          <button
+            className={activeTab === 'quoted' ? 'is-active' : ''}
+            type="button"
+            onClick={() => setActiveTab('quoted')}
+          >
+            보낸 견적
+          </button>
+        </div>
+
+        {status === 'loading' ? <p className="contractor-requests-status">시공 요청을 불러오는 중입니다.</p> : null}
+        {status === 'error' ? <p className="contractor-requests-status">시공 요청을 불러오지 못했습니다.</p> : null}
+        {status === 'loaded' && visibleItems.length === 0 ? (
+          <p className="contractor-requests-status">
+            {activeTab === 'quoted' ? '아직 보낸 견적이 없습니다.' : '현재 설정한 지역에 도착한 새 요청이 없습니다.'}
+          </p>
+        ) : null}
+
+        <div className="contractor-requests-groups">
+          {regionNames.map((regionName) => (
+            <section className="contractor-requests-group" key={regionName}>
+              <h2 className="contractor-requests-group-title">{regionName}</h2>
+              <div className="contractor-requests-list">
+                {groupedItems[regionName].map((item) => (
+                  <RequestCard
+                    key={item.id}
+                    item={item}
+                    onDetail={() => go(contractorScreens.requestDetail, { request: item, matchingRequestId: item.matchingRequestId })}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
     </ContractorPage>
   )

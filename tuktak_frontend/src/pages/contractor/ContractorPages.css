@@ -973,3 +973,1178 @@
 .contractor-bottom-nav button span {
   font-size: 13px;
 }
+
+/* ===== ContractorHomePage (/contractor/home) — Carbon 스타일 ===== */
+.contractor-home {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 16px 24px;
+}
+
+/* 매칭 알림 토글 — 콜 수신 스위치처럼 눈에 띄는 히어로 배너 */
+.contractor-home-alarm {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 20px;
+  text-align: left;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  background: var(--cds-layer, #f4f4f4);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.contractor-home-alarm[aria-pressed='true'] {
+  background: var(--cds-background-brand, #0f62fe);
+  border-color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-home-alarm-icon {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  font-size: 26px;
+  background: #e0e0e0;
+  color: #8d8d8d;
+}
+
+.contractor-home-alarm[aria-pressed='true'] .contractor-home-alarm-icon {
+  background: rgb(255 255 255 / 18%);
+  color: #ffffff;
+}
+
+.contractor-home-alarm-live {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #42be65;
+  border: 2px solid var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-home-alarm-live::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid #42be65;
+  animation: contractor-alarm-pulse 1.6s ease-out infinite;
+}
+
+@keyframes contractor-alarm-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.contractor-home-alarm-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contractor-home-alarm-status {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-home-alarm[aria-pressed='true'] .contractor-home-alarm-status {
+  color: #ffffff;
+}
+
+.contractor-home-alarm-desc {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.contractor-home-alarm[aria-pressed='true'] .contractor-home-alarm-desc {
+  color: rgb(255 255 255 / 88%);
+}
+
+.contractor-home-alarm-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--cds-border-strong, #8d8d8d);
+  transition: background 0.15s ease;
+}
+
+.contractor-home-alarm[aria-pressed='true'] .contractor-home-alarm-switch {
+  background: rgb(255 255 255 / 35%);
+}
+
+.contractor-home-alarm-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s ease;
+}
+
+.contractor-home-alarm[aria-pressed='true'] .contractor-home-alarm-switch::after {
+  transform: translateX(24px);
+}
+
+/* 진행중인 시공 — 내비 타일과 달리 '현재 상태'를 보여주는 정보 패널(좌측 액센트 + 채운 아이콘) */
+.contractor-home-active {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  padding: 20px;
+  text-align: left;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-left: 4px solid var(--cds-background-brand, #0f62fe);
+  border-radius: 4px;
+  color: var(--cds-text-primary, #161616);
+  transition: border-color 0.15s ease;
+}
+
+.contractor-home-active:active {
+  border-color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-home-active-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  background: var(--cds-background-brand, #0f62fe);
+  color: #ffffff;
+  font-size: 22px;
+}
+
+.contractor-home-active-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contractor-home-active-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-home-active-body h2 {
+  margin: 2px 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-home-active-body p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.contractor-home-active-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-home-menu {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.contractor-home-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  min-height: 118px;
+  padding: 20px 16px;
+  text-align: left;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  color: var(--cds-text-primary, #161616);
+  transition: border-color 0.15s ease;
+}
+
+.contractor-home-tile:active {
+  border-color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-home-tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  background: #edf5ff;
+  color: var(--cds-background-brand, #0f62fe);
+  font-size: 20px;
+}
+
+.contractor-home-tile strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+/* ===== ContractorMyPages (/contractor/mypage, /info, /services, /regions) — Carbon 스타일 =====
+   부모 .scroll-area 가 이미 18px 좌우 패딩을 주므로 여기서는 좌우 여백을 추가하지 않는다.
+   고객 마이페이지(.mypage-*)와 동일한 룩이지만 컨텍스트(패딩/셀렉터 충돌)가 달라
+   충돌을 피하려 전용 .contractor-mypage-* 클래스로 새로 정의했다. */
+.contractor-mypage {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* 상세 화면 상단바: 뒤로가기 + 가운데 제목 + 대칭 spacer (고객 .mypage-list-header 패턴).
+   제목과 그 아래 본문 사이 간격을 넉넉히 두려고 하단 패딩을 크게 잡음. */
+.contractor-mypage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0 100px;
+}
+
+/* 마이페이지 홈: 히어로+메뉴를 남는 세로 공간 안에서 가운데로 내려 배치 */
+.contractor-mypage-home-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 225px;
+}
+
+.contractor-mypage-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--cds-icon-primary, #161616);
+  font-size: 16px;
+}
+
+.contractor-mypage-header h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-mypage-header-spacer {
+  flex-shrink: 0;
+  width: 36px;
+}
+
+/* 마이페이지 홈 히어로 카드 (MY TUKTAK) — 아래 메뉴 버튼과의 간격을 조금 더 띄움 */
+.contractor-mypage-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  margin-bottom: 32px;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+}
+
+.contractor-mypage-hero-avatar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: var(--cds-background-brand, #0f62fe);
+  font-size: 34px;
+}
+
+.contractor-mypage-hero-body {
+  min-width: 0;
+}
+
+.contractor-mypage-hero-eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-mypage-hero-body h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-mypage-hero-body p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--cds-text-secondary, #525252);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 메뉴 리스트 (세로 리스트 - 아이콘 타일 + 라벨 + 화살표) */
+.contractor-mypage-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contractor-mypage-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.contractor-mypage-menu-item:hover {
+  background: var(--cds-layer, #f4f4f4);
+}
+
+.contractor-mypage-menu-item:active {
+  border-color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-mypage-menu-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  background: #edf5ff;
+  color: var(--cds-background-brand, #0f62fe);
+  font-size: 22px;
+}
+
+.contractor-mypage-menu-label {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-mypage-menu-chevron {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--cds-text-placeholder, #a8a8a8);
+}
+
+/* 내 정보 - 상단 프로필(세로 중앙) */
+.contractor-mypage-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 20px;
+  text-align: center;
+}
+
+.contractor-mypage-profile .contractor-mypage-hero-avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 42px;
+}
+
+.contractor-mypage-profile h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+/* 내 정보 - 항목 행 패널 (고객 .info-row 그리드 패턴) */
+.contractor-mypage-info {
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+}
+
+.contractor-mypage-info-row {
+  display: grid;
+  grid-template-columns: 104px 1fr 14px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+
+.contractor-mypage-info-row + .contractor-mypage-info-row {
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.contractor-mypage-info-row > span:first-child {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-mypage-info-row > strong {
+  font-size: 13px;
+  font-weight: 400;
+  text-align: right;
+  color: var(--cds-text-secondary, #525252);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contractor-mypage-info-row > svg {
+  justify-self: end;
+  font-size: 12px;
+  color: var(--cds-text-placeholder, #a8a8a8);
+}
+
+.contractor-mypage-info-row.locked {
+  cursor: default;
+}
+
+/* 인라인 수정 패널 */
+.contractor-mypage-edit {
+  margin-top: 16px;
+  padding: 20px;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+}
+
+.contractor-mypage-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contractor-mypage-edit label > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.contractor-mypage-edit input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--cds-text-primary, #161616);
+  background: var(--cds-background, #ffffff);
+}
+
+.contractor-mypage-edit input:focus {
+  outline: 2px solid var(--cds-background-brand, #0f62fe);
+  outline-offset: -2px;
+}
+
+/* 하단 액션 버튼 (취소=ghost / 완료=primary) — Carbon 4px */
+.contractor-mypage-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.contractor-mypage-actions button {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.contractor-mypage-actions .is-ghost {
+  background: transparent;
+  border: 1px solid var(--cds-border-strong, #8d8d8d);
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-mypage-actions .is-ghost:hover {
+  background: var(--cds-layer, #f4f4f4);
+}
+
+.contractor-mypage-actions .is-primary {
+  background: var(--cds-background-brand, #0f62fe);
+  border: 0;
+  color: #ffffff;
+}
+
+.contractor-mypage-actions .is-primary:hover {
+  background: var(--cds-background-brand-hover, #0353e9);
+}
+
+.contractor-mypage-actions .is-primary:disabled {
+  background: #c6c6c6;
+  cursor: not-allowed;
+}
+
+/* 상태/헬퍼 메시지 */
+.contractor-mypage-message {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* 로그아웃 */
+.contractor-mypage-account {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.contractor-mypage-account button {
+  background: transparent;
+  border: 0;
+  padding: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* 전문분야/지역 선택 화면 헤딩 (회원가입 .auth-step-title 톤) */
+.contractor-select-heading {
+  margin: 2px 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-select-heading strong {
+  color: var(--cds-background-brand, #0f62fe);
+}
+
+/* ===== ContractorActiveWorkPage (/contractor/active-work) — Carbon 스타일 =====
+   ContractorPage 셸(TopBar)은 유지하되 legacy .contractor-page-head(‹ 원형 버튼) 대신
+   전용 Carbon 헤더를 쓰려고 title/back prop 없이 렌더링하고 여기서 헤더를 새로 그린다.
+   다른 시공자 화면이 공유하는 .contractor-page-head 는 건드리지 않는다. */
+.contractor-active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  padding: 12px 16px 24px;
+}
+
+/* 상세 헤더: 뒤로가기 + 제목(eyebrow + h1) + 대칭 spacer (가이드 9번 패턴) */
+.contractor-active-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.contractor-active-back {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--cds-icon-primary, #161616);
+  font-size: 16px;
+}
+
+.contractor-active-header-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.contractor-active-eyebrow {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-active-header-title h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--cds-text-primary, #161616);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contractor-active-header-spacer {
+  flex: 0 0 auto;
+  width: 36px;
+}
+
+/* 정보 카드 (테두리만, 그림자 없음 — 가이드 5번) */
+.contractor-active-card {
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  padding: 4px 20px;
+}
+
+.contractor-active-info {
+  margin: 0;
+}
+
+.contractor-active-info > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.contractor-active-info > div + div {
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.contractor-active-info dt {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.contractor-active-info dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--cds-text-primary, #161616);
+}
+
+/* 하단 CTA — 남는 세로 공간을 밀어내 화면 하단에 배치 */
+.contractor-active-actions {
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+/* 레거시 .primary-button(둥근 16px 큰 버튼)을 이 화면에서만 Carbon 4px로 오버라이드 (가이드 4번) */
+.contractor-active-actions .primary-button {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 4px;
+  background: var(--cds-background-brand, #0f62fe);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.contractor-active-actions .primary-button:hover {
+  background: var(--cds-background-brand-hover, #0353e9);
+}
+
+/* ===== ContractorRequestsPage (/contractor/requests) — Carbon 스타일 =====
+   상단 헤더는 ContractorActiveWorkPage 의 .contractor-active-header* 클래스를 그대로 재사용
+   (가이드 3번: 같은 룩은 클래스까지 재사용). 나머지는 전용 .contractor-requests-* 로 격리해
+   .contractor-filter / .contractor-request-card / .contractor-page-head 등 견적/다른 화면이
+   공유하는 레거시 클래스는 건드리지 않는다(가이드 4번). */
+.contractor-requests {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  padding: 12px 16px 24px;
+}
+
+/* 탭 (새 요청 / 보낸 견적) — 알약 버튼 대신 Carbon underline 탭 */
+.contractor-requests-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.contractor-requests-tabs button {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.contractor-requests-tabs button.is-active {
+  color: var(--cds-text-primary, #161616);
+  border-bottom-color: var(--cds-background-brand, #0f62fe);
+}
+
+/* 상태 메시지 (로딩/에러/빈 상태) */
+.contractor-requests-status {
+  margin: 32px 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* 지역별 그룹 */
+.contractor-requests-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.contractor-requests-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contractor-requests-group-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.contractor-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 요청 카드 — 테두리만, 그림자 없음(가이드 5번), 카드 전체가 클릭 대상 */
+.contractor-requests-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  text-align: left;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.contractor-requests-card:hover {
+  background: var(--cds-layer, #f4f4f4);
+}
+
+.contractor-requests-card:active {
+  border-color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-requests-card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contractor-requests-card-region {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-requests-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-requests-card-meta {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* 견적 전송 완료 배지 — Carbon 상태 배지(2px 라운드, 브랜드 틴트) */
+.contractor-requests-card-badge {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  background: #edf5ff;
+  color: var(--cds-background-brand, #0f62fe);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.contractor-requests-card-chevron {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: var(--cds-text-placeholder, #a8a8a8);
+}
+
+/* ===== ContractorRecordsPage (/contractor/records, /records/detail) — Carbon 스타일 =====
+   상단 헤더는 ContractorActiveWorkPage 의 .contractor-active-header* 를, 상세 정보 카드는
+   .contractor-active-card + .contractor-active-info 를 그대로 재사용(가이드 3번: 같은 룩은
+   클래스까지 재사용 → 진행중인 시공/작업 상세가 동일한 카드 룩을 갖게 함). 목록 카드·상태
+   배지·액션 버튼만 전용 .contractor-records-* 로 격리해 레거시 공유 클래스
+   (.contractor-line-card / .contractor-detail-card / .contractor-status / .contractor-button-row)
+   와 공유 컴포넌트 StatusBadge 는 건드리지 않는다(가이드 4번). 로딩/에러/빈 상태 메시지는
+   .contractor-requests-status 를 재사용. */
+.contractor-records {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  padding: 12px 16px 24px;
+}
+
+/* 시공 기록 목록 */
+.contractor-records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 목록 카드 — 테두리만, 그림자 없음(가이드 5번), 카드 전체가 클릭 대상 */
+.contractor-records-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.contractor-records-card:hover {
+  background: var(--cds-layer, #f4f4f4);
+}
+
+.contractor-records-card:active {
+  border-color: var(--cds-background-brand, #0f62fe);
+}
+
+/* 아이콘 타일 (브랜드 틴트, 4px) */
+.contractor-records-card-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  background: #edf5ff;
+  color: var(--cds-background-brand, #0f62fe);
+  font-size: 20px;
+}
+
+.contractor-records-card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.contractor-records-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cds-text-primary, #161616);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contractor-records-card-region {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.contractor-records-card-meta {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cds-text-placeholder, #a8a8a8);
+}
+
+/* 상태 배지 — Carbon 상태 배지(2px 라운드, 브랜드 틴트). 완료는 중립 회색 톤 */
+.contractor-records-badge {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 5px 10px;
+  border-radius: 2px;
+  background: #edf5ff;
+  color: var(--cds-background-brand, #0f62fe);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.contractor-records-badge.is-done {
+  background: var(--cds-layer, #f4f4f4);
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* 상세 화면 — 헤더 아래 상태 배지 + 지역 줄 */
+.contractor-records-detail-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.contractor-records-detail-top .contractor-records-badge {
+  align-self: auto;
+}
+
+.contractor-records-detail-region {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--cds-text-secondary, #525252);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 상세 화면 액션 (시작=ghost / 완료=primary) — Carbon 4px */
+.contractor-records-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.contractor-records-actions button {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.contractor-records-actions .is-ghost {
+  background: transparent;
+  border: 1px solid var(--cds-border-strong, #8d8d8d);
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-records-actions .is-ghost:hover {
+  background: var(--cds-layer, #f4f4f4);
+}
+
+.contractor-records-actions .is-ghost:disabled {
+  border-color: var(--cds-border-subtle, #e0e0e0);
+  color: var(--cds-text-placeholder, #a8a8a8);
+  cursor: not-allowed;
+}
+
+.contractor-records-actions .is-primary {
+  background: var(--cds-background-brand, #0f62fe);
+  border: 0;
+  color: #ffffff;
+}
+
+.contractor-records-actions .is-primary:hover {
+  background: var(--cds-background-brand-hover, #0353e9);
+}
+
+.contractor-records-actions .is-primary:disabled {
+  background: #c6c6c6;
+  cursor: not-allowed;
+}
+
+/* ===== ContractorReviewsPage (/contractor/reviews) — Carbon 스타일 =====
+   상단 헤더는 ContractorActiveWorkPage 의 .contractor-active-header* 를 그대로 재사용
+   (가이드 3번: 같은 룩은 클래스까지 재사용). ContractorPage 셸의 legacy 헤더(title/back →
+   .contractor-page-head 의 ‹ 원형 버튼) 대신 title/back prop 없이 렌더링하고 여기서 Carbon
+   헤더를 새로 그린다. 리뷰 카드는 전용 .contractor-reviews-* 로 격리해 레거시 공유 클래스
+   (.contractor-review-card / .contractor-review-* / .contractor-list / .contractor-report-button)
+   는 건드리지 않는다(가이드 4번). */
+.contractor-reviews {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  padding: 12px 16px 24px;
+}
+
+.contractor-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 리뷰 카드 — 테두리만, 그림자 없음(가이드 5번), 4px 라운드 */
+.contractor-reviews-card {
+  width: 100%;
+  padding: 20px;
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+}
+
+.contractor-reviews-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.contractor-reviews-card-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.contractor-reviews-card-profile svg {
+  flex: 0 0 auto;
+  font-size: 28px;
+  color: var(--cds-icon-secondary, #525252);
+}
+
+.contractor-reviews-card-profile strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 신고 버튼 — ghost 아이콘 버튼(평소 secondary, hover 시에만 에러 레드) */
+.contractor-reviews-report {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 15px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.contractor-reviews-report:hover {
+  background: var(--cds-layer, #f4f4f4);
+  color: #da1e28;
+}
+
+/* 별점 — 채워진 별은 Carbon Yellow, 빈 별은 border 톤 */
+.contractor-reviews-stars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 14px;
+  color: var(--cds-border-subtle, #e0e0e0);
+  font-size: 14px;
+}
+
+.contractor-reviews-stars svg.is-filled {
+  color: #f1c21b;
+}
+
+.contractor-reviews-stars span {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-reviews-card-title {
+  margin: 12px 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-reviews-card-price {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cds-background-brand, #0f62fe);
+}
+
+.contractor-reviews-card-body {
+  margin: 14px 0 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.contractor-reviews-card-date {
+  display: block;
+  margin-top: 16px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--cds-text-placeholder, #a8a8a8);
+}

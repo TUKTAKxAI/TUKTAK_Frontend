@@ -126,7 +126,9 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
 
 // TODO: 실제로는 API로 받아오거나 별도 데이터 파일로 분리하세요.
 // (2026-07 데이터 수집 계획서의 object 범주를 기존 대분류에 매핑해 반영함)
-const categoryGroups = [
+// 시공자 마이페이지(/contractor/mypage/services)에서도 동일한 체크박스 목록을
+// 쓰기 위해 export 함 — 회원가입/마이페이지가 같은 전문분야 목록을 공유한다.
+export const categoryGroups = [
   {
     key: "appliance",
     label: "가전",
@@ -248,7 +250,8 @@ const categoryGroups = [
 // TODO: 실제로는 API로 받아오거나 별도 데이터 파일로 분리하고,
 // id 값은 실제 행정구역 코드(regionCodeId)로 교체하는 것을 권장합니다.
 // (대한민국 17개 광역시/도 + 시/군/구 전체 반영, 가나다순)
-const regionGroups = [
+// 시공자 마이페이지(/contractor/mypage/regions)와 작업지역 목록을 공유하기 위해 export 함.
+export const regionGroups = [
   {
     key: "seoul",
     label: "서울",

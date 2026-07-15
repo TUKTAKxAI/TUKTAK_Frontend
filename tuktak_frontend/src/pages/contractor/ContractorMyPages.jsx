@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FaChevronRight, FaUserCircle } from 'react-icons/fa'
 import {
-  contractorProfile,
-  contractorRegionTree,
-  contractorScreens,
-  contractorServiceTree,
-} from '../../data/contractorData'
+  FaChevronLeft,
+  FaChevronRight,
+  FaMapMarkerAlt,
+  FaTimes,
+  FaTools,
+  FaUserCircle,
+  FaUserCog,
+} from 'react-icons/fa'
+import { contractorProfile, contractorScreens } from '../../data/contractorData'
+import { categoryGroups, regionGroups } from '../Customer/AuthPages'
 import {
   fetchContractorMe,
   fetchContractorServices,
@@ -16,10 +20,15 @@ import {
 } from '../../services/contractorService'
 import { logout } from '../../services/authService'
 import { getMe, updateMe } from '../../services/userService'
-import { ContractorPage, MenuTile } from './ContractorPageShared'
-import mypageInfoIcon from '../../assets/figma/contractor-mypage-info.png'
-import mypageRegionIcon from '../../assets/figma/contractor-mypage-region.png'
-import mypageServicesIcon from '../../assets/figma/contractor-mypage-services.png'
+import './ContractorPages.css'
+
+// 회원가입(/signup/category · /signup/region)에서 쓰는 선택 목록을 그대로 가져와
+// 시공자 마이페이지의 전문분야/지역 체크박스로 재사용한다.
+// 회원가입 데이터 형태({key,label,items}) → 선택 패널 형태({category,options})로 변환.
+const toSelectTree = (groups) =>
+  groups.map((group) => ({ category: group.label, options: group.items }))
+const contractorServiceTree = toSelectTree(categoryGroups)
+const contractorRegionTree = toSelectTree(regionGroups)
 
 const fallbackUserInfo = {
   name: contractorProfile.name,
@@ -114,51 +123,19 @@ function buildRegionTree(codes = []) {
   })).filter((group) => group.options.length > 0)
 }
 
-// 전문분야/지역 페이지에서 공통으로 쓰는 2단 선택 UI
-function SplitTreeSelector({ tree, selected, onToggle }) {
+// 전문분야/지역 페이지에서 공통으로 쓰는 좌-우 2단 선택 UI.
+// 회원가입(/signup/category · /signup/region)의 선택 박스와 동일한 마크업/클래스
+// (.select-panel / .item-row / .chip 등, .auth-select-screen Carbon 오버라이드)를
+// 그대로 재사용한다. 데이터 형태(tree/options, selected=id 배열)만 시공자 로직에 맞춰
+// 어댑트했고, 하단 선택 칩·체크박스 표시까지 회원가입 화면과 같은 룩을 유지한다.
+function ContractorSelectPanel({ tree, selected, onToggle, onReset, footerLabel, maxCount, hideCount }) {
   const [activeCategory, setActiveCategory] = useState(tree[0]?.category || '')
-  const effectiveActiveCategory = tree.some((group) => group.category === activeCategory)
-    ? activeCategory
-    : tree[0]?.category || ''
-
   const activeGroup = useMemo(
-    () => tree.find((group) => group.category === effectiveActiveCategory) || tree[0],
-    [effectiveActiveCategory, tree],
+    () => tree.find((group) => group.category === activeCategory) || tree[0],
+    [activeCategory, tree],
   )
+  const selectedKeys = selected.map(normalizeId)
 
-  return (
-    <div className="contractor-split-selector">
-      <aside className="contractor-category-list" aria-label="대분류">
-        {tree.map((group) => (
-          <button
-            className={group.category === activeGroup?.category ? 'active' : ''}
-            type="button"
-            key={group.category}
-            onClick={() => setActiveCategory(group.category)}
-          >
-            {group.category}
-          </button>
-        ))}
-      </aside>
-
-      <div className="contractor-subcategory-list" aria-label="소분류">
-        {(activeGroup?.options || []).map((option) => (
-          <label className="contractor-checkbox-row" key={getOptionKey(option)}>
-            <input
-              type="checkbox"
-              checked={selected.map(normalizeId).includes(getOptionKey(option))}
-              onChange={() => onToggle(getOptionKey(option))}
-            />
-            <span>{getOptionLabel(option)}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// 선택한 항목을 하단 칩으로 보여주고 삭제/초기화 처리
-function SelectedOptionDock({ selected, tree, maxCount, unit, onRemove, onReset }) {
   const labelMap = useMemo(() => {
     return tree.reduce((acc, group) => {
       group.options.forEach((option) => {
@@ -169,22 +146,57 @@ function SelectedOptionDock({ selected, tree, maxCount, unit, onRemove, onReset 
   }, [tree])
 
   return (
-    <div className="contractor-selection-dock">
-      <div className="contractor-selection-dock-head">
-        <span>선택한 {unit}{maxCount ? ` ${selected.length} / ${maxCount}` : ''}</span>
-        <button type="button" onClick={onReset}>↻ 초기화</button>
-      </div>
-      {selected.length > 0 ? (
-        <div className="contractor-selection-chip-row">
-          {selected.map((item) => (
-            <button className="contractor-selection-chip" type="button" key={item} onClick={() => onRemove(item)}>
-              {labelMap.get(item) || item} ×
+    <div className="select-panel">
+      <div className="select-panel-body">
+        <div className="sidebar-list">
+          {tree.map((group) => (
+            <button
+              key={group.category}
+              type="button"
+              className={activeGroup?.category === group.category ? 'active' : ''}
+              onClick={() => setActiveCategory(group.category)}
+            >
+              {group.category}
             </button>
           ))}
         </div>
-      ) : (
-        <p className="contractor-selection-empty">선택한 {unit}이 없어요.</p>
-      )}
+
+        <div className="item-list">
+          {(activeGroup?.options || []).map((option) => {
+            const key = getOptionKey(option)
+            const isSelected = selectedKeys.includes(key)
+
+            return (
+              <label key={key} className={`item-row ${isSelected ? 'selected' : ''}`}>
+                <input type="checkbox" checked={isSelected} onChange={() => onToggle(key)} />
+                <span>{getOptionLabel(option)}</span>
+              </label>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="select-panel-footer">
+        <div className={`footer-count-row ${hideCount ? 'reset-only' : ''}`}>
+          {!hideCount && (
+            <span>
+              {footerLabel} {selected.length} / {maxCount}
+            </span>
+          )}
+          <button type="button" className="reset-button" onClick={onReset}>
+            ↻ 초기화
+          </button>
+        </div>
+
+        <div className="chip-row">
+          {selectedKeys.map((key) => (
+            <span className="chip" key={key}>
+              {labelMap.get(key) || key}
+              <button type="button" onClick={() => onToggle(key)}>×</button>
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -213,20 +225,51 @@ export function ContractorMypagePage({ go }) {
   }, [])
 
   return (
-    <ContractorPage title="마이페이지" go={go} back={() => go(contractorScreens.home)}>
-      <div className="contractor-profile-head">
-        <FaUserCircle />
-        <div>
-          <h1>{profile.name} 파트너님,<br />안녕하세요</h1>
-          <p>{profile.email}</p>
+    <section className="contractor-mypage contractor-mypage-home cds--white">
+      <header className="contractor-mypage-header">
+        <span className="contractor-mypage-header-spacer" aria-hidden="true" />
+        <h1>마이페이지</h1>
+        <button
+          type="button"
+          className="contractor-mypage-back"
+          onClick={() => go(contractorScreens.home)}
+          aria-label="닫기"
+        >
+          <FaTimes />
+        </button>
+      </header>
+
+      <div className="contractor-mypage-home-body">
+        <div className="contractor-mypage-hero">
+          <span className="contractor-mypage-hero-avatar">
+            <FaUserCircle aria-hidden="true" />
+          </span>
+          <div className="contractor-mypage-hero-body">
+            <p className="contractor-mypage-hero-eyebrow">MY TUKTAK</p>
+            <h2>{profile.name} 파트너님, 안녕하세요</h2>
+            <p>{profile.email}</p>
+          </div>
         </div>
+
+        <nav className="contractor-mypage-menu">
+          <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.myInfo)}>
+            <span className="contractor-mypage-menu-icon"><FaUserCog aria-hidden="true" /></span>
+            <span className="contractor-mypage-menu-label">내 정보</span>
+            <FaChevronRight className="contractor-mypage-menu-chevron" aria-hidden="true" />
+          </button>
+          <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.myServices)}>
+            <span className="contractor-mypage-menu-icon"><FaTools aria-hidden="true" /></span>
+            <span className="contractor-mypage-menu-label">내 전문분야</span>
+            <FaChevronRight className="contractor-mypage-menu-chevron" aria-hidden="true" />
+          </button>
+          <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.myRegions)}>
+            <span className="contractor-mypage-menu-icon"><FaMapMarkerAlt aria-hidden="true" /></span>
+            <span className="contractor-mypage-menu-label">내 지역</span>
+            <FaChevronRight className="contractor-mypage-menu-chevron" aria-hidden="true" />
+          </button>
+        </nav>
       </div>
-      <div className="contractor-menu-grid compact">
-        <MenuTile icon={<img className="contractor-menu-icon" src={mypageInfoIcon} alt="" />} label="내 정보" onClick={() => go(contractorScreens.myInfo)} />
-        <MenuTile icon={<img className="contractor-menu-icon" src={mypageServicesIcon} alt="" />} label="내 전문분야" onClick={() => go(contractorScreens.myServices)} />
-        <MenuTile icon={<img className="contractor-menu-icon" src={mypageRegionIcon} alt="" />} label="내 지역" onClick={() => go(contractorScreens.myRegions)} />
-      </div>
-    </ContractorPage>
+    </section>
   )
 }
 
@@ -323,50 +366,70 @@ export function ContractorMyInfoPage({ go }) {
   }
 
   return (
-    <ContractorPage title="내 정보" go={go} back={() => go(contractorScreens.mypage)}>
-      <div className="contractor-edit-list">
-        {infoFields.map((field) => (
+    <section className="contractor-mypage cds--white">
+        <header className="contractor-mypage-header">
           <button
-            className={`contractor-edit-row ${field.locked ? 'locked' : ''}`}
             type="button"
-            key={field.key}
-            onClick={() => startEdit(field.key)}
-            disabled={field.locked}
+            className="contractor-mypage-back"
+            onClick={() => go(contractorScreens.mypage)}
+            aria-label="뒤로가기"
           >
-            <span>{field.label}</span>
-            <strong>{formatInfoValue(field.key, draftValues[field.key])}</strong>
-            {field.locked ? null : <FaChevronRight />}
+            <FaChevronLeft />
           </button>
-        ))}
-      </div>
+          <h1>내 정보</h1>
+          <span className="contractor-mypage-header-spacer" aria-hidden="true" />
+        </header>
 
-      {editingField ? (
-        <div className="contractor-edit-panel">
-          <label>
-            <span>{editingField.label} 수정</span>
-            <input
-              value={draftValues[editingField.key]}
-              onChange={(event) => handleDraftChange(editingField.key, event.target.value)}
-            />
-          </label>
-          {infoMessage ? <p className="contractor-helper-message">{infoMessage}</p> : null}
-          <div className="contractor-bottom-actions">
-            <button type="button" onClick={closeEdit}>취소</button>
-            <button type="button" onClick={completeEdit} disabled={isSavingInfo}>
-              {isSavingInfo ? '저장중' : '완료'}
-            </button>
-          </div>
+        <div className="contractor-mypage-profile">
+          <span className="contractor-mypage-hero-avatar">
+            <FaUserCircle aria-hidden="true" />
+          </span>
+          <h2>{draftValues.name} 파트너님</h2>
         </div>
-      ) : null}
 
-      {infoMessage && !editingField ? <p className="contractor-helper-message">{infoMessage}</p> : null}
+        <div className="contractor-mypage-info">
+          {infoFields.map((field) => (
+            <button
+              className={`contractor-mypage-info-row ${field.locked ? 'locked' : ''}`}
+              type="button"
+              key={field.key}
+              onClick={() => startEdit(field.key)}
+              disabled={field.locked}
+            >
+              <span>{field.label}</span>
+              <strong>{formatInfoValue(field.key, draftValues[field.key])}</strong>
+              {field.locked ? <span aria-hidden="true" /> : <FaChevronRight />}
+            </button>
+          ))}
+        </div>
 
-      <div className="contractor-account-actions">
-        <button type="button" onClick={handleLogout} disabled={isLoggingOut}>
-          {isLoggingOut ? '로그아웃 중' : '로그아웃'}
-        </button>
-      </div>
-    </ContractorPage>
+        {editingField ? (
+          <div className="contractor-mypage-edit">
+            <label>
+              <span>{editingField.label} 수정</span>
+              <input
+                value={draftValues[editingField.key]}
+                onChange={(event) => handleDraftChange(editingField.key, event.target.value)}
+              />
+            </label>
+            {infoMessage ? <p className="contractor-mypage-message">{infoMessage}</p> : null}
+            <div className="contractor-mypage-actions">
+              <button type="button" className="is-ghost" onClick={closeEdit}>취소</button>
+              <button type="button" className="is-primary" onClick={completeEdit} disabled={isSavingInfo}>
+                {isSavingInfo ? '저장중' : '완료'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {infoMessage && !editingField ? <p className="contractor-mypage-message">{infoMessage}</p> : null}
+
+        <div className="contractor-mypage-account">
+          <button type="button" onClick={handleLogout} disabled={isLoggingOut}>
+            {isLoggingOut ? '로그아웃 중' : '로그아웃'}
+          </button>
+        </div>
+    </section>
   )
 }
 
@@ -494,26 +557,46 @@ export function ContractorMyServicesPage({ go }) {
   }
 
   return (
-    <ContractorPage title="내 전문분야" go={go} back={() => go(contractorScreens.mypage)}>
-      <SplitTreeSelector tree={tree} selected={selected} onToggle={toggle} />
-      <SelectedOptionDock
-        selected={selected}
-        tree={tree}
-        unit="전문분야"
-        onRemove={toggle}
-        onReset={() => {
-          setSelected([])
-          setStatusMessage('')
-        }}
-      />
-      {statusMessage ? <p className="contractor-helper-message">{statusMessage}</p> : null}
-      <div className="contractor-bottom-actions sticky">
-        <button type="button" onClick={() => go(contractorScreens.mypage)}>취소</button>
-        <button type="button" onClick={saveServices} disabled={isLoading || isSaving || !hasServiceCatalog}>
-          {isSaving ? '저장중' : '완료'}
-        </button>
-      </div>
-    </ContractorPage>
+    <section className="contractor-mypage auth-select-screen cds--white">
+        <header className="contractor-mypage-header">
+          <button
+            type="button"
+            className="contractor-mypage-back"
+            onClick={() => go(contractorScreens.mypage)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft />
+          </button>
+          <h1>내 전문분야</h1>
+          <span className="contractor-mypage-header-spacer" aria-hidden="true" />
+        </header>
+
+        <h2 className="contractor-select-heading">
+          내 <strong>전문 분야</strong>를 선택해주세요
+        </h2>
+
+        <ContractorSelectPanel
+          tree={tree}
+          selected={selected}
+          onToggle={toggle}
+          onReset={() => {
+            setSelected([])
+            setStatusMessage('')
+          }}
+          footerLabel="선택한 분야"
+          maxCount={999}
+          hideCount
+        />
+
+        {statusMessage ? <p className="contractor-mypage-message">{statusMessage}</p> : null}
+
+        <div className="contractor-mypage-actions">
+          <button type="button" className="is-ghost" onClick={() => go(contractorScreens.mypage)}>취소</button>
+          <button type="button" className="is-primary" onClick={saveServices} disabled={isLoading || isSaving || selected.length === 0}>
+            {isSaving ? '저장중' : '완료'}
+          </button>
+        </div>
+    </section>
   )
 }
 
@@ -660,26 +743,44 @@ export function ContractorMyRegionsPage({ go }) {
   }
 
   return (
-    <ContractorPage title="내 지역" go={go} back={() => go(contractorScreens.mypage)}>
-      <SplitTreeSelector tree={tree} selected={selected} onToggle={toggle} />
-      <SelectedOptionDock
-        selected={selected}
-        tree={tree}
-        maxCount={maxRegionCount}
-        unit="지역"
-        onRemove={toggle}
-        onReset={() => {
-          setSelected([])
-          setStatusMessage('')
-        }}
-      />
-      {statusMessage ? <p className="contractor-helper-message">{statusMessage}</p> : null}
-      <div className="contractor-bottom-actions sticky">
-        <button type="button" onClick={() => go(contractorScreens.mypage)}>취소</button>
-        <button type="button" onClick={saveRegions} disabled={isLoading || isSaving || !hasRegionCatalog}>
-          {isSaving ? '저장중' : '완료'}
-        </button>
-      </div>
-    </ContractorPage>
+    <section className="contractor-mypage auth-select-screen cds--white">
+        <header className="contractor-mypage-header">
+          <button
+            type="button"
+            className="contractor-mypage-back"
+            onClick={() => go(contractorScreens.mypage)}
+            aria-label="뒤로가기"
+          >
+            <FaChevronLeft />
+          </button>
+          <h1>내 지역</h1>
+          <span className="contractor-mypage-header-spacer" aria-hidden="true" />
+        </header>
+
+        <h2 className="contractor-select-heading">
+          내 <strong>작업 지역</strong>을 선택해주세요
+        </h2>
+
+        <ContractorSelectPanel
+          tree={tree}
+          selected={selected}
+          onToggle={toggle}
+          onReset={() => {
+            setSelected([])
+            setStatusMessage('')
+          }}
+          footerLabel="선택한 곳"
+          maxCount={maxRegionCount}
+        />
+
+        {statusMessage ? <p className="contractor-mypage-message">{statusMessage}</p> : null}
+
+        <div className="contractor-mypage-actions">
+          <button type="button" className="is-ghost" onClick={() => go(contractorScreens.mypage)}>취소</button>
+          <button type="button" className="is-primary" onClick={saveRegions} disabled={isLoading || isSaving || selected.length === 0}>
+            {isSaving ? '저장중' : '완료'}
+          </button>
+        </div>
+    </section>
   )
 }

@@ -28,6 +28,7 @@ export function ChatListPage({
     goToRoom,
     go,
     clearUnread,
+    back,
 }) {
     const [filter, setFilter] =
         useState('all')
@@ -79,7 +80,22 @@ export function ChatListPage({
     return (
         <CustomerPage go={go} className="cds--white">
             <div className="chat-inbox">
-                <h1 className="chat-inbox-heading">채팅</h1>
+                {back ? (
+                    <div className="chat-inbox-heading-row">
+                        <button
+                            type="button"
+                            className="chat-inbox-back"
+                            onClick={back}
+                            aria-label="뒤로가기"
+                        >
+                            <FaChevronLeft />
+                        </button>
+
+                        <h1 className="chat-inbox-heading">채팅</h1>
+                    </div>
+                ) : (
+                    <h1 className="chat-inbox-heading">채팅</h1>
+                )}
 
                 <div className="chat-inbox-filters">
                     {FILTERS.map((item) => (
