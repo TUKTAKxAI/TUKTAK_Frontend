@@ -178,14 +178,6 @@ export async function apiFormRequest(path, formData, options = {}) {
   })
 }
 
-export async function apiClient(endpoint, options = {}) {
-  return apiRequest(endpoint, {
-    method: options.method,
-    body: options.body,
-    headers: options.headers,
-  })
-}
-
 export const api = {
   get: (endpoint, config = {}) => client.get(endpoint, config).then((response) => response.data),
   post: (endpoint, body, config = {}) => client.post(endpoint, body, config).then((response) => response.data),

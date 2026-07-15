@@ -161,33 +161,6 @@ export function MenuTile({ Icon, label, onClick }) {
   )
 }
 
-export function HeroCard({ title, body, children }) {
-  return (
-    <section className="hero-card">
-      <h2>{title}</h2>
-      <p>{body}</p>
-      {children}
-    </section>
-  )
-}
-
-export function PartnerBidCard({ partner, onClick }) {
-  return (
-    <button className="partner-bid-card" onClick={onClick}>
-      <Avatar tone={partner.avatar === 'light' ? 'light' : partner.avatar === 'plain' ? 'plain' : 'blue'} />
-      <div className="partner-bid-copy">
-        <div className="partner-bid-head">
-          <strong>{partner.name}</strong>
-          <span>{'★'.repeat(Math.round(partner.rating))}{'☆'.repeat(5 - Math.round(partner.rating))} {partner.rating}/5</span>
-        </div>
-        <p>제안 시공비용 : {partner.price}</p>
-        <small>자세한 정보는 클릭해서 보기</small>
-      </div>
-      {partner.highlight ? <em>{partner.highlight}</em> : null}
-    </button>
-  )
-}
-
 export function InfoRows({ rows, onSelect }) {
   return (
     <div className="mypage-info-panel">

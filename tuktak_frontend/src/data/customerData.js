@@ -302,25 +302,3 @@ export const initialMessages = {
   ],
   kim: [{ from: 'partner', text: '시공 감사합니다 ~' }],
 }
-
-export const addressRows = [
-  { icon: 'house', text: '서울시 종로구 인사동길 ....', selected: true },
-  { icon: 'house', text: '경기도 수원시 권선구 ....', selected: false },
-  { icon: 'building', text: '인천광역시 ....', selected: false },
-]
-
-export const partnerBids = [
-  { id: 'p1', name: '홍길동 파트너', price: '620,000원', rating: 4.5, avatar: 'light', highlight: '' },
-  { id: 'p2', name: '김철수 파트너', price: '720,000원', rating: 4, avatar: 'blue', highlight: '' },
-  { id: 'p3', name: '김영희 파트너', price: '600,000원', rating: 4, avatar: 'plain', highlight: '가장 저렴!' },
-]
-
-export const profileRows = [
-  ['닉네임', '강대근'],
-  ['이름', '강대근'],
-  ['이메일', 'abcd123@gmail.com'],
-  ['휴대폰 번호 변경', ''],
-  ['연동된 소셜 계정', ''],
-  ['주소 관리', ''],
-  ['결제 수단 관리', ''],
-]

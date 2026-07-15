@@ -38,15 +38,6 @@ export function ContractorPage({ title, children, go, back, action }) {
   )
 }
 
-export function MenuTile({ icon, label, onClick }) {
-  return (
-    <button className="contractor-menu-tile" type="button" onClick={onClick}>
-      <span>{icon}</span>
-      <strong>{label}</strong>
-    </button>
-  )
-}
-
 export function RequestCard({ item, onDetail }) {
   return (
     <button className="contractor-requests-card" type="button" onClick={onDetail}>
