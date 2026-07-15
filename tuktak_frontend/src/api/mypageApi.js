@@ -1,5 +1,5 @@
 import { apiFormRequest, apiRequest, hasAccessToken } from './client'
-import { estimateCards, historyCards } from '../data/customerData'
+import { historyCards } from '../data/customerData'
 
 const defaultProfile = {
   nickname: '사용자',
@@ -40,52 +40,6 @@ function formatDate(value) {
 function formatMoney(value) {
   if (value === null || value === undefined || value === '') return '0'
   return Number(value).toLocaleString('ko-KR')
-}
-
-// GET /users/me/ai-estimates 목록 응답을 내 AI 견적서 카드 화면용 데이터로 변환합니다.
-function mapEstimateListItem(item) {
-  const minPrice = item.min_price ?? 0
-  const maxPrice = item.max_price ?? minPrice
-  const price = Math.round((Number(minPrice) + Number(maxPrice)) / 2)
-
-  return {
-    id: item.estimate_id,
-    date: formatDate(item.created_at),
-    status: item.estimate_status,
-    title: `${item.repair_task_name || item.main_category || 'AI'} 견적서`,
-    subtitle: `예상 비용 : ${formatMoney(price)}`,
-    price,
-    details: {
-      location: item.main_category ?? '확인 필요',
-      request: item.repair_task_name ?? 'AI 분석 결과 확인 필요',
-      estimatedTime: '상세에서 확인',
-      summary: `신뢰도 ${item.confidence_score ?? '-'} 기준으로 생성된 AI 견적입니다.`,
-    },
-  }
-}
-
-// GET /ai-estimates/{estimate_id} 상세 응답을 AI 견적서 상세 모달용 데이터로 변환합니다.
-function mapEstimateDetail(estimate) {
-  const minPrice = estimate.min_price ?? 0
-  const maxPrice = estimate.max_price ?? minPrice
-  const price = Math.round((Number(minPrice) + Number(maxPrice)) / 2)
-  const minMinutes = estimate.estimated_minutes_min ?? 0
-  const maxMinutes = estimate.estimated_minutes_max ?? minMinutes
-
-  return {
-    id: estimate.estimate_id,
-    date: formatDate(estimate.created_at),
-    status: estimate.estimate_status,
-    title: `${estimate.repair_task_name || estimate.main_category || 'AI'} 견적서`,
-    subtitle: `예상 비용 : ${formatMoney(price)}`,
-    price,
-    details: {
-      location: estimate.main_category ?? '확인 필요',
-      request: estimate.description ?? estimate.repair_task_name ?? '요청 내용 없음',
-      estimatedTime: `${minMinutes}~${maxMinutes}분`,
-      summary: estimate.ai_summary ?? 'AI 견적 상세 내용입니다.',
-    },
-  }
 }
 
 // GET /work-orders 목록 응답을 매칭 히스토리 카드 화면용 데이터로 변환합니다.
@@ -176,29 +130,5 @@ export async function updateMyProfile(fieldKey, value) {
     console.warn('Profile update fallback:', error)
     return { [fieldKey]: value }
   }
-}
-
-// 내 AI 견적서 목록: GET /api/v1/users/me/ai-estimates
-export async function fetchMyAiEstimates() {
-  return withMockFallback(
-    async () => {
-      const data = await apiRequest('/users/me/ai-estimates?size=100')
-      return (data.items ?? []).map(mapEstimateListItem)
-    },
-    estimateCards,
-  )
-}
-
-// AI 견적서 상세: GET /api/v1/ai-estimates/{estimate_id}
-export async function fetchAiEstimateDetail(estimateId) {
-  const fallback = estimateCards.find((item) => String(item.id) === String(estimateId)) ?? estimateCards[0]
-
-  return withMockFallback(
-    async () => {
-      const data = await apiRequest(`/ai-estimates/${estimateId}`)
-      return mapEstimateDetail(data.estimate)
-    },
-    fallback,
-  )
 }
 

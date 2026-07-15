@@ -6764,6 +6764,7 @@ button {
 .chat-inbox-list {
   display: flex;
   flex: 1;
+  min-height: 0;
   flex-direction: column;
   overflow-y: auto;
 }
@@ -6960,8 +6961,8 @@ button {
   background: var(--cds-layer, #f4f4f4);
   display: flex;
   flex: 1;
+  min-height: 0;
   flex-direction: column;
-  justify-content: flex-end;
   gap: 8px;
   overflow-y: auto;
   padding: 16px;

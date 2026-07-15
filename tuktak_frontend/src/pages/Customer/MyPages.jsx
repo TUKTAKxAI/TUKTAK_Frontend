@@ -18,6 +18,7 @@ import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { reviewCards, screens } from '../../data/customerData'
 import { useAuth } from '../../context/authContext'
+import { formatPhoneNumber } from '../../utils/phone'
 
 // 마이페이지 메인 홈: 각 마이페이지 메뉴로 이동하는 화면
 export function MyPage({ go }) {
@@ -89,6 +90,7 @@ export function MyReviewsPage({ back }) {
   const [myReviews, setMyReviews] = useState(reviewCards)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('latest')
+  const [reviewIdToDelete, setReviewIdToDelete] = useState(null)
   const normalizedQuery = query.trim().toLowerCase()
   const filteredReviews = myReviews
     .filter((review) => (
@@ -125,13 +127,45 @@ export function MyReviewsPage({ back }) {
             <ReviewCard
               key={review.id}
               review={review}
-              onDelete={(reviewId) => setMyReviews((reviews) => reviews.filter((item) => item.id !== reviewId))}
+              onDelete={(reviewId) => setReviewIdToDelete(reviewId)}
             />
           ))}
           {filteredReviews.length === 0 ? <p className="empty-list-message">검색 결과가 없습니다.</p> : null}
         </div>
       </div>
+      {reviewIdToDelete ? (
+        <DeleteReviewConfirmModal
+          onClose={() => setReviewIdToDelete(null)}
+          onConfirm={() => {
+            setMyReviews((reviews) => reviews.filter((item) => item.id !== reviewIdToDelete))
+            setReviewIdToDelete(null)
+          }}
+        />
+      ) : null}
     </section>
+  )
+}
+
+// 리뷰 삭제 확인 모달: 로그아웃/회원탈퇴 확인 모달(ProfileConfirmModal)과 동일한
+// Carbon 모달 셸(.estimate-result-*)을 재사용해 파괴적 액션에 확인 절차를 둔다.
+function DeleteReviewConfirmModal({ onClose, onConfirm }) {
+  return (
+    <div className="estimate-result-overlay">
+      <article className="estimate-result-modal">
+        <div className="estimate-result-head">
+          <div>
+            <span>리뷰 삭제</span>
+            <small>이 리뷰를 삭제할까요?</small>
+          </div>
+          <button type="button" onClick={onClose} aria-label="닫기"><FaTimes /></button>
+        </div>
+        <p className="mypage-readonly-note">삭제한 리뷰는 다시 되돌릴 수 없습니다.</p>
+        <div className="estimate-result-actions">
+          <PrimaryButton ghost onClick={onClose}>취소</PrimaryButton>
+          <PrimaryButton orange onClick={onConfirm}>삭제하기</PrimaryButton>
+        </div>
+      </article>
+    </div>
   )
 }
 
@@ -395,8 +429,10 @@ function ProfileEditModal({
             <span>{field.label}</span>
             <input
               type={field.type ?? 'text'}
+              inputMode={field.type === 'tel' ? 'numeric' : undefined}
+              maxLength={field.type === 'tel' ? 13 : undefined}
               value={value}
-              onChange={(event) => onChange(event.target.value)}
+              onChange={(event) => onChange(field.type === 'tel' ? formatPhoneNumber(event.target.value) : event.target.value)}
             />
           </label>
         ) : (

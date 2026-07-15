@@ -87,6 +87,8 @@ function normalizeError(error) {
   const normalized = new Error(message)
   normalized.status = error.response?.status
   normalized.data = data
+  // AbortController로 취소된 요청인지 호출부에서 구분할 수 있도록 코드를 보존한다.
+  normalized.code = error.code
   return normalized
 }
 

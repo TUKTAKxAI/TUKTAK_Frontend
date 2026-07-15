@@ -5,6 +5,7 @@ import { CustomerPage } from './CustomerPageShared'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
 import { screens } from '../../data/customerData'
+import { buildMatchingRequestBody, estimateTitle } from '../../utils/matchingRequest'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import preview9 from '../../assets/figma/preview9.webp';
 import preview10 from '../../assets/figma/preview10.webp';
@@ -41,38 +42,11 @@ function formatWon(value) {
   return `${Number(value).toLocaleString('ko-KR')}원`
 }
 
-// 이전에 작성했던 location 방어 코드 로직을 매칭쪽 타이틀 함수에도 안전하게 적용해둡니다.
-function estimateTitle(estimate) {
-  return estimate?.repair_task_name || estimate?.title || '견적 정보 없음'
-}
-
 function estimateCost(estimate) {
   if (estimate?.min_price && estimate?.max_price) return `${formatWon(estimate.min_price)} ~ ${formatWon(estimate.max_price)}`
   if (estimate?.max_price) return formatWon(estimate.max_price)
   if (estimate?.min_price) return formatWon(estimate.min_price)
   return '비용 정보 없음'
-}
-
-function buildMatchingRequestBody({ estimate, address, schedule, isEmergency }) {
-  const fullAddress = [address.address, address.address_detail]
-    .filter(Boolean)
-    .join(' ')
-
-  return {
-    estimate_id: estimate.estimate_id,
-    service_task_id: estimate.service_task_id || estimate.serviceTaskId || estimate.task_id || estimate.taskId || null,
-    title: estimateTitle(estimate),
-    region_code_id: address.region_code_id,
-    address: fullAddress,
-    preferred_date: schedule.preferred_date,
-    preferred_time_start: isEmergency ? undefined : schedule.preferred_time_start,
-    preferred_time_end: isEmergency ? undefined : schedule.preferred_time_end,
-    budget_min: estimate.min_price,
-    budget_max: estimate.max_price,
-    request_message: '',
-    privacy_settings: {},
-    is_emergency: isEmergency,
-  }
 }
 
 function quoteToPartner(quote, index) {
@@ -194,7 +168,7 @@ function ProposalModal({ partner, onClose, onSelect, isSelecting, inline }) {
         <p>{partner.additional_note}</p>
       </div>
       <div className="estimate-result-actions single">
-        <PrimaryButton onClick={() => onSelect(partner)}>{isSelecting ? '선택중...' : '파트너 선택하기'}</PrimaryButton>
+        <PrimaryButton disabled={isSelecting} onClick={() => onSelect(partner)}>{isSelecting ? '선택중...' : '파트너 선택하기'}</PrimaryButton>
       </div>
     </div>
   )
@@ -402,6 +376,10 @@ export function MatchingHomePage({ go }) {
     return () => {
       ignore = true
     }
+    // Intentionally run once on mount only: loadCurrentMatching is recreated every
+    // render (and closes over `flow`, whose context value is also unmemoized), so
+    // adding it here would refetch on every render instead of once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const cancelMatching = async () => {
@@ -857,7 +835,7 @@ export function MatchingSchedulePage({ go, openUrgent }) {
   const canContinue = Boolean(selectedDate && selectedSlot && isSlotSelectable(selectedDate, selectedSlot))
 
   const startMatching = async () => {
-    if (!canContinue) return
+    if (!canContinue || submitStatus === 'submitting') return
     const estimate = flow.matchingFlow.selectedEstimate
     const address = flow.matchingFlow.selectedAddress
     const schedule = {
@@ -883,45 +861,6 @@ export function MatchingSchedulePage({ go, openUrgent }) {
       
       flow.updateMatchingFlow({
         isEmergency: false,
-        matchingStatus: data.matching_status || '매칭 진행중',
-        schedule,
-        matchingRequestId: data.matching_request_id,
-        matchedContractorCount: data.matched_contractor_count,
-        matchingExpiresAt: data.expires_at,
-      })
-    } catch {
-      setSubmitStatus('error')
-      return
-    }
-    go(screens.matchingProgress)
-  }
-
-  const startEmergency = async () => {
-    const estimate = flow.matchingFlow.selectedEstimate
-    const address = flow.matchingFlow.selectedAddress
-    const schedule = {
-      preferred_date: todayString(),
-      preferred_time_start: null,
-      preferred_time_end: null,
-    }
-
-    if (!estimate?.estimate_id) {
-      setSubmitStatus('missing-estimate')
-      return
-    }
-    if (!address?.region_code_id || !address?.address) {
-      setSubmitStatus('missing-address')
-      return
-    }
-
-    setSubmitStatus('submitting')
-
-    try {
-      const body = buildMatchingRequestBody({ estimate, address, schedule, isEmergency: true })
-      const data = await api.post('/api/v1/matching-requests', body)
-      
-      flow.updateMatchingFlow({
-        isEmergency: true,
         matchingStatus: data.matching_status || '매칭 진행중',
         schedule,
         matchingRequestId: data.matching_request_id,
@@ -1000,7 +939,7 @@ export function MatchingSchedulePage({ go, openUrgent }) {
           <button
             type="button"
             className="matching-schedule-emergency"
-            onClick={openUrgent || startEmergency}
+            onClick={openUrgent}
           >
             <FaExclamationTriangle className="matching-schedule-emergency-icon" />
             <span>긴급 수리 요청</span>
@@ -1020,7 +959,7 @@ export function MatchingSchedulePage({ go, openUrgent }) {
               type="button"
               className={`matching-schedule-submit ${canContinue ? 'is-active' : ''}`}
               onClick={startMatching}
-              disabled={!canContinue && submitStatus !== 'submitting'}
+              disabled={!canContinue || submitStatus === 'submitting'}
             >
               {submitStatus === 'submitting' ? '요청중...' : canContinue ? '매칭 시작하기' : '시간 선택 필요'}
             </button>
@@ -1121,6 +1060,7 @@ export function MatchingAuctionPage({ go }) {
 
   // 💡 5. 특정 파트너 수락(선택) 주소 앞에도 /api/v1/ 적용
   const selectPartner = async (partner) => {
+    if (isSelecting) return
     setIsSelecting(true)
 
     try {

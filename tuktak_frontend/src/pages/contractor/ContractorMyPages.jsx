@@ -9,7 +9,7 @@ import {
   FaUserCog,
 } from 'react-icons/fa'
 import { contractorProfile, contractorScreens } from '../../data/contractorData'
-import { categoryGroups, regionGroups } from '../Customer/AuthPages'
+import { categoryGroups, regionGroups } from '../../data/signupCategoryData'
 import {
   fetchContractorMe,
   fetchContractorServices,
@@ -20,6 +20,7 @@ import {
 } from '../../services/contractorService'
 import { logout } from '../../services/authService'
 import { getMe, updateMe } from '../../services/userService'
+import { formatPhoneNumber } from '../../utils/phone'
 import './ContractorPages.css'
 
 // 회원가입(/signup/category · /signup/region)에서 쓰는 선택 목록을 그대로 가져와
@@ -45,6 +46,8 @@ const infoFields = [
   { key: 'phone', label: '휴대폰번호' },
   { key: 'contactPhone', label: '시공자 연락처' },
 ]
+
+const PHONE_FIELD_KEYS = ['phone', 'contactPhone']
 
 // 사용자/시공자 API 응답을 마이페이지 표시값으로 정리
 function normalizeUserInfo(user = {}, contractor = {}) {
@@ -319,7 +322,8 @@ export function ContractorMyInfoPage({ go }) {
   }
 
   const handleDraftChange = (key, value) => {
-    setDraftValues((current) => ({ ...current, [key]: value }))
+    const nextValue = PHONE_FIELD_KEYS.includes(key) ? formatPhoneNumber(value) : value
+    setDraftValues((current) => ({ ...current, [key]: nextValue }))
   }
 
   // 명세서 기준으로 휴대폰번호는 users/me, 시공자 정보는 contractors/me로 저장
@@ -408,6 +412,9 @@ export function ContractorMyInfoPage({ go }) {
             <label>
               <span>{editingField.label} 수정</span>
               <input
+                type={PHONE_FIELD_KEYS.includes(editingField.key) ? 'tel' : 'text'}
+                inputMode={PHONE_FIELD_KEYS.includes(editingField.key) ? 'numeric' : undefined}
+                maxLength={PHONE_FIELD_KEYS.includes(editingField.key) ? 13 : undefined}
                 value={draftValues[editingField.key]}
                 onChange={(event) => handleDraftChange(editingField.key, event.target.value)}
               />

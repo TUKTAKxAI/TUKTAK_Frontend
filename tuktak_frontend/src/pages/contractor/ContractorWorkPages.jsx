@@ -31,6 +31,16 @@ function statusLabel(status) {
   return labels[status] || status
 }
 
+// 아직 시작 전(생성됨/예약됨) 상태에서만 "시작 처리"를 누를 수 있음
+function canStartWorkOrder(rawStatus) {
+  return rawStatus === 'CREATED' || rawStatus === 'SCHEDULED'
+}
+
+// 진행중 상태에서만 "완료 처리"를 누를 수 있음
+function canCompleteWorkOrder(rawStatus) {
+  return rawStatus === 'IN_PROGRESS'
+}
+
 function mapWorkOrder(item) {
   return {
     id: String(item.work_order_id),
@@ -215,8 +225,22 @@ export function ContractorRecordDetailPage({ go, routeState = {} }) {
         </article>
 
         <div className="contractor-records-actions">
-          <button className="is-ghost" type="button" disabled={!item.workOrderId || actionStatus === 'submitting'} onClick={() => updateStatus('start')}>시작 처리</button>
-          <button className="is-primary" type="button" disabled={!item.workOrderId || actionStatus === 'submitting'} onClick={() => updateStatus('complete')}>완료 처리</button>
+          <button
+            className="is-ghost"
+            type="button"
+            disabled={!item.workOrderId || actionStatus === 'submitting' || !canStartWorkOrder(item.rawStatus)}
+            onClick={() => updateStatus('start')}
+          >
+            시작 처리
+          </button>
+          <button
+            className="is-primary"
+            type="button"
+            disabled={!item.workOrderId || actionStatus === 'submitting' || !canCompleteWorkOrder(item.rawStatus)}
+            onClick={() => updateStatus('complete')}
+          >
+            완료 처리
+          </button>
         </div>
         {actionStatus === 'error' ? <p className="contractor-requests-status">상태 변경에 실패했습니다.</p> : null}
       </div>

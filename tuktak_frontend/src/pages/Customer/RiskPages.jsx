@@ -232,14 +232,15 @@ export function RiskLoadingPage({ go }) {
       return;
     }
 
-    let cancelled = false;
+    // AbortController로 리포트 생성 요청 자체를 취소해서, 개발 모드의 StrictMode
+    // 이중 마운트나 리렌더로 effect가 다시 실행되더라도 리포트가 중복 생성되지 않게 함.
+    const controller = new AbortController();
     let pollTimer;
 
     // 로딩 화면에 진입하자마자 실제 리스크 리포트 생성 요청을 보내고, 완료될 때까지 상태를 폴링함
     const createRiskReport = async () => {
       try {
-        const data = await api.post('/api/v1/risk-reports', { estimate_id: estimateId });
-        if (cancelled) return;
+        const data = await api.post('/api/v1/risk-reports', { estimate_id: estimateId }, { signal: controller.signal });
 
         if (!data || !data.risk_report_id) {
           alert('리스크 리포트 요청에 실패했습니다.');
@@ -249,7 +250,7 @@ export function RiskLoadingPage({ go }) {
 
         pollTimer = setInterval(async () => {
           try {
-            const statusData = await api.get(`/api/v1/risk-reports/${data.risk_report_id}`);
+            const statusData = await api.get(`/api/v1/risk-reports/${data.risk_report_id}`, { signal: controller.signal });
 
             if (statusData.success && statusData.report && (statusData.report.report_status === 'COMPLETED' || statusData.report.report_status === 'SUCCESS')) {
               clearInterval(pollTimer);
@@ -258,10 +259,12 @@ export function RiskLoadingPage({ go }) {
               });
             }
           } catch (error) {
+            if (error.code === 'ERR_CANCELED') return;
             console.error('상태 확인 실패:', error);
           }
         }, 3000);
       } catch (error) {
+        if (error.code === 'ERR_CANCELED') return;
         console.error('요청 실패:', error);
         // 에러 메시지도 클라이언트가 던져주는 예쁜 메시지로 출력합니다.
         alert(`백엔드 서버와 통신하는 중 오류가 발생했습니다: ${error.message}`);
@@ -272,10 +275,13 @@ export function RiskLoadingPage({ go }) {
     createRiskReport();
 
     return () => {
-      cancelled = true;
+      controller.abort();
       clearInterval(pollTimer);
     };
-  }, [estimateId, navigate, go]);
+    // go/navigate는 이 effect가 다시 실행되어야 할 트리거가 아니라(둘 다 렌더마다
+    // 새로 생성될 수 있는 콜백), estimateId만 실제 의존성으로 둔다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estimateId]);
 
   return (
     <section className="estimate-loading">

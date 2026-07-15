@@ -50,24 +50,26 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
   const [submitMessage, setSubmitMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [quoteDetail, setQuoteDetail] = useState(null)
-  const [loadStatus, setLoadStatus] = useState(routeState.quoteId ? 'loading' : 'idle')
+  const [loadedQuoteId, setLoadedQuoteId] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const matchingRequestId = routeState.matchingRequestId || routeState.request?.matchingRequestId
   const quoteId = routeState.quoteId || routeState.request?.quoteId
+  const loadStatus = !quoteId ? 'idle' : loadError ? 'error' : loadedQuoteId === quoteId ? 'loaded' : 'loading'
 
   useEffect(() => {
     if (!quoteId) return
     let ignore = false
 
-    setLoadStatus('loading')
     fetchContractorQuote(quoteId)
       .then((quote) => {
         if (ignore) return
         setQuoteDetail(quote)
-        setLoadStatus('loaded')
+        setLoadedQuoteId(quoteId)
+        setLoadError(false)
       })
       .catch(() => {
-        if (!ignore) setLoadStatus('error')
+        if (!ignore) setLoadError(true)
       })
 
     return () => {

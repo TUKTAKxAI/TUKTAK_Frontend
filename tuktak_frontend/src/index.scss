@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+// @carbon/styles ships @font-face rules pointing at '~@ibm/plex/...' (webpack-only path
+// syntax Vite can't resolve), so they'd never load anyway. IBM Plex Sans is already
+// loaded above via Google Fonts, so skip Carbon's broken/duplicate font-face output.
+$css--font-face: false;
 @import '@carbon/styles';
 
 @theme {
