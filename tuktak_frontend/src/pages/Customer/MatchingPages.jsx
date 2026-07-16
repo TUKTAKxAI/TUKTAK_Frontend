@@ -12,7 +12,6 @@ import preview10 from '../../assets/figma/preview10.webp';
 import preview11 from '../../assets/figma/preview11.webp';
 import preview12 from '../../assets/figma/preview12.webp';
 import loadingCarbonSvg from '../../assets/figma/loading-carbon.svg?raw';
-import errorSvg from "../../assets/figma/error.svg?raw"
 import urgentAlertSvg from '../../assets/figma/urgent-alert.svg?raw'
 import { FaMapMarkerAlt, FaChevronDown, FaRegCalendarAlt, FaRegClock, FaExclamationTriangle, FaTimes } from 'react-icons/fa'
 
@@ -52,6 +51,7 @@ function estimateCost(estimate) {
 function quoteToPartner(quote, index) {
   return {
     quote_id: quote.quote_id,
+    quote_status: quote.quote_status,
     contractor: {
       contractor_id: quote.contractor?.contractor_id,
       business_name: quote.contractor?.business_name || `파트너 ${index + 1}`,
@@ -141,7 +141,7 @@ function PartnerCard({ partner, onOpenProposal, onOpenProfile }) {
   )
 }
 
-function ProposalModal({ partner, onClose, onSelect, isSelecting, inline }) {
+function ProposalModal({ partner, onClose, onSelect, isSelecting, inline, alreadyMatched }) {
   if (!partner) return null
 
   const content = (
@@ -168,7 +168,9 @@ function ProposalModal({ partner, onClose, onSelect, isSelecting, inline }) {
         <p>{partner.additional_note}</p>
       </div>
       <div className="estimate-result-actions single">
-        <PrimaryButton disabled={isSelecting} onClick={() => onSelect(partner)}>{isSelecting ? '선택중...' : '파트너 선택하기'}</PrimaryButton>
+        <PrimaryButton disabled={isSelecting || alreadyMatched} onClick={() => onSelect(partner)}>
+          {isSelecting ? '선택중...' : alreadyMatched ? '이미 매칭이 완료됐어요' : '파트너 선택하기'}
+        </PrimaryButton>
       </div>
     </div>
   )
@@ -574,7 +576,7 @@ export function MatchingEstimateSelectPage({ go }) {
     return (
       <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
         <div className="matching-select-status">
-          <div className="matching-select-status-icon" dangerouslySetInnerHTML={{ __html: loadStatus === 'error' ? errorSvg : urgentAlertSvg }} />
+          <div className="matching-select-status-icon" dangerouslySetInnerHTML={{ __html: urgentAlertSvg }} />
           <h2 className="matching-select-status-title">
             {loadStatus === 'error' ? '견적서를 불러오지 못했습니다' : '생성된 AI 견적서가 없습니다'}
           </h2>
@@ -1058,9 +1060,11 @@ export function MatchingAuctionPage({ go }) {
     }
   }, [matchingRequestId])
 
+  const alreadyMatched = partners.some((partner) => partner.quote_status === 'SELECTED')
+
   // 💡 5. 특정 파트너 수락(선택) 주소 앞에도 /api/v1/ 적용
   const selectPartner = async (partner) => {
-    if (isSelecting) return
+    if (isSelecting || alreadyMatched) return
     setIsSelecting(true)
 
     try {
@@ -1118,7 +1122,13 @@ export function MatchingAuctionPage({ go }) {
           )}
         </div>
 
-        <ProposalModal partner={proposalPartner} onClose={() => setProposalPartner(null)} onSelect={selectPartner} isSelecting={isSelecting} />
+        <ProposalModal
+          partner={proposalPartner}
+          onClose={() => setProposalPartner(null)}
+          onSelect={selectPartner}
+          isSelecting={isSelecting}
+          alreadyMatched={alreadyMatched}
+        />
         <ProfileModal partner={profilePartner} onClose={() => setProfilePartner(null)} />
       </div>
     </CustomerPage>

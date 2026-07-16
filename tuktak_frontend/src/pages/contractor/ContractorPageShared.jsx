@@ -2,6 +2,7 @@ import { FaChevronRight } from 'react-icons/fa'
 import { TopBar } from '../../components/customer/TopBar'
 import { screens } from '../../data/customerData'
 import { contractorScreens } from '../../data/contractorData'
+import { quoteStatusLabel } from '../../utils/quoteStatus'
 
 export function StatusBadge({ children, tone = 'blue' }) {
   return <span className={`contractor-status ${tone}`}>{children}</span>
@@ -45,7 +46,7 @@ export function RequestCard({ item, onDetail }) {
         <span className="contractor-requests-card-region">{item.city}</span>
         <span className="contractor-requests-card-title">{item.title}</span>
         <span className="contractor-requests-card-meta">{item.desiredDate} · {item.time}</span>
-        {item.quoteId ? <span className="contractor-requests-card-badge">견적 전송 완료</span> : null}
+        {item.quoteId ? <span className="contractor-requests-card-badge">{quoteStatusLabel(item.status)}</span> : null}
       </span>
       <FaChevronRight className="contractor-requests-card-chevron" aria-hidden="true" />
     </button>

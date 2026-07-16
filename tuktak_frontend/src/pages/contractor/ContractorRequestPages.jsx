@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { FaCamera, FaChevronLeft, FaFileInvoice } from 'react-icons/fa'
 import { contractorScreens } from '../../data/contractorData'
-import { fetchContractorMatchingRequests } from '../../services/contractorService'
+import { fetchContractorMatchingRequests, fetchContractorQuotes } from '../../services/contractorService'
 import { ContractorPage, RequestCard, StatusBadge } from './ContractorPageShared'
+import { quoteStatusLabel } from '../../utils/quoteStatus'
 import './ContractorPages.css'
 
 function formatDate(value) {
@@ -50,6 +51,32 @@ function mapRequest(item) {
   }
 }
 
+function mapQuoteRequest(item) {
+  const regionName = item.region_name || (item.region_code_id ? `지역 코드 ${item.region_code_id}` : '지역 미정')
+  return {
+    id: String(item.matching_request_id),
+    matchingRequestId: item.matching_request_id,
+    matchingTargetId: null,
+    quoteId: item.quote_id,
+    city: regionName,
+    region: item.address || regionName,
+    regionName,
+    title: item.matching_request_title,
+    serviceTaskName: item.service_task_name,
+    budget: formatBudget(item.budget_min, item.budget_max),
+    desiredDate: formatDate(item.preferred_date),
+    time: formatTimeRange(item.preferred_time_start, item.preferred_time_end),
+    status: item.quote_status || item.matching_status,
+    aiEstimate: {
+      summary: '고객의 AI 견적 기반 매칭 요청입니다.',
+      priceRange: formatBudget(item.budget_min, item.budget_max),
+      expectedTime: '상세 협의',
+      note: item.request_message || `매칭 상태: ${item.matching_status}`,
+    },
+    photos: ['고객 첨부 사진', 'AI 견적 이미지'],
+  }
+}
+
 function groupByRegion(items) {
   return items.reduce((groups, item) => {
     const key = item.regionName || '지역 미정'
@@ -66,7 +93,7 @@ function RequestEstimatePreview({ item }) {
 
   return (
     <article className="contractor-detail-card">
-      <StatusBadge>{item.status}</StatusBadge>
+      <StatusBadge>{quoteStatusLabel(item.status)}</StatusBadge>
       <h2 className="contractor-detail-card-title">{item.title}</h2>
       <p className="contractor-detail-card-region">{item.region}</p>
       <dl className="contractor-active-info">
@@ -96,22 +123,29 @@ function RequestEstimatePreview({ item }) {
 }
 
 export function ContractorRequestsPage({ go }) {
-  const [items, setItems] = useState([])
+  const [newItems, setNewItems] = useState([])
+  const [quotedItems, setQuotedItems] = useState([])
   const [status, setStatus] = useState('loading')
   const [activeTab, setActiveTab] = useState('new')
 
   useEffect(() => {
     let ignore = false
 
-    fetchContractorMatchingRequests({ page: 1, size: 50 })
-      .then((data) => {
+    Promise.all([
+      fetchContractorMatchingRequests({ page: 1, size: 50 }),
+      fetchContractorQuotes({ page: 1, size: 50 }),
+    ])
+      .then(([requestsData, quotesData]) => {
         if (ignore) return
-        setItems(data.items?.map(mapRequest) ?? [])
+        const requestItems = (requestsData.items ?? []).map(mapRequest)
+        setNewItems(requestItems.filter((item) => !item.quoteId))
+        setQuotedItems((quotesData.items ?? []).map(mapQuoteRequest))
         setStatus('loaded')
       })
       .catch(() => {
         if (!ignore) {
-          setItems([])
+          setNewItems([])
+          setQuotedItems([])
           setStatus('error')
         }
       })
@@ -121,9 +155,7 @@ export function ContractorRequestsPage({ go }) {
     }
   }, [])
 
-  const visibleItems = items.filter((item) => (
-    activeTab === 'quoted' ? Boolean(item.quoteId) : !item.quoteId
-  ))
+  const visibleItems = activeTab === 'quoted' ? quotedItems : newItems
   const groupedItems = groupByRegion(visibleItems)
   const regionNames = Object.keys(groupedItems)
 

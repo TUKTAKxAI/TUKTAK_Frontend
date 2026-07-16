@@ -11,7 +11,7 @@ import {
   FaTools,
 } from 'react-icons/fa'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { contractorActiveWork, contractorProfile, contractorScreens } from '../../data/contractorData'
+import { contractorProfile, contractorScreens } from '../../data/contractorData'
 import {
   fetchContractorMatchingRequests,
   fetchContractorMe,
@@ -20,6 +20,12 @@ import {
 } from '../../services/contractorService'
 import { ContractorPage } from './ContractorPageShared'
 import './ContractorPages.css'
+
+const INACTIVE_WORK_ORDER_STATUSES = ['COMPLETED', 'CANCELLED', '완료', '완료됨', '취소']
+
+function findActiveWorkOrder(items) {
+  return (items || []).find((item) => !INACTIVE_WORK_ORDER_STATUSES.includes(item.work_order_status))
+}
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '일정 협의'
@@ -36,7 +42,7 @@ function mapActiveWork(item) {
     price: formatWon(item.final_amount),
     date: formatDate(item.scheduled_date),
     visitTime: item.scheduled_start_time || '시간 협의',
-    address: item.contractor_name ? `담당 ${item.contractor_name}` : '주소 확인 필요',
+    address: item.address || '주소 확인 필요',
     duration: '상세에서 확인',
     customer: {
       name: item.customer_name || '고객',
@@ -84,7 +90,7 @@ function mapMatchingNotification(item) {
 
 export function ContractorHomePage({ go }) {
   const [notificationOn, setNotificationOn] = useState(contractorProfile.notificationEnabled)
-  const [activeWork, setActiveWork] = useState(contractorActiveWork)
+  const [activeWork, setActiveWork] = useState(null)
 
   useEffect(() => {
     let ignore = false
@@ -95,9 +101,11 @@ export function ContractorHomePage({ go }) {
       })
       .catch(() => {})
 
-    fetchContractorWorkOrders({ page: 1, size: 1 })
+    fetchContractorWorkOrders({ page: 1, size: 50 })
       .then((data) => {
-        if (!ignore && data.items?.[0]) setActiveWork(mapActiveWork(data.items[0]))
+        if (ignore) return
+        const activeItem = findActiveWorkOrder(data.items)
+        setActiveWork(activeItem ? mapActiveWork(activeItem) : null)
       })
       .catch(() => {})
 
@@ -136,24 +144,36 @@ export function ContractorHomePage({ go }) {
           <span className="contractor-home-alarm-switch" aria-hidden="true"></span>
         </button>
 
-        <button
-          className="contractor-home-active"
-          type="button"
-          onClick={() => go(contractorScreens.activeWork)}
-        >
-          <span className="contractor-home-active-icon">
-            <FaTools />
-          </span>
-          <span className="contractor-home-active-body">
-            <span className="contractor-home-active-eyebrow">진행중인 시공</span>
-            <h2>{activeWork.title}</h2>
-            <p>{activeWork.date} {activeWork.visitTime}</p>
-            <p>{activeWork.address}</p>
-            <span className="contractor-home-active-hint">
-              자세히 보기 <FaChevronRight />
+        {activeWork ? (
+          <button
+            className="contractor-home-active"
+            type="button"
+            onClick={() => go(contractorScreens.activeWork)}
+          >
+            <span className="contractor-home-active-icon">
+              <FaTools />
             </span>
-          </span>
-        </button>
+            <span className="contractor-home-active-body">
+              <span className="contractor-home-active-eyebrow">진행중인 시공</span>
+              <h2>{activeWork.title}</h2>
+              <p>{activeWork.date} {activeWork.visitTime}</p>
+              <p>{activeWork.address}</p>
+              <span className="contractor-home-active-hint">
+                자세히 보기 <FaChevronRight />
+              </span>
+            </span>
+          </button>
+        ) : (
+          <div className="contractor-home-active contractor-home-active-empty">
+            <span className="contractor-home-active-icon">
+              <FaTools />
+            </span>
+            <span className="contractor-home-active-body">
+              <span className="contractor-home-active-eyebrow">진행중인 시공</span>
+              <p>진행중인 시공이 없습니다.</p>
+            </span>
+          </div>
+        )}
 
         <div className="contractor-home-menu">
           <button className="contractor-home-tile" type="button" onClick={() => go(contractorScreens.requests)}>
@@ -241,16 +261,22 @@ export function ContractorNotificationsPage({ go }) {
 }
 
 export function ContractorActiveWorkPage({ go }) {
-  const [work, setWork] = useState(contractorActiveWork)
+  const [work, setWork] = useState(null)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     let ignore = false
 
-    fetchContractorWorkOrders({ page: 1, size: 1 })
+    fetchContractorWorkOrders({ page: 1, size: 50 })
       .then((data) => {
-        if (!ignore && data.items?.[0]) setWork(mapActiveWork(data.items[0]))
+        if (ignore) return
+        const activeItem = findActiveWorkOrder(data.items)
+        setWork(activeItem ? mapActiveWork(activeItem) : null)
+        setLoaded(true)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!ignore) setLoaded(true)
+      })
 
     return () => {
       ignore = true
@@ -271,25 +297,31 @@ export function ContractorActiveWorkPage({ go }) {
           </button>
           <div className="contractor-active-header-title">
             <p className="contractor-active-eyebrow">진행중인 시공</p>
-            <h1>{work.title}</h1>
+            <h1>{work?.title || '진행중인 시공'}</h1>
           </div>
           <span className="contractor-active-header-spacer" aria-hidden="true" />
         </header>
 
-        <article className="contractor-active-card">
-          <dl className="contractor-active-info">
-            <div><dt>시공 가격</dt><dd>{work.price}</dd></div>
-            <div><dt>날짜</dt><dd>{work.date}</dd></div>
-            <div><dt>방문 예정시간</dt><dd>{work.visitTime}</dd></div>
-            <div><dt>정확한 주소</dt><dd>{work.address}</dd></div>
-            <div><dt>예상 소요시간</dt><dd>{work.duration}</dd></div>
-            <div><dt>고객정보</dt><dd>{work.customer.name} · {work.customer.phone}</dd></div>
-          </dl>
-        </article>
+        {work ? (
+          <>
+            <article className="contractor-active-card">
+              <dl className="contractor-active-info">
+                <div><dt>시공 가격</dt><dd>{work.price}</dd></div>
+                <div><dt>날짜</dt><dd>{work.date}</dd></div>
+                <div><dt>방문 예정시간</dt><dd>{work.visitTime}</dd></div>
+                <div><dt>정확한 주소</dt><dd>{work.address}</dd></div>
+                <div><dt>예상 소요시간</dt><dd>{work.duration}</dd></div>
+                <div><dt>고객정보</dt><dd>{work.customer.name} · {work.customer.phone}</dd></div>
+              </dl>
+            </article>
 
-        <div className="contractor-active-actions">
-          <PrimaryButton onClick={() => go(contractorScreens.chats)}>1:1 채팅 연결</PrimaryButton>
-        </div>
+            <div className="contractor-active-actions">
+              <PrimaryButton onClick={() => go(contractorScreens.chats)}>1:1 채팅 연결</PrimaryButton>
+            </div>
+          </>
+        ) : (
+          loaded && <p className="muted center">진행중인 시공이 없습니다.</p>
+        )}
       </div>
     </ContractorPage>
   )

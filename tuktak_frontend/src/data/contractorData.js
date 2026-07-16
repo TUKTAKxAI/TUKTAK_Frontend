@@ -88,19 +88,6 @@ export const contractorReviews = [
   },
 ]
 
-export const contractorServiceTree = [
-  { category: '가전', options: ['에어컨 수리', '세탁기 설치', '냉장고 수리'] },
-  { category: '인테리어', options: ['도배', '장판', '타일', '페인트'] },
-  { category: '설비', options: ['배관 수리', '누수 탐지', '보일러 점검'] },
-  { category: '문 / 창호', options: ['문 수리', '창호 수리', '도어락 수리'] },
-]
-
-export const contractorRegionTree = [
-  { category: '서울특별시', options: ['강남구', '마포구', '송파구', '영등포구'] },
-  { category: '경기도', options: ['김포시', '고양시', '부천시', '수원시'] },
-  { category: '인천광역시', options: ['서구', '남동구', '연수구', '부평구'] },
-]
-
 export const chatThreads = [
   { id: 'hong', name: '홍길동 파트너님', preview: '내일 그럼 오후 4시에 방문하도록 하 ...', time: '오후 3:30', unread: 1 },
   { id: 'kim', name: '김도배 파트너님', preview: '시공 감사합니다 ~', time: '2개월 전', unread: 0 },

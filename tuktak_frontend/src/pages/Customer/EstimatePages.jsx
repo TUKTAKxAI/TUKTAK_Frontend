@@ -1,7 +1,6 @@
 import { api } from '../../api/apiClient'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-// import { fetchAiEstimateDetail, fetchMyAiEstimates } from '../../api/mypageApi'
 import { EstimateCard, SearchBar } from '../../components/customer/Cards'
 import { CustomerPage } from './CustomerPageShared'
 import { figmaAssets } from '../../components/customer/figmaAssets'

@@ -21,7 +21,7 @@ import {
 } from '../../services/contractorService'
 import { clearAuthTokens } from '../../api/client'
 import { categoryGroups, regionGroups } from '../../data/signupCategoryData'
-import { formatPhoneNumber } from '../../utils/phone'
+import { formatPhoneNumber, isValidPhoneNumber } from '../../utils/phone'
 import { FaEye, FaEyeSlash, FaCamera } from "react-icons/fa";
 
 const PREFERRED_ROLE_KEY = 'tuktak_preferred_role'
@@ -121,6 +121,23 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
             </span>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// 전화번호 자릿수 부족 등, 서버 검증 에러 대신 미리 보여주는 안내 모달
+function AuthErrorModal({ message, onClose }) {
+  if (!message) return null
+
+  return (
+    <div className="auth-terms-modal-overlay" onClick={onClose}>
+      <div className="auth-error-modal" onClick={(e) => e.stopPropagation()}>
+        <h3 className="auth-error-modal-title">입력을 확인해주세요</h3>
+        <p className="auth-error-modal-body">{message}</p>
+        <button className="auth-error-modal-close" onClick={onClose}>
+          확인
+        </button>
       </div>
     </div>
   )
@@ -646,6 +663,9 @@ export function AuthPages({
 
   const [showTermsModal, setShowTermsModal] = useState(false);
 
+  // 전화번호 자릿수가 부족할 때 alert 대신 보여줄 안내 모달 메시지
+  const [phoneErrorMessage, setPhoneErrorMessage] = useState('');
+
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCompanyAddressModal, setShowCompanyAddressModal] = useState(false);
 
@@ -700,6 +720,7 @@ export function AuthPages({
 
     setEmailCheckResult(null);
     setCheckedEmail("");
+    setPhoneErrorMessage("");
 
     setShowSignupPassword(false);
     setShowSignupPasswordConfirm(false);
@@ -1124,6 +1145,22 @@ export function AuthPages({
                 <span>{item}</span>
               </label>
             ))}
+
+            <label className="auth-terms-check-line auth-terms-check-all">
+              <input
+                type="checkbox"
+                checked={currentSignupTerms.every((_, index) => terms[index])}
+                onChange={() => {
+                  const allChecked = currentSignupTerms.every((_, index) => terms[index])
+                  setTerms((current) =>
+                    current.map((value, valueIndex) =>
+                      valueIndex < currentSignupTerms.length ? !allChecked : value
+                    )
+                  )
+                }}
+              />
+              <span>모두 선택</span>
+            </label>
           </div>
 
           <button
@@ -1511,11 +1548,19 @@ export function AuthPages({
         <div className="auth-step-actions">
           <PrimaryButton
             narrow
-            onClick={() => go(screens.phone)}
+            onClick={() => {
+              if (!isValidPhoneNumber(partnerSignupData.companyPhone)) {
+                setPhoneErrorMessage('업체 전화번호를 정확히 입력해주세요. (숫자 9자리 이상)')
+                return
+              }
+
+              go(screens.phone)
+            }}
             disabled={
               !partnerSignupData.companyName.trim() ||
               !partnerSignupData.businessStatus ||
-              !partnerSignupData.companyAddress.trim()
+              !partnerSignupData.companyAddress.trim() ||
+              !partnerSignupData.companyPhone.trim()
             }
           >
             다음
@@ -1536,6 +1581,11 @@ export function AuthPages({
             }}
           />
         ) : null}
+
+        <AuthErrorModal
+          message={phoneErrorMessage}
+          onClose={() => setPhoneErrorMessage('')}
+        />
       </section>
     )
   }
@@ -1585,9 +1635,14 @@ export function AuthPages({
         <div className="auth-step-actions">
           <PrimaryButton
             narrow
-            onClick={() =>
+            onClick={() => {
+              if (!isValidPhoneNumber(signupData.phone)) {
+                setPhoneErrorMessage('휴대폰 번호를 정확히 입력해주세요. (숫자 9자리 이상)')
+                return
+              }
+
               go(userType === 'partner' ? screens.region : screens.address)
-            }
+            }}
             disabled={!signupData.phone.trim()}
           >
             다음
@@ -1603,6 +1658,11 @@ export function AuthPages({
             건너뛰기
           </button>
         )}
+
+        <AuthErrorModal
+          message={phoneErrorMessage}
+          onClose={() => setPhoneErrorMessage('')}
+        />
       </section>
     )
   }

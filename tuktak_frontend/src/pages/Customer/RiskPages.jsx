@@ -14,7 +14,7 @@ import preview7 from '../../assets/figma/preview7.webp';
 import preview8 from '../../assets/figma/preview8.webp';
 import loadingCarbonSvg from '../../assets/figma/loading-carbon.svg?raw';
 import confirmCarbonSvg from '../../assets/figma/confirm-carbon.svg?raw';
-import errorSvg from "../../assets/figma/error.svg?raw"
+import urgentAlertSvg from "../../assets/figma/urgent-alert.svg?raw"
 
 const previewImages = [preview5, preview6, preview7, preview8];
 
@@ -173,7 +173,7 @@ export function RiskSelectPage({ go }) {
     return (
       <CustomerPage go={go} back={() => go(screens.riskHome)} className="cds--white">
         <div className="matching-select-status">
-          <div className="matching-select-status-icon" dangerouslySetInnerHTML={{ __html: errorSvg }} />
+          <div className="matching-select-status-icon" dangerouslySetInnerHTML={{ __html: urgentAlertSvg }} />
           <h2 className="matching-select-status-title">생성된 AI 견적서가 없습니다</h2>
           <p className="matching-select-status-desc">AI 견적서를 새로 만들어 볼까요?</p>
           <PrimaryButton narrow onClick={() => go(screens.estimateStart)}>AI 견적서 생성</PrimaryButton>

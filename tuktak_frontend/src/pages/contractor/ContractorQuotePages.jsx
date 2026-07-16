@@ -6,9 +6,11 @@ import confirmCarbonSvg from '../../assets/figma/confirm-carbon.svg?raw'
 import { contractorQuotes, contractorScreens } from '../../data/contractorData'
 import { fetchContractorQuote, fetchContractorQuotes, submitContractorQuote } from '../../services/contractorService'
 import { ContractorPage, StatusBadge } from './ContractorPageShared'
+import { quoteStatusLabel } from '../../utils/quoteStatus'
+import { formatNumberWithCommas } from '../../utils/number'
 import './ContractorPages.css'
 
-const quoteFilters = ['전체', '전송완료', '선택대기']
+const quoteFilters = ['전체', '대기중', '매칭됨', '매칭실패']
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replaceAll('-', '.') : '협의'
@@ -39,7 +41,7 @@ function mapQuote(item) {
     id: String(item.quote_id),
     requestTitle: item.matching_request_title,
     amount: formatWon(item.total_amount),
-    status: item.quote_status === 'SENT' ? '전송완료' : item.quote_status === 'SELECTED' ? '선택대기' : item.quote_status,
+    status: quoteStatusLabel(item.quote_status),
     validUntil: formatDate(item.valid_until),
   }
 }
@@ -145,7 +147,7 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
           {loadStatus === 'error' ? <p className="contractor-requests-status">견적서를 불러오지 못했습니다.</p> : null}
           {quoteDetail ? (
             <article className="contractor-detail-card">
-              <StatusBadge>{quoteDetail.quote_status === 'SENT' ? '전송완료' : quoteDetail.quote_status}</StatusBadge>
+              <StatusBadge>{quoteStatusLabel(quoteDetail.quote_status)}</StatusBadge>
               <h2 className="contractor-detail-card-title">{quoteDetail.matching_request_title}</h2>
               <dl className="contractor-active-info">
                 <div><dt>시공 비용</dt><dd>{formatWon(quoteDetail.total_amount)}</dd></div>
@@ -196,7 +198,7 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
 
         {routeState.request ? <p className="contractor-requests-status">{routeState.request.title} 요청에 견적서를 작성합니다.</p> : null}
         <div className="contractor-form">
-          <label><span>시공 비용</span><input value={form.amount} onChange={(event) => update('amount', event.target.value)} placeholder="100,000" /></label>
+          <label><span>시공 비용</span><input inputMode="numeric" value={form.amount} onChange={(event) => update('amount', formatNumberWithCommas(event.target.value))} placeholder="100,000" /></label>
           <label><span>작업 범위</span><input value={form.scope} onChange={(event) => update('scope', event.target.value)} placeholder="도어락 점검 및 부품 교체" /></label>
           <label><span>소요 시간</span><select value={form.duration} onChange={(event) => update('duration', event.target.value)}><option>1시간</option><option>2시간</option><option>3시간</option></select></label>
           <label><span>방문 횟수</span><select value={form.visits} onChange={(event) => update('visits', event.target.value)}><option>1회</option><option>2회</option><option>3회</option></select></label>

@@ -10,3 +10,9 @@ export function formatPhoneNumber(rawValue) {
   }
   return digits
 }
+
+// 백엔드(app/schemas/auth.py)가 요구하는 최소 자릿수(9자리)와 맞춘 유효성 검사
+export function isValidPhoneNumber(rawValue) {
+  const digits = String(rawValue ?? '').replace(/\D/g, '')
+  return digits.length >= 9 && digits.length <= 11
+}

@@ -4004,6 +4004,7 @@ button {
 .auth-terms-panel {
   border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
   padding-top: 20px;
+  margin-top: auto;
 }
 
 .auth-terms-list {
@@ -4024,6 +4025,13 @@ button {
 
 .auth-terms-check-line:last-child {
   border-bottom: 0;
+}
+
+.auth-terms-check-all {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+  font-weight: 600;
 }
 
 .auth-terms-check-line input[type="checkbox"] {
@@ -4123,6 +4131,53 @@ button {
 }
 
 .auth-terms-modal-close:hover {
+  background: var(--cds-background-brand-hover, #0353e9);
+}
+
+/* 전화번호 자릿수 부족 등 간단한 안내 모달 (.auth-terms-modal-overlay 재사용) */
+
+.auth-error-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 320px;
+  background: var(--cds-background, #ffffff);
+  border-radius: 8px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.auth-error-modal-title {
+  margin: 0;
+  padding: 24px 24px 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cds-text-primary, #161616);
+}
+
+.auth-error-modal-body {
+  margin: 0;
+  padding: 0 24px 24px;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.auth-error-modal-close {
+  flex-shrink: 0;
+  width: 100%;
+  height: 48px;
+  border: 0;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-background-brand, #0f62fe);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-error-modal-close:hover {
   background: var(--cds-background-brand-hover, #0353e9);
 }
 

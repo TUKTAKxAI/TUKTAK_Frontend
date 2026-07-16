@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   FaChevronLeft,
   FaChevronRight,
+  FaFileInvoice,
   FaMapMarkerAlt,
   FaTimes,
   FaTools,
@@ -255,9 +256,9 @@ export function ContractorMypagePage({ go }) {
         </div>
 
         <nav className="contractor-mypage-menu">
-          <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.myInfo)}>
-            <span className="contractor-mypage-menu-icon"><FaUserCog aria-hidden="true" /></span>
-            <span className="contractor-mypage-menu-label">내 정보</span>
+          <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.quotes)}>
+            <span className="contractor-mypage-menu-icon"><FaFileInvoice aria-hidden="true" /></span>
+            <span className="contractor-mypage-menu-label">내 견적 목록</span>
             <FaChevronRight className="contractor-mypage-menu-chevron" aria-hidden="true" />
           </button>
           <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.myServices)}>
@@ -268,6 +269,11 @@ export function ContractorMypagePage({ go }) {
           <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.myRegions)}>
             <span className="contractor-mypage-menu-icon"><FaMapMarkerAlt aria-hidden="true" /></span>
             <span className="contractor-mypage-menu-label">내 지역</span>
+            <FaChevronRight className="contractor-mypage-menu-chevron" aria-hidden="true" />
+          </button>
+          <button type="button" className="contractor-mypage-menu-item" onClick={() => go(contractorScreens.myInfo)}>
+            <span className="contractor-mypage-menu-icon"><FaUserCog aria-hidden="true" /></span>
+            <span className="contractor-mypage-menu-label">내 정보</span>
             <FaChevronRight className="contractor-mypage-menu-chevron" aria-hidden="true" />
           </button>
         </nav>
