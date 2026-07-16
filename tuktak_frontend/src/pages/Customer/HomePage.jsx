@@ -223,13 +223,18 @@ export function HomePage({ go }) {
         <button
           className="home-hero home-hero-progress"
           type="button"
-          onClick={() => go(screens.estimateHome)}
+          onClick={(event) => {
+            event.stopPropagation()
+            navigate(screenPaths[screens.matchHistory], {
+              state: { statusFilter: '진행중' },
+            })
+          }}
         >
           <div className="home-hero-body">
             <span className="home-hero-eyebrow">{activeMatching.status}</span>
             <h2 className="home-hero-title">진행중인 시공이 있어요</h2>
             <p className="home-hero-desc">현재 시공은 매칭 히스토리에서 확인하고, 새 견적도 바로 받을 수 있어요.</p>
-            <span className="home-hero-cta">새 AI 견적 받기 <FaChevronRight aria-hidden="true" /></span>
+            <span className="home-hero-cta">진행중인 시공 보기 <FaChevronRight aria-hidden="true" /></span>
           </div>
           <div
             className="home-hero-stat"
