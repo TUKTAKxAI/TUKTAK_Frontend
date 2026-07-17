@@ -26,3 +26,16 @@ export function buildMatchingRequestBody({ estimate, address, schedule, isEmerge
     is_emergency: isEmergency,
   }
 }
+
+// 백엔드 _resolve_region_code_id(app/services/matching_request.py)와 동일한 우선순위
+// (정확 일치 → 5자리 시군구 접두 → 2자리 시도 접두)로 지원 지역 여부를 판별하는 순수 함수.
+// regionCodes를 못 불러온 경우(빈 배열)에는 굳이 사용자를 막지 않도록 fail-open으로 처리한다.
+export function isRegionCodeSupported(admCd, regionCodes) {
+  if (!admCd) return false
+  if (!Array.isArray(regionCodes) || regionCodes.length === 0) return true
+
+  const raw = String(admCd)
+  const codes = new Set(regionCodes.map((item) => item.code))
+
+  return codes.has(raw) || codes.has(raw.slice(0, 5)) || codes.has(raw.slice(0, 2))
+}

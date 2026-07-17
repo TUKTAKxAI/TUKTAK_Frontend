@@ -131,7 +131,11 @@ export function ContractorQuoteFormPage({ go, routeState = {} }) {
             <button
               type="button"
               className="contractor-active-back"
-              onClick={() => go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })}
+              onClick={() =>
+                matchingRequestId
+                  ? go(contractorScreens.requestDetail, { request: routeState.request, matchingRequestId })
+                  : go(contractorScreens.quotes)
+              }
               aria-label="뒤로가기"
             >
               <FaChevronLeft aria-hidden="true" />
@@ -302,7 +306,19 @@ export function ContractorQuotesPage({ go }) {
         </div>
         <div className="contractor-quotes-list">
           {filtered.map((quote) => (
-            <article className="contractor-quotes-card" key={quote.id}>
+            <article
+              className="contractor-quotes-card"
+              key={quote.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => go(contractorScreens.quoteForm, { quoteId: quote.id })}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  go(contractorScreens.quoteForm, { quoteId: quote.id })
+                }
+              }}
+            >
               <span className="contractor-quotes-card-icon" aria-hidden="true"><FaFileInvoice /></span>
               <div className="contractor-quotes-card-body">
                 <strong>{quote.requestTitle}</strong>

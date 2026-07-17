@@ -5346,6 +5346,20 @@ button {
   padding: 12px 0;
 }
 
+.matching-region-modal h3 {
+  color: var(--cds-text-primary, #161616);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+.matching-region-modal p {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+
 /* ==========================================================================
    AI 견적서 선택 (MatchingEstimateSelectPage) — Carbon 스타일
    ========================================================================== */

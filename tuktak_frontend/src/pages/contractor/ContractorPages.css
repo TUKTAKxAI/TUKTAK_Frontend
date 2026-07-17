@@ -2289,6 +2289,7 @@
   background: var(--cds-background, #ffffff);
   border: 1px solid var(--cds-border-subtle, #e0e0e0);
   border-radius: 4px;
+  cursor: pointer;
 }
 
 .contractor-quotes-card-icon {

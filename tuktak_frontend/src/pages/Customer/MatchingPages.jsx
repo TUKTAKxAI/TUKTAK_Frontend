@@ -5,7 +5,8 @@ import { CustomerPage } from './CustomerPageShared'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
 import { screens } from '../../data/customerData'
-import { buildMatchingRequestBody, estimateTitle } from '../../utils/matchingRequest'
+import { buildMatchingRequestBody, estimateTitle, isRegionCodeSupported } from '../../utils/matchingRequest'
+import { fetchSupportedRegionCodes } from '../../api/matchingApi'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import preview9 from '../../assets/figma/preview9.webp';
 import preview10 from '../../assets/figma/preview10.webp';
@@ -625,6 +626,7 @@ export function MatchingAddressListPage({ go }) {
   const [searchResults, setSearchResults] = useState([]) // 서버에서 받아온 주소 결과 리스트
   const [isSearching, setIsSearching] = useState(false)   // API 호출 로딩 상태
   const [error, setError] = useState('')             // 에러 메시지 저장
+  const [showRegionErrorModal, setShowRegionErrorModal] = useState(false) // 미지원 지역 안내 모달
 
   // ==========================================
   // 1. 행안부 서버에 주소 데이터 요청하는 함수
@@ -658,7 +660,20 @@ export function MatchingAddressListPage({ go }) {
   // ==========================================
   // 2. 검색된 리스트 중 하나를 클릭했을 때 선택하는 함수
   // ==========================================
-  const handleSelectAddress = (jusoItem) => {
+  const handleSelectAddress = async (jusoItem) => {
+    const admCd = jusoItem.admCd || ''
+
+    // 아직 백엔드 서비스 지역(reference_codes REGION)에 등록되지 않은 주소면,
+    // 매칭 요청이 어떤 시공자에게도 전달되지 않고 조용히 0건으로 생성되는 것을 막기 위해
+    // 선택 단계에서 미리 걸러낸다.
+    const regionCodes = await fetchSupportedRegionCodes()
+    if (!isRegionCodeSupported(admCd, regionCodes)) {
+      setShowRegionErrorModal(true)
+      setSearchResults([])
+      setKeyword('')
+      return
+    }
+
     // 백엔드 매칭 요청 스키마 양식에 맞게 찰떡같이 구조를 매핑해 줍니다.
     updateMatchingFlow({
       selectedAddress: {
@@ -796,6 +811,19 @@ export function MatchingAddressListPage({ go }) {
             다음 단계로
           </PrimaryButton>
         </div>
+
+        {showRegionErrorModal ? (
+          <div className="modal-overlay matching-modal-overlay">
+            <div className="modal-card matching-region-modal">
+              <h3>아직 지원하지 않는 지역이에요</h3>
+              <p>
+                현재 매칭 서비스는 서울 전역과 경기(김포·고양·부천·수원), 인천(서구·남동구·연수구·부평구) 일부 지역에서만
+                이용하실 수 있어요. 다른 주소로 다시 검색해 주세요.
+              </p>
+              <PrimaryButton onClick={() => setShowRegionErrorModal(false)}>확인</PrimaryButton>
+            </div>
+          </div>
+        ) : null}
       </div>
     </CustomerPage>
   )
