@@ -33,6 +33,33 @@ function getInitialRemainingCount() {
   return 3
 }
 
+function normalizeMissingInfoLabel(item) {
+  const labels = {
+    repair_object: '수리 대상',
+    repair_symptom: '고장 증상',
+    object_label: '수리 대상',
+    problem_label: '고장 증상',
+    main_category: '서비스 분야',
+    brand_model: '브랜드/모델명',
+    model_name: '모델명',
+  };
+
+  return labels[item] || item;
+}
+
+function getMissingInfoPlaceholder(item) {
+  const label = normalizeMissingInfoLabel(item);
+  const placeholders = {
+    '브랜드/모델명': '예) 삼성 무풍 에어컨, LG 트롬 세탁기 F21VDD',
+    '수리 대상': '예) 거실 벽걸이 에어컨, 주방 싱크대, 욕실 변기',
+    '고장 증상': '예) 찬바람이 안 나오고 실외기 소리가 커요',
+    '서비스 분야': '예) 에어컨 수리, 배관 누수, 전기/조명',
+    '모델명': '예) AF17B7538WZ, F21VDD, WF21T6500KV',
+  };
+
+  return placeholders[label] || `예) ${label} 정보를 구체적으로 입력해 주세요`;
+}
+
 function ServiceHero({ onClick, buttonLabel, go }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef(null);
@@ -235,6 +262,25 @@ export function EstimateLoadingPage({ go }) {
       try {
         const data = await api.post('/api/v1/ai-estimates', formData, { signal: controller.signal });
 
+        if (data.response_status === 'needs_more_info' || data.estimate_status === 'NEEDS_MORE_INFO') {
+          navigate(screenPaths[screens.estimateMoreInfo], {
+            state: {
+              image,
+              description,
+              estimateId: data.estimate_id,
+              missingInfo: data.missing_info || [],
+              message: data.message,
+            }
+          });
+          return;
+        }
+
+        if (data.response_status && data.response_status !== 'completed') {
+          alert(data.message || 'AI 견적 요청을 처리할 수 없습니다.');
+          go(screens.estimateStart);
+          return;
+        }
+
         if (!data.success) {
           alert('견적 요청에 실패했습니다: ' + (data.detail || '알 수 없는 오류'));
           go(screens.estimateStart);
@@ -291,6 +337,101 @@ export function EstimateLoadingPage({ go }) {
       </button>
     </section>
   )
+}
+
+export function EstimateMoreInfoPage({ go }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { image, description, missingInfo = [], message } = location.state || {};
+  const [answers, setAnswers] = useState(() =>
+    missingInfo.reduce((acc, item) => ({ ...acc, [item]: '' }), {})
+  );
+
+  const hasRequiredState = Boolean(image && description && missingInfo.length);
+  const isComplete = missingInfo.every((item) => answers[item]?.trim());
+
+  const updateAnswer = (item, value) => {
+    setAnswers((prev) => ({ ...prev, [item]: value }));
+  };
+
+  const submitMoreInfo = () => {
+    if (!isComplete) {
+      alert('부족한 정보를 모두 입력해 주세요.');
+      return;
+    }
+
+    const additionalDescription = missingInfo
+      .map((item) => `${normalizeMissingInfoLabel(item)}: ${answers[item].trim()}`)
+      .join('\n');
+
+    navigate(screenPaths[screens.estimateLoading], {
+      state: {
+        image,
+        description: `${description}\n\n추가 정보:\n${additionalDescription}`,
+      }
+    });
+  };
+
+  if (!hasRequiredState) {
+    return (
+      <CustomerPage go={go} back={() => go(screens.estimateStart)} className="cds--white">
+        <section className="estimate-more-info-empty">
+          <h1>추가 정보 요청을 불러오지 못했어요</h1>
+          <p>견적 요청 화면에서 다시 사진과 설명을 입력해 주세요.</p>
+          <PrimaryButton narrow onClick={() => go(screens.estimateStart)}>다시 입력하기</PrimaryButton>
+        </section>
+      </CustomerPage>
+    );
+  }
+
+  return (
+    <CustomerPage go={go} back={() => go(screens.estimateStart)} className="cds--white">
+      <section className="estimate-more-info">
+        <header className="estimate-more-info-header">
+          <span className="estimate-start-label">추가 정보 입력</span>
+          <h1>견적을 위해 정보가 조금 더 필요해요</h1>
+          <p>{message || '아래 항목을 알려주시면 AI 견적 생성을 이어서 진행할게요.'}</p>
+        </header>
+
+        <div className="estimate-missing-chip-list" aria-label="부족한 정보">
+          {missingInfo.map((item) => (
+            <span key={item} className="estimate-missing-chip">{normalizeMissingInfoLabel(item)}</span>
+          ))}
+        </div>
+
+        <div className="estimate-more-info-thread">
+          <div className="estimate-chat-bubble is-assistant">
+            <strong>AI 견적 도우미</strong>
+            <p>입력해 주신 내용은 확인했어요. 정확한 견적을 위해 아래 정보를 추가로 알려주세요.</p>
+          </div>
+
+          {missingInfo.map((item) => (
+            <div key={item} className="estimate-more-info-field">
+              <div className="estimate-chat-bubble is-assistant">
+                <p>{normalizeMissingInfoLabel(item)} 정보를 입력해 주세요.</p>
+              </div>
+              <label className="estimate-more-info-answer">
+                <span>{normalizeMissingInfoLabel(item)}</span>
+                <textarea
+                  className="estimate-more-info-textarea"
+                  value={answers[item] || ''}
+                  onChange={(event) => updateAnswer(item, event.target.value)}
+                  placeholder={getMissingInfoPlaceholder(item)}
+                />
+              </label>
+            </div>
+          ))}
+        </div>
+
+        <div className="estimate-more-info-actions">
+          <button type="button" className="estimate-output-ghost-button" onClick={() => go(screens.estimateStart)}>
+            처음부터 다시 입력
+          </button>
+          <PrimaryButton onClick={submitMoreInfo} disabled={!isComplete}>추가 정보 보내기</PrimaryButton>
+        </div>
+      </section>
+    </CustomerPage>
+  );
 }
 
 export function EstimateDonePage() {

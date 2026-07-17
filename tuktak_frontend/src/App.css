@@ -4741,6 +4741,163 @@ button {
 }
 
 /* ==========================================================================
+   AI estimate additional information chat
+   ========================================================================== */
+
+.estimate-more-info,
+.estimate-more-info-empty {
+  background: var(--cds-background, #ffffff);
+  color: var(--cds-text-primary, #161616);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 24px;
+}
+
+.estimate-more-info-empty {
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+  text-align: center;
+}
+
+.estimate-more-info-empty h1,
+.estimate-more-info-header h1 {
+  color: var(--cds-text-primary, #161616);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.estimate-more-info-empty p,
+.estimate-more-info-header p {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
+.estimate-more-info-header {
+  margin-bottom: 16px;
+}
+
+.estimate-missing-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.estimate-missing-chip {
+  background: #edf5ff;
+  border: 1px solid #d0e2ff;
+  border-radius: 999px;
+  color: var(--cds-background-brand, #0f62fe);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 8px 10px;
+}
+
+.estimate-more-info-thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+.estimate-chat-bubble {
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 86%;
+  padding: 12px 14px;
+}
+
+.estimate-chat-bubble.is-assistant {
+  align-self: flex-start;
+  background: var(--cds-layer, #f4f4f4);
+  color: var(--cds-text-primary, #161616);
+}
+
+.estimate-chat-bubble strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.estimate-chat-bubble p {
+  margin: 0;
+}
+
+.estimate-more-info-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.estimate-more-info-answer {
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(86%, 360px);
+}
+
+.estimate-more-info-answer span {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.estimate-more-info-textarea {
+  background: var(--cds-background, #ffffff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-bottom-color: var(--cds-border-strong, #8d8d8d);
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: var(--cds-text-primary, #161616);
+  font-family: inherit;
+  font-size: 14px;
+  height: 96px;
+  line-height: 1.5;
+  padding: 12px;
+  resize: none;
+  width: 100%;
+}
+
+.estimate-more-info-textarea:focus {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: -2px;
+}
+
+.estimate-more-info-actions {
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.estimate-more-info-actions .primary-button {
+  background: var(--cds-background-brand, #0f62fe);
+  border-radius: 4px;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  width: auto;
+}
+
+.estimate-more-info-actions .primary-button:disabled {
+  background: var(--cds-button-disabled, #c6c6c6);
+}
+
+/* ==========================================================================
    AI 견적서 생성중 (EstimateLoadingPage) — Carbon 스타일
    ========================================================================== */
 

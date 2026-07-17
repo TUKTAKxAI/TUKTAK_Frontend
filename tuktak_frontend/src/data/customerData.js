@@ -14,6 +14,7 @@ export const screens = {
   estimateHome: 'estimateHome',
   estimateStart: 'estimateStart',
   estimateLoading: 'estimateLoading',
+  estimateMoreInfo: 'estimateMoreInfo',
   estimateDone: 'estimateDone',
   estimateOutput: 'estimateOutput',
   myEstimateList: 'myEstimateList',
@@ -58,7 +59,7 @@ export const publicScreens = [
 ]
 
 export const navRoots = {
-  ai: [screens.estimateHome, screens.estimateStart, screens.estimateLoading, screens.estimateDone, screens.estimateOutput, screens.myEstimateList],
+  ai: [screens.estimateHome, screens.estimateStart, screens.estimateLoading, screens.estimateMoreInfo, screens.estimateDone, screens.estimateOutput, screens.myEstimateList],
   match: [
     screens.matchingHome,
     screens.matchingEstimateSelect,
