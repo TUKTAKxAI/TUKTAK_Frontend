@@ -5,7 +5,7 @@ import { EstimateCard, SearchBar } from '../../components/customer/Cards'
 import { CustomerPage } from './CustomerPageShared'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { PrimaryButton } from '../../components/customer/FormControls'
-import { FaCloudUploadAlt, FaChevronLeft, FaTimes } from 'react-icons/fa'
+import { FaCloudUploadAlt, FaChevronLeft, FaExclamationTriangle, FaTimes } from 'react-icons/fa'
 import { screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
 import preview1 from '../../assets/figma/preview1.webp';
@@ -58,6 +58,143 @@ function getMissingInfoPlaceholder(item) {
   };
 
   return placeholders[label] || `예) ${label} 정보를 구체적으로 입력해 주세요`;
+}
+
+const ESTIMATE_STOP_NOTICE_BY_CODE = {
+  ESTIMATE_VALIDATION_TOO_SHORT: {
+    title: '설명을 조금 더 자세히 적어주세요',
+    description: '현재 설명만으로는 어떤 시공이 필요한지 판단하기 어렵습니다.',
+    actionLabel: '설명 수정하기',
+    tips: ['수리할 대상과 증상을 함께 적어주세요.', '예: 거실 벽지가 찢어졌고 1평 이하 부분 보수가 필요해요.'],
+  },
+  ESTIMATE_VALIDATION_TOO_VAGUE: {
+    title: '수리 내용을 더 구체적으로 알려주세요',
+    description: '대상이나 증상이 부족해서 견적 산출이 중단되었습니다.',
+    actionLabel: '내용 보완하기',
+    tips: ['어디가 고장났는지 적어주세요.', '언제부터, 어떤 증상이 나는지도 함께 적으면 정확도가 올라갑니다.'],
+  },
+  ESTIMATE_VALIDATION_NOT_REPAIR_RELATED: {
+    title: '수리 관련 설명이 필요해요',
+    description: 'AI 견적은 시공이나 수리 요청에 대해서만 생성할 수 있습니다.',
+    actionLabel: '다시 작성하기',
+    tips: ['제품 구매 문의나 일반 질문 대신 수리할 부위를 적어주세요.', '예: 욕실 타일이 깨져서 교체가 필요해요.'],
+  },
+  ESTIMATE_VALIDATION_SPAM_OR_GIBBERISH: {
+    title: '입력 내용을 확인해주세요',
+    description: '반복 문자나 의미를 알 수 없는 문장이 포함되어 견적을 만들 수 없습니다.',
+    actionLabel: '다시 작성하기',
+    tips: ['초성, 반복 문자, 무관한 문장은 제외해주세요.', '수리 대상과 증상을 자연스러운 문장으로 작성해주세요.'],
+  },
+  ESTIMATE_VALIDATION_UNSAFE_INPUT: {
+    title: '부적절한 표현을 제외해주세요',
+    description: '욕설이나 공격적인 표현이 포함되면 AI 견적 생성을 진행할 수 없습니다.',
+    actionLabel: '표현 수정하기',
+    tips: ['욕설이나 비하 표현 없이 증상만 적어주세요.', '예: 문이 닫히지 않고 경첩 쪽이 흔들려요.'],
+  },
+  ESTIMATE_VALIDATION_PRICE_ONLY: {
+    title: '가격만으로는 견적을 만들 수 없어요',
+    description: '희망 가격이 아니라 실제 수리 대상과 증상이 필요합니다.',
+    actionLabel: '수리 내용 입력하기',
+    tips: ['고장난 대상, 위치, 증상을 함께 적어주세요.', '예: 싱크대 하부장에서 물이 새고 바닥이 젖어 있어요.'],
+  },
+  ESTIMATE_VALIDATION_IMAGE_REQUIRED: {
+    title: '사진을 다시 첨부해주세요',
+    description: '시공 부위를 확인할 사진이 필요해서 견적 산출이 중단되었습니다.',
+    actionLabel: '사진 첨부하기',
+    tips: ['수리 부위가 화면 중앙에 보이게 찍어주세요.', '너무 어둡거나 흔들린 사진은 피해주세요.'],
+    preserveInput: false,
+  },
+  ESTIMATE_VALIDATION_IMAGE_QUALITY_INVALID: {
+    title: '사진을 다시 찍어주세요',
+    description: '사진이 흐리거나 너무 어둡고 밝아서 시공 부위를 확인하기 어렵습니다.',
+    actionLabel: '사진 다시 선택하기',
+    tips: ['수리 부위를 가까이서 선명하게 찍어주세요.', '조명을 켜고 그림자가 심하지 않게 촬영해주세요.'],
+    preserveInput: false,
+  },
+};
+
+const MISSING_INFO_GUIDE = {
+  proper_exposure_image: '밝기와 노출이 적절한 사진',
+  sharp_image: '흔들림 없이 선명한 사진',
+  valid_image: '수리 부위가 확인되는 사진',
+  description: '수리 설명',
+  images: '시공 부위 사진',
+};
+
+function buildEstimateStopNotice(data = {}) {
+  const code = data.code || data.error?.code || 'ESTIMATE_SERVICE_ERROR';
+  const fallback = code.startsWith('ESTIMATE_VALIDATION_')
+    ? {
+        title: '입력 내용을 확인해주세요',
+        description: data.message || '입력값 검사를 통과하지 못해 견적 산출이 중단되었습니다.',
+        actionLabel: '수정하기',
+        tips: ['사진과 설명을 다시 확인해주세요.'],
+      }
+    : {
+        title: '견적 생성을 완료하지 못했어요',
+        description: data.message || '서비스 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        actionLabel: '다시 시도하기',
+        tips: ['문제가 반복되면 사진을 다시 선택한 뒤 요청해주세요.'],
+      };
+  const preset = ESTIMATE_STOP_NOTICE_BY_CODE[code] || fallback;
+  const missingInfo = data.missing_info || data.error?.missing_info || [];
+
+  return {
+    code,
+    title: preset.title,
+    description: preset.description,
+    actionLabel: preset.actionLabel,
+    tips: preset.tips,
+    preserveInput: preset.preserveInput !== false,
+    missingInfo,
+  };
+}
+
+function EstimateStopModal({ notice, onClose }) {
+  const missingLabels = (notice.missingInfo || [])
+    .map((item) => MISSING_INFO_GUIDE[item] || normalizeMissingInfoLabel(item))
+    .filter(Boolean);
+
+  return (
+    <div className="estimate-result-overlay estimate-stop-overlay" role="presentation">
+      <article className="estimate-result-modal estimate-stop-modal" role="dialog" aria-modal="true" aria-labelledby="estimate-stop-title">
+        <div className="estimate-stop-icon" aria-hidden="true">
+          <FaExclamationTriangle />
+        </div>
+        <div className="estimate-result-head">
+          <div>
+            <span>AI 견적 안내</span>
+            <small>{notice.code}</small>
+          </div>
+          <button type="button" onClick={onClose} aria-label="닫기">
+            <FaTimes />
+          </button>
+        </div>
+        <div className="estimate-result-title">
+          <h2 id="estimate-stop-title">{notice.title}</h2>
+          <p>{notice.description}</p>
+        </div>
+        {missingLabels.length ? (
+          <div className="estimate-stop-needed">
+            <span>필요한 항목</span>
+            <div>
+              {missingLabels.map((label) => (
+                <small key={label}>{label}</small>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <ul className="estimate-stop-tips">
+          {(notice.tips || []).map((tip) => (
+            <li key={tip}>{tip}</li>
+          ))}
+        </ul>
+        <div className="estimate-result-actions">
+          <PrimaryButton onClick={onClose}>{notice.actionLabel}</PrimaryButton>
+        </div>
+      </article>
+    </div>
+  );
 }
 
 function ServiceHero({ onClick, buttonLabel, go }) {
@@ -169,16 +306,28 @@ export function EstimateHomePage({ go }) {
 
 export function EstimateStartPage({ go }) {
   const navigate = useNavigate();
-  const [image, setImage] = useState(null);
+  const location = useLocation();
+  const retryState = location.state?.retryEstimate || {};
+  const [image, setImage] = useState(retryState.image || null);
   const [preview, setPreview] = useState(null);
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(retryState.description || '');
   const [remainingCount] = useState(getInitialRemainingCount);
+
+  useEffect(() => {
+    if (!image) {
+      setPreview(null);
+      return undefined;
+    }
+
+    const objectUrl = URL.createObjectURL(image);
+    setPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [image]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setImage(file);
-      setPreview(URL.createObjectURL(file));
     }
   };
 
@@ -240,6 +389,7 @@ export function EstimateLoadingPage({ go }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { image, description } = location.state || {};
+  const [validationNotice, setValidationNotice] = useState(null);
 
   useEffect(() => {
     if (!image || !description) {
@@ -276,14 +426,12 @@ export function EstimateLoadingPage({ go }) {
         }
 
         if (data.response_status && data.response_status !== 'completed') {
-          alert(data.message || 'AI 견적 요청을 처리할 수 없습니다.');
-          go(screens.estimateStart);
+          setValidationNotice(buildEstimateStopNotice(data));
           return;
         }
 
         if (!data.success) {
-          alert('견적 요청에 실패했습니다: ' + (data.detail || '알 수 없는 오류'));
-          go(screens.estimateStart);
+          setValidationNotice(buildEstimateStopNotice(data));
           return;
         }
 
@@ -310,8 +458,7 @@ export function EstimateLoadingPage({ go }) {
       } catch (error) {
         if (error.code === 'ERR_CANCELED') return;
         console.error('견적 요청 실패:', error);
-        alert(`백엔드 서버와 통신하는 중 오류가 발생했습니다: ${error.message}`);
-        go(screens.estimateStart);
+        setValidationNotice(buildEstimateStopNotice(error.data || { message: error.message, response_status: 'service_error' }));
       }
     };
 
@@ -326,6 +473,11 @@ export function EstimateLoadingPage({ go }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [image, description]);
 
+  const closeValidationNotice = () => {
+    const retryEstimate = validationNotice?.preserveInput === false ? {} : { image, description };
+    navigate(screenPaths[screens.estimateStart], { state: { retryEstimate, noticeCode: validationNotice?.code } });
+  };
+
   return (
     <section className="estimate-loading">
       <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
@@ -335,6 +487,9 @@ export function EstimateLoadingPage({ go }) {
       <button type="button" className="estimate-loading-cancel" onClick={() => go(screens.estimateStart)}>
         취소
       </button>
+      {validationNotice ? (
+        <EstimateStopModal notice={validationNotice} onClose={closeValidationNotice} />
+      ) : null}
     </section>
   )
 }

@@ -4969,6 +4969,89 @@ button {
   background: var(--cds-layer, #f4f4f4);
 }
 
+.estimate-stop-overlay {
+  text-align: left;
+}
+
+.estimate-stop-modal {
+  padding-top: 20px;
+}
+
+.estimate-stop-icon {
+  align-items: center;
+  background: #fff1f1;
+  border: 1px solid #ffd7d9;
+  border-radius: 4px;
+  color: #da1e28;
+  display: flex;
+  font-size: 18px;
+  height: 40px;
+  justify-content: center;
+  margin-bottom: 14px;
+  width: 40px;
+}
+
+.estimate-stop-needed {
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+  display: flex;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 0;
+}
+
+.estimate-stop-needed > span {
+  color: var(--cds-text-placeholder, #a8a8a8);
+  flex-shrink: 0;
+  font-size: 12px;
+  width: 72px;
+}
+
+.estimate-stop-needed div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.estimate-stop-needed small {
+  background: var(--cds-layer, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  color: var(--cds-text-primary, #161616);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 5px 8px;
+}
+
+.estimate-stop-tips {
+  color: var(--cds-text-secondary, #525252);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+}
+
+.estimate-stop-tips li {
+  padding-left: 14px;
+  position: relative;
+}
+
+.estimate-stop-tips li::before {
+  background: var(--cds-background-brand, #0f62fe);
+  border-radius: 50%;
+  content: "";
+  height: 4px;
+  left: 0;
+  position: absolute;
+  top: 8px;
+  width: 4px;
+}
+
 .estimate-status-logo {
   height: 96px;
   margin-bottom: 40px;
@@ -6735,7 +6818,7 @@ button {
   background: var(--cds-background, #ffffff);
   border: 1px solid var(--cds-border-subtle, #e0e0e0);
   border-radius: 4px;
-  padding: 20px;
+  padding: 16px;
 }
 
 .risk-output-card-title {
@@ -6757,48 +6840,56 @@ button {
 .risk-output-alert-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .risk-output-alert {
-  background: #fff1f1;
-  border: 1px solid #ffd7d9;
+  background: var(--cds-layer, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-left: 3px solid var(--cds-support-error, #da1e28);
   border-radius: 4px;
-  padding: 14px;
+  padding: 11px 12px;
 }
 
 .risk-output-alert-head {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   gap: 8px;
-  margin-bottom: 6px;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
 .risk-output-alert-title {
   color: var(--cds-text-primary, #161616);
-  font-size: 14px;
+  flex: 1;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.35;
 }
 
 .risk-output-alert-level {
   background: var(--cds-background, #ffffff);
-  border: 1px solid #ffd7d9;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
   border-radius: 2px;
   color: var(--cds-support-error, #da1e28);
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 6px;
 }
 
 .risk-output-alert-desc {
   color: var(--cds-text-secondary, #525252);
-  font-size: 13px;
-  line-height: 1.55;
+  display: -webkit-box;
+  font-size: 12px;
+  line-height: 1.45;
   margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .risk-output-section {
@@ -6831,10 +6922,10 @@ button {
   background: var(--cds-layer, #f4f4f4);
   border-radius: 4px;
   color: var(--cds-text-secondary, #525252);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.5;
   margin: 0;
-  padding: 14px;
+  padding: 12px;
 }
 
 .risk-output-checklist {
@@ -6871,18 +6962,21 @@ button {
 .risk-output-bullet-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .risk-output-bullet-list li {
+  background: var(--cds-layer, #f4f4f4);
+  border-radius: 4px;
   color: var(--cds-text-secondary, #525252);
   display: flex;
-  font-size: 13px;
+  font-size: 12px;
   gap: 8px;
-  line-height: 1.55;
+  line-height: 1.45;
+  padding: 10px 11px;
 }
 
 .risk-output-bullet-list li strong {

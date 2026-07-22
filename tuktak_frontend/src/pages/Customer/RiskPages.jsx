@@ -258,6 +258,12 @@ export function RiskLoadingPage({ go }) {
                 state: { resultData: statusData.report }
               });
             }
+            if (statusData.success && statusData.report && statusData.report.report_status === 'FAILED') {
+              clearInterval(pollTimer);
+              navigate(screenPaths[screens.riskOutput], {
+                state: { resultData: statusData.report }
+              });
+            }
           } catch (error) {
             if (error.code === 'ERR_CANCELED') return;
             console.error('상태 확인 실패:', error);
@@ -321,6 +327,19 @@ export function RiskDonePage() {
   )
 }
 
+const compactRiskText = (value, maxLength = 95) => {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const firstSentence = text.split(/(?<=[.!?。]|다\.|요\.|니다\.)\s*/)[0] || text;
+  const compact = firstSentence.length >= 28 ? firstSentence : text;
+  return compact.length > maxLength ? `${compact.slice(0, maxLength).trim()}...` : compact;
+};
+
+const compactDetailText = (item, maxLength = 110) => {
+  const text = item?.expected_impact || item?.description || (typeof item === 'string' ? item : '');
+  return compactRiskText(text, maxLength);
+};
+
 export function RiskOutputPage({ go }) {
   const location = useLocation();
   const resultData = location.state?.resultData;
@@ -343,6 +362,7 @@ export function RiskOutputPage({ go }) {
   const fieldVariableRisks = resultData.field_variable_risks || resultData.field_variable_risks_json || [];
 
   const riskGradeClass = resultData.risk_level === 'LOW' ? 'is-low' : resultData.risk_level === 'MEDIUM' ? 'is-medium' : 'is-high';
+  const isFailed = resultData.report_status === 'FAILED';
 
   return (
     <section className="risk-output">
@@ -363,11 +383,11 @@ export function RiskOutputPage({ go }) {
         <div className="risk-output-stat-row">
           <div className="risk-output-stat">
             <span>리스크 점수</span>
-            <strong>{resultData.risk_score}점</strong>
+            <strong>{isFailed ? '-' : `${resultData.risk_score}점`}</strong>
           </div>
           <div className="risk-output-stat">
             <span>리스크 등급</span>
-            <strong className={`risk-output-grade ${riskGradeClass}`}>{resultData.risk_level}</strong>
+            <strong className={`risk-output-grade ${riskGradeClass}`}>{isFailed ? '근거 부족' : resultData.risk_level}</strong>
           </div>
         </div>
 
@@ -380,17 +400,22 @@ export function RiskOutputPage({ go }) {
               <FaExclamationTriangle aria-hidden="true" /> 핵심 리스크 요약
             </h3>
             <ul className="risk-output-alert-list">
-              {riskItems.map((item, idx) => (
-                <li key={idx} className="risk-output-alert">
-                  <div className="risk-output-alert-head">
-                    <span className="risk-output-alert-title">{item.title || "주의 사항"}</span>
-                    {item.level && <span className="risk-output-alert-level">{item.level}</span>}
-                  </div>
-                  <p className="risk-output-alert-desc">
-                    {item.description || "상세 내용이 없습니다."}
-                  </p>
-                </li>
-              ))}
+              {riskItems.map((item, idx) => {
+                const description = compactRiskText(item.description);
+                return (
+                  <li key={idx} className="risk-output-alert">
+                    <div className="risk-output-alert-head">
+                      <span className="risk-output-alert-title">{item.title || "주의 사항"}</span>
+                      {item.level && <span className="risk-output-alert-level">{item.level}</span>}
+                    </div>
+                    {description && (
+                      <p className="risk-output-alert-desc">
+                        {description}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -404,7 +429,7 @@ export function RiskOutputPage({ go }) {
           <section className="risk-output-section">
             <h3>상세 요약</h3>
             <p className="risk-output-block">
-              {resultData.summary || "요약 정보가 없습니다."}
+              {compactRiskText(resultData.summary || resultData.failure_reason, 170) || "요약 정보가 없습니다."}
             </p>
           </section>
 
@@ -435,7 +460,7 @@ export function RiskOutputPage({ go }) {
                     <span>
                       {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
-                      {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
+                      {compactDetailText(item)}
                     </span>
                   </li>
                 ))}
@@ -454,7 +479,7 @@ export function RiskOutputPage({ go }) {
                     <span>
                       {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
-                      {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
+                      {compactDetailText(item)}
                     </span>
                   </li>
                 ))}
@@ -473,7 +498,7 @@ export function RiskOutputPage({ go }) {
                     <span>
                       {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
-                      {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
+                      {compactDetailText(item)}
                     </span>
                   </li>
                 ))}
@@ -492,7 +517,7 @@ export function RiskOutputPage({ go }) {
                     <span>
                       {item.title && <strong>{item.title}</strong>}
                       {item.title && item.expected_impact && " : "}
-                      {item.expected_impact || item.description || (typeof item === 'string' ? item : '')}
+                      {compactDetailText(item)}
                     </span>
                   </li>
                 ))}
