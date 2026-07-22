@@ -17,7 +17,7 @@ export const defaultActiveWorkSummary = {
   activeCount: 0,
 }
 
-function getDistrictFromAddress(address) {
+export function getDistrictFromAddress(address) {
   const match = String(address || '').match(/[가-힣]+구/)
   return match?.[0] ?? '주소'
 }
@@ -94,20 +94,24 @@ export async function saveHomeAddress(address) {
 export async function fetchNearbySummary(address) {
   if (!hasAccessToken() || !address?.regionCodeId) return defaultNearbySummary
 
-  try {
-    const data = await apiRequest('/contractors/nearby', {
-      query: {
-        region_code_id: address.regionCodeId,
-      },
-    })
+  // The backend does not expose GET /contractors/nearby yet.
+  // Avoid hitting /contractors/{contractor_id} with "nearby", which returns 422.
+  return defaultNearbySummary
 
-    return {
-      contractorCount: data.contractor_count ?? data.count ?? defaultNearbySummary.contractorCount,
-    }
-  } catch (error) {
-    console.warn('nearby summary fallback:', error)
-    return defaultNearbySummary
-  }
+  // try {
+  //   const data = await apiRequest('/contractors/nearby', {
+  //     query: {
+  //       region_code_id: address.regionCodeId,
+  //     },
+  //   })
+  //
+  //   return {
+  //     contractorCount: data.contractor_count ?? data.count ?? defaultNearbySummary.contractorCount,
+  //   }
+  // } catch (error) {
+  //   console.warn('nearby summary fallback:', error)
+  //   return defaultNearbySummary
+  // }
 }
 
 // 진행중 시공 요약: GET /api/v1/work-orders

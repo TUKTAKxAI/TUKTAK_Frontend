@@ -7,21 +7,17 @@ export function createMatchingRequest(body) {
   })
 }
 
-export function getMatchingRequests(query) {
-  return apiRequest('/api/v1/matching-requests', { query })
-}
+let cachedRegionCodesPromise = null
 
-export function getMatchingRequest(matchingRequestId) {
-  return apiRequest(`/api/v1/matching-requests/${matchingRequestId}`)
-}
-
-export function getMatchingQuotes(matchingRequestId) {
-  return apiRequest(`/api/v1/matching-requests/${matchingRequestId}/quotes`)
-}
-
-export function selectMatchingQuote(matchingRequestId, quoteId) {
-  return apiRequest(`/api/v1/matching-requests/${matchingRequestId}/select-quote`, {
-    method: 'POST',
-    body: { quote_id: quoteId },
-  })
+// 매칭 가능 지역(REGION reference_codes) 목록. 백엔드 시드 데이터가 아직 서울 전역과
+// 경기/인천 일부 지역만 커버하므로, 매칭 요청을 만들기 전에 프론트에서 먼저 걸러내기 위해 사용한다.
+export function fetchSupportedRegionCodes() {
+  if (!cachedRegionCodesPromise) {
+    cachedRegionCodesPromise = apiRequest('/api/v1/reference-codes', {
+      query: { code_group: 'REGION' },
+    })
+      .then((data) => data.codes || [])
+      .catch(() => [])
+  }
+  return cachedRegionCodesPromise
 }

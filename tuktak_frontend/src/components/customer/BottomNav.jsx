@@ -1,32 +1,32 @@
+import { FaRobot, FaHandshake, FaHome, FaExclamationTriangle, FaCommentDots } from 'react-icons/fa'
 import { navRoots, screens } from '../../data/customerData'
-import { figmaAssets } from './figmaAssets'
 
 const navItems = [
-  ['AI 견적', 'ai', screens.estimateHome, figmaAssets.navAi],
-  ['매칭', 'match', screens.matchingHome, figmaAssets.navMatch],
-  ['홈', 'home', screens.home, figmaAssets.navHome],
-  ['리스크', 'risk', screens.riskHome, figmaAssets.navRisk],
-  ['채팅', 'chat', screens.chatList, figmaAssets.navChat],
+  ['AI 견적', 'ai', screens.estimateHome, FaRobot],
+  ['매칭', 'match', screens.matchingHome, FaHandshake],
+  ['홈', 'home', screens.home, FaHome],
+  ['리스크', 'risk', screens.riskHome, FaExclamationTriangle],
+  ['채팅', 'chat', screens.chatList, FaCommentDots],
 ]
 
 export function BottomNav({ current, go }) {
   return (
     <nav className="bottom-nav">
-      {navItems.map(([label, key, target, icon]) => {
+      {navItems.map(([label, key, target, Icon]) => {
         const active = navRoots[key].includes(current)
-        
-        const isHome = key === 'home'
 
         return (
-          <button 
-            className={`${active ? 'active' : ''} ${isHome ? 'home-btn-wrapper' : ''}`} 
-            key={target} 
-            onClick={() => go(target)} 
+          <button
+            className={`${active ? 'active' : ''} ${key === 'home' ? 'is-home' : ''}`.trim()}
+            key={target}
+            onClick={() => go(target)}
             aria-label={label}
+            aria-current={active ? 'page' : undefined}
           >
-            <span className={isHome ? 'home-circle' : 'nav-icon'}>
-              <img src={icon} alt="" />
+            <span className="nav-icon" aria-hidden="true">
+              <Icon />
             </span>
+            {key !== 'home' ? <span className="nav-label">{label}</span> : null}
           </button>
         )
       })}

@@ -1,18 +1,27 @@
 import { screens } from '../../data/customerData'
 import { useNotifications } from '../../context/notificationContext'
 import { figmaAssets } from './figmaAssets'
-import { Logo } from './FormControls'
 
-export function HeaderIcon({ src, label, onClick }) {
+export function HeaderIcon({ src, label, onClick, className = '' }) {
   return (
-    <button className="top-icon-button" type="button" aria-label={label} onClick={onClick}>
+    <button className={`top-icon-button ${className}`.trim()} type="button" aria-label={label} onClick={onClick}>
       <img src={src} alt="" />
     </button>
   )
 }
 
-export function CustomerTopBar({
+function Brand() {
+  return (
+    <div className="topbar-brand">
+      <img src={figmaAssets.logoMark} alt="" className="topbar-logo-mark" />
+      <span className="topbar-wordmark">TUKTAK</span>
+    </div>
+  )
+}
+
+export function TopBar({
   go,
+  back,
   notificationIcon,
   notificationCount,
   onNotificationClick,
@@ -24,7 +33,7 @@ export function CustomerTopBar({
 
   return (
     <header className="home-topbar customer-topbar">
-      <Logo />
+      {back ? <HeaderIcon src={figmaAssets.back} label="뒤로가기" onClick={back} className="top-back-button" /> : <Brand />}
       <div className="top-actions">
         <div className="home-notification-trigger">
           <HeaderIcon src={resolvedNotificationIcon} label="알림" onClick={handleNotificationClick} />

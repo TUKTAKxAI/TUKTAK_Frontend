@@ -1,13 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createMatchingRequest } from '../api/matchingApi'
 import { CustomerFlowContext } from './CustomerFlowContext'
 import { chatThreads, initialMessages, screens } from '../data/customerData'
 import { mockMatchingRequest, useMatchingMocks } from '../data/matchingMockData'
 import { screenPaths } from '../routes/customerRoutes'
-
-function getEstimateTitle(estimate) {
-  return estimate?.repair_task_name || estimate?.object_label || estimate?.main_category || estimate?.title || '거실 몰딩 시공'
-}
+import { buildMatchingRequestBody } from '../utils/matchingRequest'
 
 export function CustomerFlowProvider({ children }) {
   const [userType, setUserType] = useState('customer')
@@ -33,37 +30,58 @@ export function CustomerFlowProvider({ children }) {
     matchingHistory: [],
   })
 
-  const activeMessages = messagesByThread[activeThread] || []
+  const activeMessages = useMemo(
+    () => messagesByThread[activeThread] || [],
+    [messagesByThread, activeThread],
+  )
   const activePartner = useMemo(
     () => chatThreads.find((thread) => thread.id === activeThread)?.name || '홍길동 파트너님',
     [activeThread],
   )
 
-  const sendMessage = () => {
-    const trimmed = chatText.trim()
+  // 아래 두 ref는 sendMessage/submitMatchingRequest가 매 렌더 새로 만들어지지 않도록
+  // (context value 전체가 매 렌더 바뀌면 이 값을 구독하는 모든 화면이 불필요하게
+  // 리렌더/effect 재실행됨) 최신 state를 클로저 없이 참조하기 위한 용도.
+  const chatTextRef = useRef(chatText)
+  useEffect(() => {
+    chatTextRef.current = chatText
+  }, [chatText])
+
+  const activeThreadRef = useRef(activeThread)
+  useEffect(() => {
+    activeThreadRef.current = activeThread
+  }, [activeThread])
+
+  const matchingFlowRef = useRef(matchingFlow)
+  useEffect(() => {
+    matchingFlowRef.current = matchingFlow
+  }, [matchingFlow])
+
+  const sendMessage = useCallback(() => {
+    const trimmed = chatTextRef.current.trim()
     if (!trimmed) return
+    const thread = activeThreadRef.current
     setMessagesByThread((items) => ({
       ...items,
-      [activeThread]: [...(items[activeThread] || []), { from: 'me', text: trimmed }],
+      [thread]: [...(items[thread] || []), { from: 'me', text: trimmed }],
     }))
     setChatText('')
-  }
+  }, [])
 
-  const openThread = (threadId, navigate) => {
+  const openThread = useCallback((threadId, navigate) => {
     setActiveThread(threadId)
     navigate(screenPaths[screens.chatRoom])
-  }
+  }, [])
 
-  const updateMatchingFlow = (nextValue) => {
+  const updateMatchingFlow = useCallback((nextValue) => {
     setMatchingFlow((current) => ({
       ...current,
       ...(typeof nextValue === 'function' ? nextValue(current) : nextValue),
     }))
-  }
+  }, [])
 
-  const submitMatchingRequest = async (isEmergency = false) => {
-    const estimate = matchingFlow.selectedEstimate
-    const address = matchingFlow.selectedAddress
+  const submitMatchingRequest = useCallback(async (isEmergency = false) => {
+    const { selectedEstimate: estimate, selectedAddress: address, schedule: currentSchedule } = matchingFlowRef.current
     if (!estimate?.estimate_id) throw new Error('AI 견적서를 먼저 선택해주세요.')
     if (!address?.region_code_id || !address?.address) throw new Error('매칭 요청에 사용할 주소 정보가 필요합니다.')
     if (!address?.address_detail?.trim()) throw new Error('상세 주소를 입력해주세요.')
@@ -72,26 +90,11 @@ export function CustomerFlowProvider({ children }) {
       preferred_date: new Date().toISOString().slice(0, 10),
       preferred_time_start: null,
       preferred_time_end: null,
-    } : matchingFlow.schedule
-    const fullAddress = [address.address, address.address_detail]
-      .filter(Boolean)
-      .join(' ')
+    } : currentSchedule
+
     let data
     try {
-      data = await createMatchingRequest({
-        estimate_id: estimate.estimate_id,
-        title: getEstimateTitle(estimate),
-        region_code_id: address.region_code_id,
-        address: fullAddress,
-        preferred_date: schedule.preferred_date,
-        preferred_time_start: isEmergency ? undefined : schedule.preferred_time_start,
-        preferred_time_end: isEmergency ? undefined : schedule.preferred_time_end,
-        budget_min: estimate.min_price,
-        budget_max: estimate.max_price,
-        request_message: '',
-        privacy_settings: {},
-        is_emergency: isEmergency,
-      })
+      data = await createMatchingRequest(buildMatchingRequestBody({ estimate, address, schedule, isEmergency }))
     } catch (error) {
       if (!useMatchingMocks) throw error
       data = mockMatchingRequest
@@ -107,9 +110,9 @@ export function CustomerFlowProvider({ children }) {
     })
 
     return data
-  }
+  }, [updateMatchingFlow])
 
-  const value = {
+  const value = useMemo(() => ({
     userType,
     setUserType,
     terms,
@@ -130,7 +133,21 @@ export function CustomerFlowProvider({ children }) {
     setMatchingFlow,
     updateMatchingFlow,
     submitMatchingRequest,
-  }
+  }), [
+    userType,
+    terms,
+    activeThread,
+    chatText,
+    messagesByThread,
+    activeMessages,
+    activePartner,
+    sendMessage,
+    openThread,
+    showUrgentModal,
+    matchingFlow,
+    updateMatchingFlow,
+    submitMatchingRequest,
+  ])
 
   return <CustomerFlowContext.Provider value={value}>{children}</CustomerFlowContext.Provider>
 }

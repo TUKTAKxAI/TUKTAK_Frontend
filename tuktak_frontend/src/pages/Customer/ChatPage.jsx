@@ -1,8 +1,19 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { Avatar } from '../../components/customer/FormControls'
-import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
-import { figmaAssets } from '../../components/customer/figmaAssets'
-import chatIcon from '../../assets/figma/chat.png'
+import { CustomerPage } from './CustomerPageShared'
+import {
+    FaChevronLeft,
+    FaChevronRight,
+    FaSearch,
+    FaBars,
+    FaTimes,
+    FaPaperPlane,
+    FaCog,
+    FaImage,
+    FaPaperclip,
+    FaStar,
+    FaSignOutAlt,
+} from 'react-icons/fa'
 
 const FILTERS = [
     { key: 'all', label: '전체' },
@@ -17,6 +28,7 @@ export function ChatListPage({
     goToRoom,
     go,
     clearUnread,
+    back,
 }) {
     const [filter, setFilter] =
         useState('all')
@@ -66,107 +78,74 @@ export function ChatListPage({
     }
 
     return (
-        <section className="chat-list-screen">
-            <CustomerTopBar
-                title="채팅"
-                go={go}
-                compact
-                hideTitle
-            />
+        <CustomerPage go={go} className="cds--white">
+            <div className="chat-inbox">
+                {back ? (
+                    <div className="chat-inbox-heading-row">
+                        <button
+                            type="button"
+                            className="chat-inbox-back"
+                            onClick={back}
+                            aria-label="뒤로가기"
+                        >
+                            <FaChevronLeft />
+                        </button>
 
-            <div className="chat-page-title">
-                <img
-                    src={chatIcon}
-                    alt="채팅"
-                />
-                <h2>채팅</h2>
-            </div>
-
-            <div className="chat-filter">
-                {FILTERS.map((item) => (
-                    <button
-                        key={item.key}
-                        className={
-                            filter === item.key
-                                ? 'active'
-                                : ''
-                        }
-                        onClick={() =>
-                            setFilter(item.key)
-                        }
-                    >
-                        {item.label}
-                    </button>
-                ))}
-            </div>
-
-            <div className="list-stack">
-                {filteredThreads.length ===
-                    0 ? (
-                    <div className="chat-empty">
-                        표시할 채팅이
-                        없습니다.
+                        <h1 className="chat-inbox-heading">채팅</h1>
                     </div>
                 ) : (
-                    filteredThreads.map(
-                        (thread) => (
-                            <button
-                                key={
-                                    thread.id
-                                }
-                                className={`chat-thread flat ${thread.unread >
-                                    0
-                                    ? 'unread'
-                                    : ''
-                                    }`}
-                                onClick={() => {
-                                    clearUnread?.(
-                                        thread.id
-                                    )
+                    <h1 className="chat-inbox-heading">채팅</h1>
+                )}
 
-                                    goToRoom(
-                                        thread.id
-                                    )
+                <div className="chat-inbox-filters">
+                    {FILTERS.map((item) => (
+                        <button
+                            key={item.key}
+                            type="button"
+                            className={`chat-inbox-filter ${filter === item.key ? 'is-active' : ''}`}
+                            onClick={() => setFilter(item.key)}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="chat-inbox-list">
+                    {filteredThreads.length === 0 ? (
+                        <div className="chat-inbox-empty">표시할 채팅이 없습니다.</div>
+                    ) : (
+                        filteredThreads.map((thread) => (
+                            <button
+                                key={thread.id}
+                                type="button"
+                                className={`chat-inbox-item ${thread.unread > 0 ? 'is-unread' : ''}`}
+                                onClick={() => {
+                                    clearUnread?.(thread.id)
+                                    goToRoom(thread.id)
                                 }}
                             >
                                 <Avatar tone="blue" />
 
-                                <div className="chat-thread-copy">
-                                    <div className="chat-thread-head">
-                                        <strong>
-                                            {
-                                                thread.name
-                                            }
-                                        </strong>
-
-                                        <time>
-                                            {
-                                                thread.time
-                                            }
-                                        </time>
+                                <div className="chat-inbox-item-body">
+                                    <div className="chat-inbox-item-head">
+                                        <span className="chat-inbox-item-name">{thread.name}</span>
+                                        <time className="chat-inbox-item-time">{thread.time}</time>
                                     </div>
 
-                                    <span>
-                                        {getLatestMessage(
-                                            thread.id,
-                                            thread.preview
-                                        )?.trim()}
+                                    <span className="chat-inbox-item-preview">
+                                        {getLatestMessage(thread.id, thread.preview)?.trim()}
                                     </span>
                                 </div>
 
                                 {!!thread.unread && (
-                                    <em>
-                                        {
-                                            thread.unread
-                                        }
-                                    </em>
+                                    <span className="chat-inbox-item-badge">{thread.unread}</span>
                                 )}
                             </button>
-                        )
-                    )
-                )}
+                        ))
+                    )}
+                </div>
             </div>
-        </section>
+        </CustomerPage>
     )
 }
 
@@ -222,6 +201,14 @@ export function ChatRoomPage({
     ] = useState(0)
 
     const messageRefs = useRef([])
+    const messagesContainerRef = useRef(null)
+
+    useEffect(() => {
+        const container = messagesContainerRef.current
+        if (container) {
+            container.scrollTop = container.scrollHeight
+        }
+    }, [messages])
 
     const escapeRegExp = (string) =>
         string.replace(
@@ -350,82 +337,64 @@ export function ChatRoomPage({
     }
 
     return (
-        <section className="chat-room-screen">
-            <header className="chat-room-head">
+        <section className="chat-thread-view">
+            <header className="chat-thread-view-header">
                 {!showSearch ? (
                     <>
                         <button
-                            className="inline-back-arrow"
+                            type="button"
+                            className="chat-thread-view-back"
                             onClick={back}
+                            aria-label="뒤로가기"
                         >
-                            <img src={figmaAssets.back} alt="뒤로가기" />
+                            <FaChevronLeft />
                         </button>
 
-                        <div className="chat-room-title">
-                            <h1>
-                                {
-                                    partnerName
-                                }
-                            </h1>
+                        <div className="chat-thread-view-title">
+                            <h1>{partnerName}</h1>
                         </div>
 
-                        <div className="chat-room-actions">
+                        <div className="chat-thread-view-actions">
                             <button
-                                onClick={() =>
-                                    setShowSearch(
-                                        true
-                                    )
-                                }
+                                type="button"
+                                className="chat-thread-view-icon-button"
+                                onClick={() => setShowSearch(true)}
+                                aria-label="대화 검색"
                             >
-                                ⌕
+                                <FaSearch />
                             </button>
 
                             <button
-                                onClick={() =>
-                                    setShowMenu(true)
-                                }
+                                type="button"
+                                className="chat-thread-view-icon-button"
+                                onClick={() => setShowMenu(true)}
+                                aria-label="채팅방 메뉴"
                             >
-                                ☰
+                                <FaBars />
                             </button>
                         </div>
                     </>
                 ) : (
-                    <div className="chat-search-header">
+                    <div className="chat-thread-search">
                         <button
-                            className="inline-back-arrow"
+                            type="button"
+                            className="chat-thread-view-back"
                             onClick={() => {
-                                setShowSearch(
-                                    false
-                                )
-                                setSearchText(
-                                    ''
-                                )
-                                setSearchedText(
-                                    ''
-                                )
-                                setSearchResults(
-                                    []
-                                )
-                                setCurrentResultIndex(
-                                    0
-                                )
+                                setShowSearch(false)
+                                setSearchText('')
+                                setSearchedText('')
+                                setSearchResults([])
+                                setCurrentResultIndex(0)
                             }}
+                            aria-label="뒤로가기"
                         >
-                            <img src={figmaAssets.back} alt="뒤로가기" />
+                            <FaChevronLeft />
                         </button>
 
                         <input
-                            value={
-                                searchText
-                            }
-                            onChange={(
-                                e
-                            ) =>
-                                setSearchText(
-                                    e.target
-                                        .value
-                                )
-                            }
+                            className="chat-thread-search-input"
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                     handleSearch();
@@ -435,10 +404,9 @@ export function ChatRoomPage({
                         />
 
                         <button
-                            className="chat-search-btn"
-                            onClick={
-                                handleSearch
-                            }
+                            type="button"
+                            className="chat-thread-search-submit"
+                            onClick={handleSearch}
                         >
                             검색
                         </button>
@@ -446,7 +414,7 @@ export function ChatRoomPage({
                 )}
             </header>
 
-            <div className="message-list roomy">
+            <div className="chat-thread-messages" ref={messagesContainerRef}>
                 {messages.map(
                     (
                         message,
@@ -461,9 +429,9 @@ export function ChatRoomPage({
                                     index
                                 ] = el
                             }}
-                            className={`message ${message.from ===
+                            className={`chat-thread-message ${message.from ===
                                 'me'
-                                ? 'mine'
+                                ? 'is-mine'
                                 : ''
                                 }`}
                         >
@@ -478,18 +446,21 @@ export function ChatRoomPage({
             {showSearch &&
                 searchResults.length >
                 0 && (
-                    <div className="search-navigation-overlay">
+                    <div className="chat-thread-search-nav">
                         <button
+                            type="button"
+                            className="chat-thread-search-nav-button"
                             onClick={() =>
                                 moveSearchResult(
                                     -1
                                 )
                             }
+                            aria-label="이전 검색 결과"
                         >
-                            ◀
+                            <FaChevronLeft />
                         </button>
 
-                        <span>
+                        <span className="chat-thread-search-nav-count">
                             {currentResultIndex +
                                 1}
                             /
@@ -499,19 +470,23 @@ export function ChatRoomPage({
                         </span>
 
                         <button
+                            type="button"
+                            className="chat-thread-search-nav-button"
                             onClick={() =>
                                 moveSearchResult(
                                     1
                                 )
                             }
+                            aria-label="다음 검색 결과"
                         >
-                            ▶
+                            <FaChevronRight />
                         </button>
                     </div>
                 )}
 
-            <div className="chat-compose">
+            <div className="chat-thread-compose">
                 <input
+                    className="chat-thread-compose-input"
                     value={chatText}
                     placeholder="메시지를 입력하세요."
                     onChange={(
@@ -530,86 +505,96 @@ export function ChatRoomPage({
                 />
 
                 <button
+                    type="button"
+                    className="chat-thread-compose-send"
                     onClick={
                         sendMessage
                     }
+                    aria-label="전송"
                 >
-                    ➤
+                    <FaPaperPlane />
                 </button>
             </div>
 
             <div
-                className={`chat-menu-wrapper ${showMenu ? 'open' : ''
+                className={`chat-thread-menu ${showMenu ? 'is-open' : ''
                     }`}
             >
                 <div
-                    className="chat-menu-backdrop"
+                    className="chat-thread-menu-backdrop"
                     onClick={() => setShowMenu(false)}
                 />
 
-                <div className="chat-menu">
-                    <div className="chat-menu-top">
+                <div className="chat-thread-menu-panel">
+                    <div className="chat-thread-menu-top">
                         <h3>채팅방 메뉴</h3>
 
                         <button
-                            className="chat-menu-close"
+                            type="button"
+                            className="chat-thread-menu-close"
                             onClick={() => setShowMenu(false)}
+                            aria-label="닫기"
                         >
-                            ✕
+                            <FaTimes />
                         </button>
                     </div>
 
                     <button
-                        className="chat-menu-item"
+                        type="button"
+                        className="chat-thread-menu-item"
                         onClick={() =>
                             alert('채팅 설정은 준비 중입니다.')
                         }
                     >
-                        <span className="icon">⚙️</span>
+                        <FaCog aria-hidden="true" />
                         <span>채팅 설정</span>
                     </button>
 
                     <button
-                        className="chat-menu-item"
+                        type="button"
+                        className="chat-thread-menu-item"
                         onClick={() =>
                             alert('사진 기능은 준비 중입니다.')
                         }
                     >
-                        <span className="icon">🖼️</span>
+                        <FaImage aria-hidden="true" />
                         <span>사진</span>
                     </button>
 
                     <button
-                        className="chat-menu-item"
+                        type="button"
+                        className="chat-thread-menu-item"
                         onClick={() =>
                             alert('파일 기능은 준비 중입니다.')
                         }
                     >
-                        <span className="icon">📎</span>
+                        <FaPaperclip aria-hidden="true" />
                         <span>파일</span>
                     </button>
 
                     <button
-                        className="chat-menu-item"
+                        type="button"
+                        className="chat-thread-menu-item"
                         onClick={() =>
                             alert('즐겨찾기 기능은 준비 중입니다.')
                         }
                     >
-                        <span className="icon">⭐</span>
+                        <FaStar aria-hidden="true" />
                         <span>즐겨찾기</span>
                     </button>
 
-                    <hr className="chat-menu-divider" />
+                    <hr className="chat-thread-menu-divider" />
 
                     <button
-                        className="chat-menu-item danger"
+                        type="button"
+                        className="chat-thread-menu-item is-danger"
                         onClick={() => {
                             if (window.confirm('채팅방을 나가시겠습니까?')) {
                                 back()
                             }
                         }}
                     >
-                        <span className="icon">🚪</span>
+                        <FaSignOutAlt aria-hidden="true" />
                         <span>채팅방 나가기</span>
                     </button>
                 </div>

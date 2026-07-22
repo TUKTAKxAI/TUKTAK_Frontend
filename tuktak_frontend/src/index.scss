@@ -1,0 +1,41 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+// @carbon/styles ships @font-face rules pointing at '~@ibm/plex/...' (webpack-only path
+// syntax Vite can't resolve), so they'd never load anyway. IBM Plex Sans is already
+// loaded above via Google Fonts, so skip Carbon's broken/duplicate font-face output.
+$css--font-face: false;
+@import '@carbon/styles';
+
+@theme {
+  --font-sans: "IBM Plex Sans", sans-serif;
+
+  --color-carbon-background: var(--cds-background);
+  --color-carbon-primary: var(--cds-interactive-01);
+  --color-carbon-secondary: var(--cds-interactive-02);
+  --color-carbon-text: var(--cds-text-primary);
+  --color-carbon-border: var(--cds-border-subtle);
+  --color-carbon-danger: var(--cds-support-error);
+
+  --spacing-cds-1: var(--cds-spacing-01);
+  --spacing-cds-2: var(--cds-spacing-02);
+  --spacing-cds-3: var(--cds-spacing-03);
+  --spacing-cds-4: var(--cds-spacing-04);
+  --spacing-cds-5: var(--cds-spacing-05);
+  --spacing-cds-6: var(--cds-spacing-06);
+  --spacing-cds-7: var(--cds-spacing-07);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
+  font-family: 'IBM Plex Sans', sans-serif;
+  margin: 0;
+  padding: 0;
+}

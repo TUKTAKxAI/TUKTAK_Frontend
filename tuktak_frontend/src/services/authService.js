@@ -1,6 +1,10 @@
 import api from "./api";
 import { clearAuthTokens, getRefreshToken, setAuthTokens } from "../api/client";
 
+function unwrapResponse(response) {
+    return response?.data ?? response;
+}
+
 /**
  * 로그인
  * POST /auth/login
@@ -10,9 +14,10 @@ export const login = async (email, password) => {
         email,
         password,
     });
+    const data = unwrapResponse(response);
 
-    setAuthTokens(response.data);
-    return response.data;
+    setAuthTokens(data);
+    return data;
 };
 
 /**
@@ -20,12 +25,10 @@ export const login = async (email, password) => {
  * POST /auth/signup/customer
  */
 export const signupCustomer = async (signupData) => {
-    const response = await api.post(
+    return unwrapResponse(await api.post(
         "/auth/signup/customer",
         signupData
-    );
-
-    return response.data;
+    ));
 };
 
 /**
@@ -33,12 +36,10 @@ export const signupCustomer = async (signupData) => {
  * POST /auth/signup/contractor
  */
 export const signupPartner = async (signupData) => {
-    const response = await api.post(
+    return unwrapResponse(await api.post(
         "/auth/signup/contractor",
         signupData
-    );
-
-    return response.data;
+    ));
 };
 
 /**
@@ -53,8 +54,7 @@ export const signupPartner = async (signupData) => {
  * `return response.data` 대신 `return response`로 바꿔주세요.
  */
 export const getAgreementCatalog = async () => {
-    const response = await api.get("/auth/agreements");
-    return response.data;
+    return unwrapResponse(await api.get("/auth/agreements"));
 };
 
 /**
@@ -62,16 +62,14 @@ export const getAgreementCatalog = async () => {
  * GET /auth/email-availability
  */
 export const checkEmailAvailability = async (email) => {
-    const response = await api.get(
+    return unwrapResponse(await api.get(
         "/auth/email-availability",
         {
             params: {
                 email,
             },
         }
-    );
-
-    return response.data;
+    ));
 };
 
 /**
@@ -95,7 +93,8 @@ export const refresh = async () => {
     const response = await api.post("/auth/refresh", {
         refresh_token: getRefreshToken(),
     });
+    const data = unwrapResponse(response);
 
-    setAuthTokens(response.data);
-    return response.data;
+    setAuthTokens(data);
+    return data;
 };

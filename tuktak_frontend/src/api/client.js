@@ -27,12 +27,20 @@ export function setAuthTokens(tokens = {}) {
   if (tokens.refresh_token) storage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token)
 }
 
-export function clearAuthTokens() {
+export function clearAuthTokens({ redirectToLogin = false } = {}) {
   const storage = getStorage()
   if (!storage) return
 
   storage.removeItem(ACCESS_TOKEN_KEY)
   storage.removeItem(REFRESH_TOKEN_KEY)
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('tuktak:auth-cleared'))
+
+    if (redirectToLogin && window.location.pathname !== '/login') {
+      window.location.replace('/login')
+    }
+  }
 }
 
 export function clearLocalTestState() {
@@ -79,6 +87,8 @@ function normalizeError(error) {
   const normalized = new Error(message)
   normalized.status = error.response?.status
   normalized.data = data
+  // AbortController로 취소된 요청인지 호출부에서 구분할 수 있도록 코드를 보존한다.
+  normalized.code = error.code
   return normalized
 }
 
@@ -137,7 +147,7 @@ client.interceptors.response.use(
         }
         return client.request(originalRequest)
       } catch {
-        clearAuthTokens()
+        clearAuthTokens({ redirectToLogin: true })
         // Fall through to the normalized original error.
       }
     }
@@ -167,14 +177,6 @@ export async function apiFormRequest(path, formData, options = {}) {
     ...options,
     method: options.method ?? 'POST',
     body: formData,
-  })
-}
-
-export async function apiClient(endpoint, options = {}) {
-  return apiRequest(endpoint, {
-    method: options.method,
-    body: options.body,
-    headers: options.headers,
   })
 }
 

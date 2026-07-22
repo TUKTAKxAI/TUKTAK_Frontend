@@ -1,18 +1,20 @@
 import { api } from '../../api/apiClient'
 import { useEffect, useState, useRef } from 'react'
 import { searchJusoAddresses } from '../../api/jusoApi'
-import { CustomerTopBar } from '../../components/customer/CustomerTopBar'
+import { CustomerPage } from './CustomerPageShared'
 import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { useCustomerFlow } from '../../context/CustomerFlowContext'
 import { screens } from '../../data/customerData'
+import { buildMatchingRequestBody, estimateTitle, isRegionCodeSupported } from '../../utils/matchingRequest'
+import { fetchSupportedRegionCodes } from '../../api/matchingApi'
 import { figmaAssets } from '../../components/customer/figmaAssets'
-import { Logo } from '../../components/customer/FormControls'
 import preview9 from '../../assets/figma/preview9.webp';
 import preview10 from '../../assets/figma/preview10.webp';
 import preview11 from '../../assets/figma/preview11.webp';
 import preview12 from '../../assets/figma/preview12.webp';
-import loadingSvg from '../../assets/figma/loading.svg?raw';
-import errorSvg from "../../assets/figma/error.svg?raw"
+import loadingCarbonSvg from '../../assets/figma/loading-carbon.svg?raw';
+import urgentAlertSvg from '../../assets/figma/urgent-alert.svg?raw'
+import { FaMapMarkerAlt, FaChevronDown, FaRegCalendarAlt, FaRegClock, FaExclamationTriangle, FaTimes } from 'react-icons/fa'
 
 const previewImages = [preview9, preview10, preview11, preview12];
 
@@ -40,11 +42,6 @@ function formatWon(value) {
   return `${Number(value).toLocaleString('ko-KR')}원`
 }
 
-// 이전에 작성했던 location 방어 코드 로직을 매칭쪽 타이틀 함수에도 안전하게 적용해둡니다.
-function estimateTitle(estimate) {
-  return estimate?.repair_task_name || estimate?.title || '견적 정보 없음'
-}
-
 function estimateCost(estimate) {
   if (estimate?.min_price && estimate?.max_price) return `${formatWon(estimate.min_price)} ~ ${formatWon(estimate.max_price)}`
   if (estimate?.max_price) return formatWon(estimate.max_price)
@@ -52,30 +49,10 @@ function estimateCost(estimate) {
   return '비용 정보 없음'
 }
 
-function buildMatchingRequestBody({ estimate, address, schedule, isEmergency }) {
-  const fullAddress = [address.address, address.address_detail]
-    .filter(Boolean)
-    .join(' ')
-
-  return {
-    estimate_id: estimate.estimate_id,
-    title: estimateTitle(estimate),
-    region_code_id: address.region_code_id,
-    address: fullAddress,
-    preferred_date: schedule.preferred_date,
-    preferred_time_start: isEmergency ? undefined : schedule.preferred_time_start,
-    preferred_time_end: isEmergency ? undefined : schedule.preferred_time_end,
-    budget_min: estimate.min_price,
-    budget_max: estimate.max_price,
-    request_message: '',
-    privacy_settings: {},
-    is_emergency: isEmergency,
-  }
-}
-
 function quoteToPartner(quote, index) {
   return {
     quote_id: quote.quote_id,
+    quote_status: quote.quote_status,
     contractor: {
       contractor_id: quote.contractor?.contractor_id,
       business_name: quote.contractor?.business_name || `파트너 ${index + 1}`,
@@ -146,41 +123,32 @@ function MatchingStatusBadge({ status }) {
 
 function PartnerCard({ partner, onOpenProposal, onOpenProfile }) {
   return (
-    <article className="partner-bid-card matching-partner-card">
-      <button className="partner-avatar-button" type="button" onClick={() => onOpenProfile(partner)} aria-label="파트너 프로필 보기">
+    <article className="matching-auction-card">
+      <button className="matching-auction-card-avatar" type="button" onClick={() => onOpenProfile(partner)} aria-label="파트너 프로필 보기">
         <Avatar tone={partner.avatar} />
       </button>
-      <button className="partner-card-body" type="button" onClick={() => onOpenProposal(partner)}>
-        <div className="partner-bid-head">
+      <button className="matching-auction-card-body" type="button" onClick={() => onOpenProposal(partner)}>
+        <div className="matching-auction-card-head">
           <strong>{partner.contractor.business_name}</strong>
           <PartnerStars rating={partner.contractor.rating_avg} />
         </div>
         <p>{partner.specialty} / 경력 {partner.career}</p>
-        <p>제안 시공 금액 : {formatWon(partner.total_amount)}</p>
+        <p>제안 시공 금액 : <strong>{formatWon(partner.total_amount)}</strong></p>
         <p>예상 소요 시간 : {estimateMinutesLabel(partner.estimated_minutes)}</p>
         <small>방문 가능 시간 : {partner.available_date} {partner.arrival_time}</small>
       </button>
-      {partner.highlight ? <em>{partner.highlight}</em> : null}
+      {partner.highlight ? <span className="matching-auction-card-highlight">{partner.highlight}</span> : null}
     </article>
   )
 }
 
-function ProposalModal({ partner, onClose, onSelect, isSelecting }) {
+function ProposalModal({ partner, onClose, onSelect, isSelecting, inline, alreadyMatched }) {
   if (!partner) return null
 
-  return (
-    <div className="modal-overlay matching-modal-overlay">
-      <div className="modal-card proposal-modal-card">
-        {/* 💡 X버튼 정중앙 배치 정석 스타일을 여기 모달에도 깔끔하게 적용했습니다 */}
-        <button 
-          className="modal-close-button flex items-center justify-center" 
-          type="button" 
-          onClick={onClose}
-          style={{ paddingBottom: '2px' }}
-        >
-          ✕
-        </button>
-        <div className="partner-profile-card">
+  const content = (
+    <div className={`estimate-result-modal ${inline ? 'is-inline' : ''}`}>
+      <div className="partner-modal-head">
+        <div className="partner-modal-profile">
           <Avatar tone={partner.avatar} />
           <div>
             <strong>{partner.contractor.business_name}</strong>
@@ -189,31 +157,41 @@ function ProposalModal({ partner, onClose, onSelect, isSelecting }) {
             <p>{partner.contractor.phone}</p>
           </div>
         </div>
-        <h3>제안 시공 금액 : {formatWon(partner.total_amount)}</h3>
-        <div className="proposal-detail-list">
-          <p>예상 소요 시간 : {estimateMinutesLabel(partner.estimated_minutes)}</p>
-          <p>확정 방문 시간 : {partner.arrival_time}</p>
-          <p>확정 시공일 : {partner.available_date}</p>
-          <p>{partner.additional_note}</p>
-        </div>
-        <PrimaryButton narrow onClick={() => onSelect(partner)}>{isSelecting ? '선택중...' : '파트너 선택하기'}</PrimaryButton>
+        <button className="partner-modal-close" type="button" onClick={onClose} aria-label="닫기">
+          <FaTimes />
+        </button>
+      </div>
+      <p className="partner-modal-price">제안 시공 금액 : {formatWon(partner.total_amount)}</p>
+      <div className="partner-modal-detail-list">
+        <p>예상 소요 시간 : {estimateMinutesLabel(partner.estimated_minutes)}</p>
+        <p>확정 방문 시간 : {partner.arrival_time}</p>
+        <p>확정 시공일 : {partner.available_date}</p>
+        <p>{partner.additional_note}</p>
+      </div>
+      <div className="estimate-result-actions single">
+        <PrimaryButton disabled={isSelecting || alreadyMatched} onClick={() => onSelect(partner)}>
+          {isSelecting ? '선택중...' : alreadyMatched ? '이미 매칭이 완료됐어요' : '파트너 선택하기'}
+        </PrimaryButton>
       </div>
     </div>
   )
+
+  if (inline) return content
+
+  return <div className="estimate-result-overlay">{content}</div>
 }
 
-function ProfileModal({ partner, onClose }) {
+function ProfileModal({ partner, onClose, inline }) {
   const [visibleCount, setVisibleCount] = useState(5)
   if (!partner) return null
 
   const reviews = partner.reviews || []
   const visibleReviews = reviews.slice(0, visibleCount)
 
-  return (
-    <div className="modal-overlay matching-modal-overlay">
-      <div className="modal-card profile-modal-card">
-        <button className="modal-close-button flex items-center justify-center" type="button" onClick={onClose} style={{ paddingBottom: '2px' }}>✕</button>
-        <div className="partner-info-top">
+  const content = (
+    <div className={`estimate-result-modal ${inline ? 'is-inline' : ''}`}>
+      <div className="partner-modal-head">
+        <div className="partner-modal-info">
           <Avatar tone={partner.avatar} />
           <div>
             <strong>{partner.contractor.business_name}</strong>
@@ -224,21 +202,28 @@ function ProfileModal({ partner, onClose }) {
             <p>주소지 : {partner.contractor.business_address}</p>
           </div>
         </div>
-        <div className="partner-review-box">
-          <small>최근리뷰</small>
-          {visibleReviews.length ? visibleReviews.map((review, index) => (
-            <div className="partner-mini-review" key={`${partner.quote_id}-${index}`}>
-              작성자 : 고객 {index + 1} ★★★★★ 5/5<br />
-              {review}
-            </div>
-          )) : <div className="partner-mini-review">아직 표시할 리뷰가 없습니다.</div>}
-        </div>
+        <button className="partner-modal-close" type="button" onClick={onClose} aria-label="닫기">
+          <FaTimes />
+        </button>
+      </div>
+      <div className="partner-modal-reviews">
+        <small className="partner-modal-reviews-label">최근리뷰</small>
+        {visibleReviews.length ? visibleReviews.map((review, index) => (
+          <div className="partner-modal-review-item" key={`${partner.quote_id}-${index}`}>
+            작성자 : 고객 {index + 1} ★★★★★ 5/5<br />
+            {review}
+          </div>
+        )) : <div className="partner-modal-review-item">아직 표시할 리뷰가 없습니다.</div>}
         {reviews.length > visibleCount ? (
-          <button className="mini-primary review-more-button" type="button" onClick={() => setVisibleCount((count) => count + 5)}>더보기</button>
+          <button className="mini-primary" type="button" onClick={() => setVisibleCount((count) => count + 5)}>더보기</button>
         ) : null}
       </div>
     </div>
   )
+
+  if (inline) return content
+
+  return <div className="estimate-result-overlay">{content}</div>
 }
 
 function ServiceHero({ onClick, buttonLabel, go }) {
@@ -280,72 +265,263 @@ function ServiceHero({ onClick, buttonLabel, go }) {
   };
 
   return (
-    <section className="service-hero flex flex-col h-full bg-[#F2F3F5]">
-      <CustomerTopBar go={go} />
-
-      <div className="flex flex-col items-center flex-1 py-0">
-        <h1 className="text-2xl font-bold text-gray-900 mt-0 text-center">매칭 서비스</h1>
-        
-        <div className="w-full max-w-125 mx-auto text-left -mt-3 ml-2">
-          <h2 className="text-base font-semibold text-gray-700 leading-snug">
+    <CustomerPage go={go} className="cds--white">
+      <div className="estimate-hero">
+      <div className="estimate-hero-body">
+        <div className="estimate-hero-head">
+          <span className="estimate-hero-eyebrow">매칭 서비스</span>
+          <h1 className="estimate-hero-title">
             근처 최고의 시공 업자와<br />매칭해보세요
-          </h2>
-          <p className="text-md font-semibold text-gray-700 mt-8 ml-3 leading-relaxed">
+          </h1>
+          <p className="estimate-hero-desc">
             AI 견적서, 지역 기반으로 근처 최고의<br />시공 업자와 매칭해드립니다
           </p>
         </div>
 
-        <div 
+        <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide py-8 gap-4 px-[25%] cursor-grab active:cursor-grabbing items-center"
+          className="estimate-hero-carousel"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {previewImages.map((img, index) => (
-            <div 
-              key={index} 
-              className={`min-w-[85%] ml-5 transition-all duration-500 snap-center flex justify-center items-center
-                ${activeIndex === index ? 'scale-100 opacity-100' : 'scale-70 opacity-40'}
-              `}
+            <div
+              key={index}
+              className={`estimate-hero-slide ${activeIndex === index ? 'is-active' : ''}`}
             >
-              <div className="w-full aspect-9/16 bg-white rounded-3xl shadow-lg border border-gray-300 overflow-hidden">
-                 <img 
-                   src={img} 
-                   alt={`미리보기 ${index + 1}`} 
-                   className="w-full h-full object-cover" 
-                   draggable="false" 
-                 />
+              <div className="estimate-hero-frame">
+                <img
+                  src={img}
+                  alt={`미리보기 ${index + 1}`}
+                  className="estimate-hero-frame-img"
+                  draggable="false"
+                />
               </div>
             </div>
           ))}
         </div>
 
         {/* 페이지네이션 도트 */}
-        <div className="flex justify-center space-x-2 mb-6">
+        <div className="estimate-hero-dots">
           {previewImages.map((_, i) => (
-            <button 
-              key={i} 
+            <button
+              key={i}
               onClick={() => goToIndex(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-blue-600' : 'w-2 bg-gray-300'}`} 
+              aria-label={`${i + 1}번째 미리보기`}
+              className={`estimate-hero-dot ${activeIndex === i ? 'is-active' : ''}`}
             />
           ))}
         </div>
 
-        <div className="w-full px-6 mt-auto pb-6">
+        <div className="estimate-hero-actions">
           <PrimaryButton onClick={onClick}>{buttonLabel}</PrimaryButton>
         </div>
       </div>
-    </section>
+      </div>
+    </CustomerPage>
   )
 }
 
 export function MatchingHomePage({ go }) {
+  const flow = useCustomerFlow()
+  const [matchingRequest, setMatchingRequest] = useState(null)
+  const [quotes, setQuotes] = useState([])
+  const [loadStatus, setLoadStatus] = useState('loading')
+  const [cancelStatus, setCancelStatus] = useState('')
+  const [showCancelModal, setShowCancelModal] = useState(false)
+
+  const loadCurrentMatching = async () => {
+    setLoadStatus('loading')
+    try {
+      const data = await api.get('/api/v1/matching-requests?page=1&size=20')
+
+      const activeRequest = (data.items || []).find((item) => (
+        ['REQUESTED', 'RECEIVING_QUOTES'].includes(item.matching_status)
+      ))
+
+      if (!activeRequest) {
+        setMatchingRequest(null)
+        setQuotes([])
+        setLoadStatus('empty')
+        return
+      }
+
+      setMatchingRequest(activeRequest)
+      flow.updateMatchingFlow({
+        matchingRequestId: activeRequest.matching_request_id,
+        matchingStatus: activeRequest.matching_status,
+      })
+
+      try {
+        const quoteData = await api.get(`/api/v1/matching-requests/${activeRequest.matching_request_id}/quotes`)
+        setQuotes(quoteData.quotes || [])
+      } catch {
+        setQuotes([])
+      }
+
+      setLoadStatus('loaded')
+    } catch {
+      setMatchingRequest(null)
+      setQuotes([])
+      setLoadStatus('error')
+    }
+  }
+
+  useEffect(() => {
+    let ignore = false
+
+    async function run() {
+      await loadCurrentMatching()
+    }
+
+    if (!ignore) run()
+
+    return () => {
+      ignore = true
+    }
+    // Intentionally run once on mount only: loadCurrentMatching is recreated every
+    // render (and closes over `flow`, whose context value is also unmemoized), so
+    // adding it here would refetch on every render instead of once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const cancelMatching = async () => {
+    if (!matchingRequest?.matching_request_id) return
+    setCancelStatus('submitting')
+
+    try {
+      await api.patch(`/api/v1/matching-requests/${matchingRequest.matching_request_id}/cancel`, {
+        cancel_reason: 'CUSTOMER_CANCELLED',
+      })
+      setShowCancelModal(false)
+      setCancelStatus('')
+      setMatchingRequest(null)
+      setQuotes([])
+      flow.updateMatchingFlow({
+        matchingRequestId: null,
+        matchingStatus: '매칭 취소됨',
+        selectedQuoteId: null,
+        selectedQuote: null,
+        selectedPartner: null,
+      })
+      setLoadStatus('empty')
+    } catch {
+      setCancelStatus('error')
+    }
+  }
+
+  if (loadStatus === 'loading') {
+    return (
+      <CustomerPage go={go} className="cds--white">
+        <div className="estimate-loading">
+          <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+          <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+          <p className="estimate-loading-title">진행중인 매칭을 확인하는 중입니다.</p>
+        </div>
+      </CustomerPage>
+    )
+  }
+
+  if (loadStatus === 'error') {
+    return (
+      <CustomerPage go={go} className="cds--white">
+        <div className="matching-current">
+          <article className="matching-current-card matching-current-card--error">
+            <span className="matching-current-eyebrow">매칭 상태</span>
+            <h2 className="matching-current-error-title">매칭 정보를 불러오지 못했습니다</h2>
+            <p className="matching-current-error-desc">서버 연결 또는 로그인 상태를 확인해주세요.</p>
+            <PrimaryButton onClick={loadCurrentMatching}>다시 불러오기</PrimaryButton>
+          </article>
+        </div>
+      </CustomerPage>
+    )
+  }
+
+  if (!matchingRequest) {
+    return (
+      <ServiceHero
+        onClick={() => go(screens.matchingEstimateSelect)}
+        buttonLabel="매칭 시작하기"
+        go={go}
+      />
+    )
+  }
+
+  const quotePartners = quotes.map(quoteToPartner)
+
   return (
-    <ServiceHero
-      onClick={() => go(screens.matchingEstimateSelect)}
-      buttonLabel="매칭 시작하기"
-      go={go}
-    />
+    <CustomerPage go={go} className="cds--white">
+      <div className="matching-current">
+        <h1 className="matching-current-heading">현재 매칭</h1>
+
+        <article className="matching-current-card">
+          <div className="matching-current-card-head">
+            <div>
+              <span className="matching-current-eyebrow">진행중</span>
+              <h2>{matchingRequest.title}</h2>
+            </div>
+            <MatchingStatusBadge status={matchingRequest.matching_status} />
+          </div>
+
+          <div className="matching-current-stats">
+            <div className="matching-current-stat">
+              <span>도착한 견적</span>
+              <strong>{quotes.length}개</strong>
+            </div>
+            <div className="matching-current-stat">
+              <span>매칭 요청일</span>
+              <strong>{formatDate(matchingRequest.created_at)}</strong>
+            </div>
+          </div>
+
+          <div className="matching-current-section">
+            <h3>견적서 목록</h3>
+            {quotePartners.length > 0 ? (
+              <div className="matching-current-quotes">
+                {quotePartners.map((partner) => (
+                  <article className="matching-current-quote" key={partner.quote_id}>
+                    <div>
+                      <strong>{partner.contractor.business_name}</strong>
+                      <p>{partner.work_scope}</p>
+                      <small>{partner.arrival_time} · {partner.available_date ? formatDate(partner.available_date) : '날짜 협의'}</small>
+                    </div>
+                    <div className="matching-current-quote-price">
+                      <b>{formatWon(partner.total_amount)}</b>
+                      <button type="button" onClick={() => go(screens.matchingAuction)}>자세히</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="matching-current-empty">아직 견적서를 보낸 파트너가 없습니다.</p>
+            )}
+          </div>
+
+          <div className="matching-current-actions">
+            <button type="button" className="matching-current-ghost" onClick={() => setShowCancelModal(true)}>매칭 취소</button>
+            <PrimaryButton onClick={() => go(quotes.length > 0 ? screens.matchingAuction : screens.matchingProgress)}>
+              {quotes.length > 0 ? '견적 비교하기' : '매칭 상황 보기'}
+            </PrimaryButton>
+          </div>
+          {cancelStatus === 'error' ? <p className="matching-current-error-msg">매칭 취소에 실패했습니다. 다시 시도해주세요.</p> : null}
+        </article>
+
+        {showCancelModal ? (
+          <div className="modal-overlay matching-modal-overlay">
+            <div className="modal-card matching-current-cancel-modal">
+              <h3>매칭을 취소할까요?</h3>
+              <p>취소하면 이 요청은 더 이상 파트너에게 노출되지 않고, 시공자 화면에서도 진행 가능한 요청으로 보이지 않습니다.</p>
+              <div className="matching-current-cancel-actions">
+                <button type="button" className="matching-current-ghost" onClick={() => setShowCancelModal(false)}>계속 진행</button>
+                <PrimaryButton onClick={cancelMatching}>
+                  {cancelStatus === 'submitting' ? '취소중...' : '매칭 취소'}
+                </PrimaryButton>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -385,99 +561,58 @@ export function MatchingEstimateSelectPage({ go }) {
     go(screens.matchingAddressList)
   }
 
+  if (loadStatus === 'loading') {
+    return (
+      <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
+        <div className="estimate-loading">
+          <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+          <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+          <p className="estimate-loading-title">AI 견적서 불러오는 중...</p>
+        </div>
+      </CustomerPage>
+    )
+  }
+
+  if (loadStatus === 'error' || loadStatus === 'empty') {
+    return (
+      <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
+        <div className="matching-select-status">
+          <div className="matching-select-status-icon" dangerouslySetInnerHTML={{ __html: urgentAlertSvg }} />
+          <h2 className="matching-select-status-title">
+            {loadStatus === 'error' ? '견적서를 불러오지 못했습니다' : '생성된 AI 견적서가 없습니다'}
+          </h2>
+          <p className="matching-select-status-desc">
+            {loadStatus === 'error' ? '서버 연결 상태를 다시 확인해주세요.' : 'AI 견적서를 새로 만들어 볼까요?'}
+          </p>
+          <PrimaryButton narrow onClick={() => go(screens.estimateStart)}>AI 견적서 생성</PrimaryButton>
+        </div>
+      </CustomerPage>
+    )
+  }
+
   return (
-    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5]">
-      <CustomerTopBar go={go} />
-      
-      <div className="flex flex-col flex-1 px-6 pt-4">
-        
-        <div className="flex items-center mb-0">
-          <button 
-            className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
-            onClick={() => go(screens.matchingHome)}
-          >
-            <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">매칭 시작하기</h1>
-        </div>
+    <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
+      <div className="matching-select">
+        <h1 className="matching-select-heading">매칭 시작하기</h1>
+        <p className="matching-select-subheading">AI 견적서를 선택해주세요</p>
 
-        <div className="overflow-y-auto pb-6">
-          
-          {loadStatus === 'loading' ? (
-            <div className="flex flex-col items-center justify-center mt-16">
-              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                   dangerouslySetInnerHTML={{ __html: loadingSvg }} 
-              />
-              <p className="text-center text-gray-500 font-medium text-[15px]">AI 견적서 불러오는 중 ...</p>
-            </div>
-          
-          ) : loadStatus === 'error' || loadStatus === 'empty' ? (
-            <div className="flex flex-col items-center justify-center mt-16">
-              <div className="w-48 h-48 flex justify-center items-center pointer-events-none mb-4 [&>svg]:w-full [&>svg]:h-full"
-                   dangerouslySetInnerHTML={{ __html: errorSvg }} 
-              />
-              <p className="text-center font-bold text-[20px] text-gray-900 mt-1">
-                {loadStatus === 'error' ? '견적서를 불러오지 못했습니다!' : '생성된 AI 견적서가 없습니다 !'}
-              </p>
-              <p className="text-center font-medium text-[15px] text-gray-900 mt-5">
-                {loadStatus === 'error' ? '서버 연결 상태를 다시 확인해주세요.' : 'AI 견적서를 새로 만들어 볼까요?'}
-              </p>
-              <button 
-                onClick={() => go(screens.estimateStart)}
-                className="w-3/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700 mt-2"
-                style={{ fontSize: '16px', fontWeight: 'bold' }} 
-              >
-                AI 견적서 생성
+        <div className="matching-select-list">
+          {estimates.map((estimate) => (
+            <article key={estimate.estimate_id} className="matching-select-card">
+              <div className="matching-select-card-head">
+                <span className="matching-select-card-date">{formatDate(estimate.created_at)}</span>
+                <MatchingStatusBadge status={estimate.estimate_status === 'COMPLETED' ? '완료' : estimate.estimate_status} />
+              </div>
+              <h3 className="matching-select-card-title">{estimateTitle(estimate)}</h3>
+              <p className="matching-select-card-cost">예상 시공 비용 : {estimateCost(estimate)}</p>
+              <button type="button" className="matching-select-card-button" onClick={() => selectEstimate(estimate)}>
+                매칭 요청하기
               </button>
-            </div>
-
-          ) : (
-            <>
-              <h2 
-                className="text-gray-700 text-center mt-4 mb-6 font-bold"
-                style={{ fontSize: '20px' }}
-              >
-                AI 견적서를 선택해주세요
-              </h2>
-              {estimates.map((estimate) => (
-                <article key={estimate.estimate_id} className="bg-white rounded-[14px] p-5 border border-gray-400 shadow-sm flex flex-col mb-4">
-                  
-                  <div className="flex justify-between items-start mb-4 border-b border-gray-300 pb-3">
-                    <span className="text-[13px] text-gray-500">
-                      {formatDate(estimate.created_at)}
-                    </span>
-                    <small className="text-xs text-blue-500 font-semibold bg-blue-50 px-2 py-1 rounded">
-                      {estimate.estimate_status === 'COMPLETED' ? '완료' : estimate.estimate_status}
-                    </small>
-                  </div>
-                  
-                  <div className="flex flex-col text-left">
-                    <h3 className="text-[22px] font-bold text-gray-900 mb-1.5 tracking-tight">
-                      {estimateTitle(estimate)}
-                    </h3>
-                    <p className="text-[13px] font-bold text-gray-500 mb-4.5">
-                      예상 시공 비용 : {estimateCost(estimate)}
-                    </p>
-                    
-                    <div className="flex justify-center w-full">
-                      <button 
-                        onClick={() => selectEstimate(estimate)}
-                        className="w-4/5 bg-[#1C54D4] text-white py-2.5 rounded-lg transition-colors hover:bg-blue-700"
-                        style={{ fontSize: '16px', fontWeight: 'bold' }} 
-                      >
-                        매칭 요청하기
-                      </button>
-                    </div>
-                  </div>
-
-                </article>
-              ))}
-            </>
-          )}
+            </article>
+          ))}
         </div>
-
       </div>
-    </section>
+    </CustomerPage>
   )
 }
 
@@ -491,6 +626,7 @@ export function MatchingAddressListPage({ go }) {
   const [searchResults, setSearchResults] = useState([]) // 서버에서 받아온 주소 결과 리스트
   const [isSearching, setIsSearching] = useState(false)   // API 호출 로딩 상태
   const [error, setError] = useState('')             // 에러 메시지 저장
+  const [showRegionErrorModal, setShowRegionErrorModal] = useState(false) // 미지원 지역 안내 모달
 
   // ==========================================
   // 1. 행안부 서버에 주소 데이터 요청하는 함수
@@ -524,7 +660,20 @@ export function MatchingAddressListPage({ go }) {
   // ==========================================
   // 2. 검색된 리스트 중 하나를 클릭했을 때 선택하는 함수
   // ==========================================
-  const handleSelectAddress = (jusoItem) => {
+  const handleSelectAddress = async (jusoItem) => {
+    const admCd = jusoItem.admCd || ''
+
+    // 아직 백엔드 서비스 지역(reference_codes REGION)에 등록되지 않은 주소면,
+    // 매칭 요청이 어떤 시공자에게도 전달되지 않고 조용히 0건으로 생성되는 것을 막기 위해
+    // 선택 단계에서 미리 걸러낸다.
+    const regionCodes = await fetchSupportedRegionCodes()
+    if (!isRegionCodeSupported(admCd, regionCodes)) {
+      setShowRegionErrorModal(true)
+      setSearchResults([])
+      setKeyword('')
+      return
+    }
+
     // 백엔드 매칭 요청 스키마 양식에 맞게 찰떡같이 구조를 매핑해 줍니다.
     updateMatchingFlow({
       selectedAddress: {
@@ -562,120 +711,121 @@ export function MatchingAddressListPage({ go }) {
   }
 
   return (
-    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10 overflow-y-auto">
-      <CustomerTopBar go={go} />
-      
-      {/* 상단 헤더 영역 */}
-      <div className="flex items-center mb-6">
-        <button 
-          className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
-          onClick={() => go(screens.matchingEstimateSelect)}
-        >
-          <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900 relative bottom-0.5">시공 지역 선택</h1>
-      </div>
+    <CustomerPage go={go} back={() => go(screens.matchingEstimateSelect)} className="cds--white">
+      <div className="matching-addr-screen">
 
-      <p className="text-xs font-medium text-center text-gray-700 mt-5 mb-9">시공을 진행할 도로명 주소 또는 건물명을 검색해 주세요!</p>
-
-      {/* 🛠️ 1. 주소 텍스트 입력 폼 (검색창 디자인) */}
-      <form onSubmit={handleSearch} className="flex gap-2 mb-4 w-full">
-        <input 
-          type="text" 
-          className="flex-1 px-4 py-2.5 border border-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          placeholder="도로명주소 또는 건물명"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
-        <button 
-          type="submit"
-          disabled={isSearching}
-          className="px-5 bg-[#1C54D4] text-white font-bold rounded-xl text-sm transition-colors hover:bg-blue-700 whitespace-nowrap disabled:bg-gray-400"
-        >
-          {isSearching ? '검색중..' : '검색'}
-        </button>
-      </form>
-
-      {/* 🛠️ 2. 데이터 수신 성공 시 화면에 뿌려지는 '검색 결과 리스트 박스' */}
-      {searchResults.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-300 p-2 max-h-60 overflow-y-auto mb-6 space-y-1 shadow-sm">
-          <small className="text-gray-400 px-2 block mb-1 font-medium">검색 결과 총 {searchResults.length}건</small>
-          {searchResults.map((juso, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="w-full text-left px-3 py-2.5 hover:bg-blue-50 rounded-lg transition-colors border-b border-gray-100 last:border-0 flex flex-col gap-0.5"
-              onClick={() => handleSelectAddress(juso)}
-            >
-              <span className="text-[14px] font-semibold text-gray-900">{juso.roadAddr}</span>
-              {juso.jibunAddr && <span className="text-[11px] text-gray-400">[지번] {juso.jibunAddr}</span>}
-              <span className="text-[11px] text-blue-500 font-medium">우편번호 : {juso.zipNo}</span>
-            </button>
-          ))}
+        <div className="matching-addr-head">
+          <h1 className="matching-addr-heading">시공 지역 선택</h1>
+          <p className="matching-addr-subheading">시공을 진행할 도로명 주소 또는 건물명을 검색해 주세요!</p>
         </div>
-      )}
 
-      {/* 안내 및 에러 메시지 창 */}
-      {error && <p className="text-center text-sm font-medium text-red-500 mb-6">{error}</p>}
+        <form onSubmit={handleSearch} className="matching-addr-search-form">
+          <input
+            type="text"
+            className="matching-addr-search-input"
+            placeholder="도로명주소 또는 건물명"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={isSearching}
+            className="matching-addr-search-button"
+          >
+            {isSearching ? '검색중..' : '검색'}
+          </button>
+        </form>
 
-      {/* 🛠️ 3. 최종 선택 완료된 주소가 박히는 인라인 카드 */}
-      <h2 className="text-base font-bold text-gray-800 mb-3 mt-2">선택된 시공 주소</h2>
-      <div className="address-list matching-address-list mb-auto">
-        <article className={`bg-white rounded-[14px] p-3 border border-gray-400 shadow-sm flex items-center justify-between transition-all ${selectedAddress ? 'border-blue-500 bg-blue-50/20' : ''}`}>
-          <div className="flex items-center gap-3">
-            <div className="address-icon house p-3 bg-contain bg-no-repeat" />
-            <span className="text-[14px] text-gray-800 font-medium leading-tight">
-              {selectedAddress?.address || (
-                <>
-                  위 검색창에서 주소를 검색하고<br />리스트에서 선택해 주세요.
-                </>
-              )}
-            </span>
+        {searchResults.length > 0 && (
+          <div className="matching-addr-results">
+            <small className="matching-addr-results-count">검색 결과 총 {searchResults.length}건</small>
+            {searchResults.map((juso, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="matching-addr-result-item"
+                onClick={() => handleSelectAddress(juso)}
+              >
+                <span className="matching-addr-result-road">{juso.roadAddr}</span>
+                {juso.jibunAddr && <span className="matching-addr-result-jibun">[지번] {juso.jibunAddr}</span>}
+                <span className="matching-addr-result-zip">우편번호 : {juso.zipNo}</span>
+              </button>
+            ))}
           </div>
-          {selectedAddress && (
-            <button 
-              className="text-red-500 font-bold border border-red-200 px-3 py-2 rounded bg-white hover:bg-red-50 transition-colors" 
-              type="button" 
-              onClick={clearAddress}
-              style={{ fontSize:"15px", whiteSpace: 'nowrap' }}
-            >
-              삭제
-            </button>
-          )}
-        </article>
-        {selectedAddress && (
-          <label className="matching-address-detail">
-            <span>상세 주소</span>
-            <input
-              type="text"
-              placeholder="상세 주소 입력 (ex : 202동 301호)"
-              value={selectedAddress.address_detail || ''}
-              onChange={handleAddressDetailChange}
-            />
-          </label>
         )}
-      </div>
 
-      {/* 다음 단계 이동 액션 하단바 */}
-      <div className="pt-6 w-full">
-        <PrimaryButton 
-          narrow 
-          onClick={() => {
-            if (!selectedAddress) {
-              alert('주소를 검색하여 먼저 선택해 주세요!')
-              return
-            }
-            if (!selectedAddress.address_detail?.trim()) {
-              alert('상세 주소를 입력해 주세요!')
-              return
-            }
-            go(screens.matchingSchedule)
-          }}
-        >
-          다음 단계로
-        </PrimaryButton>
+        {error && <p className="matching-addr-error">{error}</p>}
+
+        <h2 className="matching-addr-section-title">선택된 시공 주소</h2>
+        <div className="matching-addr-selected">
+          <article className={`matching-addr-selected-card ${selectedAddress ? 'is-selected' : ''}`}>
+            <div className="matching-addr-selected-main">
+              <div className="matching-addr-selected-icon">
+                <FaMapMarkerAlt />
+              </div>
+              <span className="matching-addr-selected-text">
+                {selectedAddress?.address || (
+                  <span className="matching-addr-selected-placeholder">
+                    위 검색창에서 주소를 검색하고<br />리스트에서 선택해 주세요.
+                  </span>
+                )}
+              </span>
+            </div>
+            {selectedAddress && (
+              <button
+                className="matching-addr-remove-button"
+                type="button"
+                onClick={clearAddress}
+              >
+                삭제
+              </button>
+            )}
+          </article>
+          {selectedAddress && (
+            <label className="matching-addr-detail-field">
+              <span>상세 주소</span>
+              <input
+                type="text"
+                placeholder="상세 주소 입력 (ex : 202동 301호)"
+                value={selectedAddress.address_detail || ''}
+                onChange={handleAddressDetailChange}
+              />
+            </label>
+          )}
+        </div>
+
+        <div className="matching-addr-actions">
+          <PrimaryButton
+            onClick={() => {
+              if (!selectedAddress) {
+                alert('주소를 검색하여 먼저 선택해 주세요!')
+                return
+              }
+              if (!selectedAddress.address_detail?.trim()) {
+                alert('상세 주소를 입력해 주세요!')
+                return
+              }
+              go(screens.matchingSchedule)
+            }}
+          >
+            다음 단계로
+          </PrimaryButton>
+        </div>
+
+        {showRegionErrorModal ? (
+          <div className="modal-overlay matching-modal-overlay">
+            <div className="modal-card matching-region-modal">
+              <h3>아직 지원하지 않는 지역이에요</h3>
+              <p>
+                현재 매칭 서비스는 서울 전역과 경기(김포·고양·부천·수원), 인천(서구·남동구·연수구·부평구) 일부 지역에서만
+                이용하실 수 있어요. 다른 주소로 다시 검색해 주세요.
+              </p>
+              <PrimaryButton onClick={() => setShowRegionErrorModal(false)}>확인</PrimaryButton>
+            </div>
+          </div>
+        ) : null}
       </div>
-    </section>
+    </CustomerPage>
   )
 }
 
@@ -715,7 +865,7 @@ export function MatchingSchedulePage({ go, openUrgent }) {
   const canContinue = Boolean(selectedDate && selectedSlot && isSlotSelectable(selectedDate, selectedSlot))
 
   const startMatching = async () => {
-    if (!canContinue) return
+    if (!canContinue || submitStatus === 'submitting') return
     const estimate = flow.matchingFlow.selectedEstimate
     const address = flow.matchingFlow.selectedAddress
     const schedule = {
@@ -754,160 +904,99 @@ export function MatchingSchedulePage({ go, openUrgent }) {
     go(screens.matchingProgress)
   }
 
-  const startEmergency = async () => {
-    const estimate = flow.matchingFlow.selectedEstimate
-    const address = flow.matchingFlow.selectedAddress
-    const schedule = {
-      preferred_date: todayString(),
-      preferred_time_start: null,
-      preferred_time_end: null,
-    }
-
-    if (!estimate?.estimate_id) {
-      setSubmitStatus('missing-estimate')
-      return
-    }
-    if (!address?.region_code_id || !address?.address) {
-      setSubmitStatus('missing-address')
-      return
-    }
-
-    setSubmitStatus('submitting')
-
-    try {
-      const body = buildMatchingRequestBody({ estimate, address, schedule, isEmergency: true })
-      const data = await api.post('/api/v1/matching-requests', body)
-      
-      flow.updateMatchingFlow({
-        isEmergency: true,
-        matchingStatus: data.matching_status || '매칭 진행중',
-        schedule,
-        matchingRequestId: data.matching_request_id,
-        matchedContractorCount: data.matched_contractor_count,
-        matchingExpiresAt: data.expires_at,
-      })
-    } catch {
-      setSubmitStatus('error')
-      return
-    }
-    go(screens.matchingProgress)
-  }
-
   return (
-    <section className="selection-screen schedule-screen flex flex-col h-full bg-[#F2F3F5] px-6 pt-4 pb-10">
-      <div className="flex items-center mb-10">
-        <button 
-          className="mr-3 flex items-center justify-center transition-transform active:scale-90" 
-          onClick={() => go(screens.matchingAddressList)}
-        >
-          <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-        </button>
-      </div>
+    <CustomerPage go={go} back={() => go(screens.matchingAddressList)} className="cds--white">
+      <div className="matching-schedule-screen">
+        <div className="matching-schedule-top">
+          <h1 className="matching-schedule-heading">
+            시공을 예약할 날짜와<br />시간을 선택해주세요
+          </h1>
 
-      <h1 className="text-[30px] font-medium text-gray-900 text-center leading-snug pt-10 pb-14"
-        style={{ WebkitTextStroke: '0.5px currentColor' }}>
-        시공을 예약할 날짜와<br />시간을 선택해주세요
-      </h1>
+          <div className="matching-schedule-fields">
+            <div className="matching-schedule-field">
+              <div className="matching-schedule-field-icon">
+                <FaRegCalendarAlt />
+              </div>
+              <input
+                className="matching-schedule-input"
+                type="date"
+                min={todayString()}
+                value={selectedDate}
+                onChange={(event) => {
+                  setSelectedDate(event.target.value)
+                  setSelectedSlot(null)
+                  setSubmitStatus('')
+                }}
+              />
+            </div>
 
-      <div className="flex flex-col gap-6 px-2 pt-18">
-        
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 shrink-0 flex items-center justify-center">
-            <img src={figmaAssets.calendar} alt="달력 아이콘" className="w-12 h-12 object-contain" />
-          </div>
-          <input 
-            className="flex-1 border border-gray-600 rounded-xl px-4 py-2.5 text-[17px] bg-white focus:outline-none" 
-            type="date" 
-            min={todayString()} 
-            value={selectedDate} 
-            onChange={(event) => {
-              setSelectedDate(event.target.value)
-              setSelectedSlot(null)
-              setSubmitStatus('') 
-            }} 
-          />
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 shrink-0 flex items-center justify-center">
-            <img src={figmaAssets.clock} alt="시계 아이콘" className="w-10 h-10 object-contain" />
-          </div>
-          <div className="relative flex-1">
-            {/* 💡 수정 포인트: 선택된 값이 없으면 text-gray-400(회색), 선택하면 text-gray-900(검정색)으로 바뀝니다! */}
-            <select 
-              className={`w-full border border-gray-600 rounded-xl px-4 py-2.5 text-[17px] bg-white focus:outline-none appearance-none transition-colors ${!selectedSlot ? 'text-gray-400' : 'text-gray-900'}`}
-              value={selectedSlot ? selectedSlot.start : ''}
-              onChange={(e) => {
-                setSubmitStatus('')
-                const val = e.target.value;
-                if (!val) {
-                  setSelectedSlot(null);
-                  return;
-                }
-                const slot = timeSlots.find(s => s.start === val);
-                setSelectedSlot(slot);
-              }}
-            >
-              {/* 기본 안내 문구는 회색으로 고정 */}
-              <option value="" disabled hidden className="text-gray-400">시간을 선택해주세요</option>
-              {timeSlots.map((slot) => {
-                const disabled = !isSlotSelectable(selectedDate, slot)
-                return (
-                  <option key={slot.start} value={slot.start} disabled={disabled} className={disabled ? "text-gray-400" : "text-gray-900"}>
-                    {slot.start} - {slot.end} {disabled ? '(마감)' : ''}
-                  </option>
-                )
-              })}
-            </select>
-            <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-sm ${!selectedSlot ? 'text-gray-400' : 'text-black'}`}>
-              ▼
+            <div className="matching-schedule-field">
+              <div className="matching-schedule-field-icon">
+                <FaRegClock />
+              </div>
+              <div className="matching-schedule-select-wrap">
+                <select
+                  className={`matching-schedule-select ${!selectedSlot ? 'is-placeholder' : ''}`}
+                  value={selectedSlot ? selectedSlot.start : ''}
+                  onChange={(e) => {
+                    setSubmitStatus('')
+                    const val = e.target.value;
+                    if (!val) {
+                      setSelectedSlot(null);
+                      return;
+                    }
+                    const slot = timeSlots.find(s => s.start === val);
+                    setSelectedSlot(slot);
+                  }}
+                >
+                  <option value="" disabled hidden>시간을 선택해주세요</option>
+                  {timeSlots.map((slot) => {
+                    const disabled = !isSlotSelectable(selectedDate, slot)
+                    return (
+                      <option key={slot.start} value={slot.start} disabled={disabled}>
+                        {slot.start} - {slot.end} {disabled ? '(마감)' : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+                <FaChevronDown className="matching-schedule-select-caret" />
+              </div>
             </div>
           </div>
         </div>
 
-      </div>
+        <div className="matching-schedule-bottom">
+          <button
+            type="button"
+            className="matching-schedule-emergency"
+            onClick={openUrgent}
+          >
+            <FaExclamationTriangle className="matching-schedule-emergency-icon" />
+            <span>긴급 수리 요청</span>
+          </button>
 
-      <div className="mt-35 pt-10 flex flex-col gap-5">
-        
-        <div className='-mx-12'>
-          <button 
-            className="w-full bg-[#FF8989] text-black font-bold text-[22px] py-4 flex items-center justify-center gap-3 active:bg-[#FF7373] transition-colors"
-            onClick={openUrgent || startEmergency}
-          >
-            <img src={figmaAssets.siren} alt="긴급 수리 아이콘" className="w-8 h-8" /> 
-            <span style={{ fontSize:'24px', fontWeight: 'bold' }}>긴급 수리 요청</span>
-          </button>
-        </div>
-        
-        {submitStatus === 'expired' && <p className="text-center text-sm font-bold text-red-500">선택하신 시간이 방금 마감되었습니다. 다른 시간을 골라주세요!</p>}
-        {submitStatus === 'submitting' && <p className="text-center text-sm font-medium text-gray-500">매칭 요청을 생성하는 중입니다.</p>}
-        {submitStatus === 'missing-estimate' && <p className="text-center text-sm font-medium text-red-500">AI 견적서를 먼저 선택해주세요.</p>}
-        {submitStatus === 'missing-address' && <p className="text-center text-sm font-medium text-red-500">도로명 주소 검색으로 지역 코드가 포함된 주소를 선택해주세요.</p>}
-        {submitStatus === 'error' && <p className="text-center text-sm font-medium text-red-500">매칭 요청 생성에 실패했습니다.</p>}
+          {submitStatus === 'expired' && <p className="matching-schedule-status is-error">선택하신 시간이 방금 마감되었습니다. 다른 시간을 골라주세요!</p>}
+          {submitStatus === 'submitting' && <p className="matching-schedule-status">매칭 요청을 생성하는 중입니다.</p>}
+          {submitStatus === 'missing-estimate' && <p className="matching-schedule-status is-error">AI 견적서를 먼저 선택해주세요.</p>}
+          {submitStatus === 'missing-address' && <p className="matching-schedule-status is-error">도로명 주소 검색으로 지역 코드가 포함된 주소를 선택해주세요.</p>}
+          {submitStatus === 'error' && <p className="matching-schedule-status is-error">매칭 요청 생성에 실패했습니다.</p>}
 
-        <div className="flex gap-3">
-          <button 
-            className="flex-1 bg-[#EB5E0B] text-white font-bold py-4 rounded-[14px] text-[17px] active:scale-95 transition-transform"
-            onClick={() => go(screens.matchingAddressList)}
-          >
-            <span style={{fontSize:'20px', fontWeight:'bold'}}>취소</span>
-          </button>
-          
-          {/* 💡 수정 포인트: canContinue 조건에 따라 활성화 애니메이션과 pointer-events-none을 완벽히 분리했습니다! */}
-          <button 
-            className={`flex-1 font-bold py-4 rounded-[14px] text-[17px] transition-transform ${
-              canContinue 
-                ? 'bg-[#1C54D4] text-white active:scale-95' 
-                : 'bg-gray-400 text-white cursor-not-allowed pointer-events-none'
-            }`}
-            onClick={startMatching}
-            disabled={!canContinue && submitStatus !== 'submitting'}
-          >
-            <span style={{fontSize:'18px', fontWeight:'bold'}}>{submitStatus === 'submitting' ? '요청중...' : canContinue ? '매칭 시작하기' : '시간 선택 필요'}</span>
-          </button>
+          <div className="matching-schedule-actions">
+            <button type="button" className="matching-schedule-cancel" onClick={() => go(screens.matchingAddressList)}>
+              취소
+            </button>
+            <button
+              type="button"
+              className={`matching-schedule-submit ${canContinue ? 'is-active' : ''}`}
+              onClick={startMatching}
+              disabled={!canContinue || submitStatus === 'submitting'}
+            >
+              {submitStatus === 'submitting' ? '요청중...' : canContinue ? '매칭 시작하기' : '시간 선택 필요'}
+            </button>
+          </div>
         </div>
       </div>
-    </section>
+    </CustomerPage>
   )
 }
 
@@ -948,30 +1037,14 @@ useEffect(() => {
   }, [go, updateMatchingFlow, matchingRequestId])
 
   return (
-    <section className="selection-screen flex flex-col h-full bg-[#F2F3F5] relative">
-      
-      <div className="transform scale-[2.5] mt-32 flex justify-center">
-        <Logo />
-      </div>
-
-      <div className="flex flex-col items-center justify-center flex-1 px-6">
-        
-        <div 
-          className="w-48 h-48 flex justify-center items-center pointer-events-none [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: loadingSvg }} 
-        />
-        
-        <h2 className="text-[24px] font-bold text-gray-900 mb-4 tracking-tight">
-          매칭 진행중 ...
-        </h2>
-        
-        <p className="text-[15px] font-medium text-gray-600 mt-4 text-center leading-relaxed whitespace-nowrap">
-          조건에 맞는 파트너의 견적을 기다리는 중 ...<br />
-          이 화면을 나가셔도 매칭은 계속 진행돼요
-        </p>
-
-      </div>
-
+    <section className="estimate-loading">
+      <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+      <div className="estimate-loading-spinner" dangerouslySetInnerHTML={{ __html: loadingCarbonSvg }} />
+      <h2 className="estimate-loading-title">매칭 진행중 ...</h2>
+      <p className="estimate-loading-desc matching-progress-desc">
+        <span className="matching-progress-desc-main">조건에 맞는 파트너의 견적을 기다리는 중 ...</span>
+        <span className="matching-progress-desc-sub">이 화면을 나가셔도 매칭은 계속 진행돼요</span>
+      </p>
     </section>
   )
 }
@@ -1015,8 +1088,11 @@ export function MatchingAuctionPage({ go }) {
     }
   }, [matchingRequestId])
 
+  const alreadyMatched = partners.some((partner) => partner.quote_status === 'SELECTED')
+
   // 💡 5. 특정 파트너 수락(선택) 주소 앞에도 /api/v1/ 적용
   const selectPartner = async (partner) => {
+    if (isSelecting || alreadyMatched) return
     setIsSelecting(true)
 
     try {
@@ -1042,69 +1118,48 @@ export function MatchingAuctionPage({ go }) {
   }
 
   return (
-    <section className="selection-screen auction-screen flex flex-col h-full bg-[#F2F3F5] overflow-hidden">
-      <style>{`
-        @keyframes slideInFromRight {
-          0% { 
-            opacity: 0; 
-            transform: translateX(100%); 
-          }
-          100% { 
-            opacity: 1; 
-            transform: translateX(0); 
-          }
-        }
-        .slide-in-card {
-          animation: slideInFromRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
+    <CustomerPage go={go} back={() => go(screens.matchingHome)} className="cds--white">
+      <div className="matching-auction-screen">
+        <h1 className="matching-auction-title">{title}</h1>
 
-      <CustomerTopBar go={go} />
-      <button 
-        className="mr-3 flex items-left justify-left transition-transform active:scale-90" 
-        onClick={() => go(screens.matchingHome)}
-      >
-        <img src={figmaAssets.back} alt="뒤로가기" className="w-6 h-6 object-contain" />
-      </button>
+        {loadStatus === 'loading' ? <p className="matching-auction-status">파트너 견적을 불러오는 중입니다.</p> : null}
+        {loadStatus === 'missing-request' ? <p className="matching-auction-status is-error">매칭 요청 ID가 없어 견적 목록을 불러올 수 없습니다.</p> : null}
+        {loadStatus === 'error' ? <p className="matching-auction-status is-error">파트너 견적을 불러오지 못했습니다. 서버 연결을 확인해주세요.</p> : null}
+        {loadStatus === 'empty' ? <p className="matching-auction-status">도착한 견적이 아직 없어요.</p> : null}
+        {selectStatus === 'error' ? <p className="matching-auction-status is-error">파트너 선택에 실패했습니다. 다시 시도해주세요.</p> : null}
 
-      <h1 className='text-center font-bold text-2xl pt-5 pb-8'>{title}</h1>
-
-      {loadStatus === 'loading' ? <p className="muted center">파트너 견적을 불러오는 중입니다.</p> : null}
-      {loadStatus === 'missing-request' ? <p className="muted center">매칭 요청 ID가 없어 견적 목록을 불러올 수 없습니다.</p> : null}
-      {loadStatus === 'error' ? <p className="muted center">파트너 견적을 불러오지 못했습니다. 서버 연결을 확인해주세요.</p> : null}
-      {loadStatus === 'empty' ? <p className="muted center">도착한 견적이 아직 없어요.</p> : null}
-      {selectStatus === 'error' ? <p className="muted center">파트너 선택에 실패했습니다. 다시 시도해주세요.</p> : null}
-
-      <div className="list-stack px-6 flex-1 overflow-y-auto pb-24">
-        
-        {partners.map((partner) => (
-          <div key={partner.quote_id} className="slide-in-card mb-4">
-            <PartnerCard
-              partner={partner}
-              onOpenProposal={setProposalPartner}
-              onOpenProfile={setProfilePartner}
-            />
-          </div>
-        ))}
-        {partners.length > 0 && (        
-          <div className="mt-4 mb-8">
-            <div className="flex justify-between items-center w-full px-1">
-              <span>{formatDate(flow.matchingFlow.schedule.preferred_date)} </span>
-              <span>대기중인 파트너 : {partners.length}명</span>
+        <div className="matching-auction-list">
+          {partners.map((partner) => (
+            <div key={partner.quote_id} className="matching-auction-card-enter">
+              <PartnerCard
+                partner={partner}
+                onOpenProposal={setProposalPartner}
+                onOpenProfile={setProfilePartner}
+              />
             </div>
-            
-            <div className="flex flex-col mt-4 gap-1">
-              <p className="muted center">파트너 카드를 눌러 상세 제안을 확인하세요</p>
-              <small className="muted center block">기다리시면 추가 매칭이 진행될 수 있어요</small>
+          ))}
+          {partners.length > 0 && (
+            <div className="matching-auction-summary">
+              <div className="matching-auction-summary-row">
+                <span>{formatDate(flow.matchingFlow.schedule.preferred_date)}</span>
+                <span>대기중인 파트너 : {partners.length}명</span>
+              </div>
+              <p className="matching-auction-summary-hint">파트너 카드를 눌러 상세 제안을 확인하세요</p>
+              <small className="matching-auction-summary-hint">기다리시면 추가 매칭이 진행될 수 있어요</small>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
+        <ProposalModal
+          partner={proposalPartner}
+          onClose={() => setProposalPartner(null)}
+          onSelect={selectPartner}
+          isSelecting={isSelecting}
+          alreadyMatched={alreadyMatched}
+        />
+        <ProfileModal partner={profilePartner} onClose={() => setProfilePartner(null)} />
       </div>
-
-      <ProposalModal partner={proposalPartner} onClose={() => setProposalPartner(null)} onSelect={selectPartner} isSelecting={isSelecting} />
-      <ProfileModal partner={profilePartner} onClose={() => setProfilePartner(null)} />
-    </section>
+    </CustomerPage>
   )
 }
 
@@ -1112,20 +1167,16 @@ export function MatchingPartnerPage({ go }) {
   const flow = useCustomerFlow()
   const partner = flow.matchingFlow.selectedPartner
 
-  if (!partner) {
-    return (
-      <section className="document-screen">
-        <button className="inline-back-arrow" onClick={() => go(screens.matchingAuction)}>‹</button>
-        <p className="muted center">선택된 파트너 제안이 없습니다.</p>
-      </section>
-    )
-  }
-
   return (
-    <section className="document-screen">
-      <button className="inline-back-arrow" onClick={() => go(screens.matchingAuction)}>‹</button>
-      <ProposalModal partner={partner} onClose={() => go(screens.matchingAuction)} onSelect={() => go(screens.matchingDone)} />
-    </section>
+    <CustomerPage go={go} back={() => go(screens.matchingAuction)} className="cds--white">
+      <div className="matching-current">
+        {!partner ? (
+          <p className="matching-current-empty">선택된 파트너 제안이 없습니다.</p>
+        ) : (
+          <ProposalModal partner={partner} onClose={() => go(screens.matchingAuction)} onSelect={() => go(screens.matchingDone)} inline />
+        )}
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -1133,20 +1184,16 @@ export function MatchingPartnerInfoPage({ go }) {
   const flow = useCustomerFlow()
   const partner = flow.matchingFlow.selectedPartner
 
-  if (!partner) {
-    return (
-      <section className="document-screen">
-        <button className="inline-back-arrow" onClick={() => go(screens.matchingAuction)}>‹</button>
-        <p className="muted center">선택된 파트너 정보가 없습니다.</p>
-      </section>
-    )
-  }
-
   return (
-    <section className="document-screen">
-      <button className="inline-back-arrow" onClick={() => go(screens.matchingAuction)}>‹</button>
-      <ProfileModal partner={partner} onClose={() => go(screens.matchingAuction)} />
-    </section>
+    <CustomerPage go={go} back={() => go(screens.matchingAuction)} className="cds--white">
+      <div className="matching-current">
+        {!partner ? (
+          <p className="matching-current-empty">선택된 파트너 정보가 없습니다.</p>
+        ) : (
+          <ProfileModal partner={partner} onClose={() => go(screens.matchingAuction)} inline />
+        )}
+      </div>
+    </CustomerPage>
   )
 }
 
@@ -1159,127 +1206,123 @@ export function MatchingDonePage({ go }) {
 
   if (!selectedPartner) {
     return (
-      <section className="subpage-screen current-matching-screen">
-        <CustomerTopBar go={go} />
-        <button className="inline-back-arrow" onClick={() => go(screens.home)}>‹</button>
-        <h1 className="matching-history-title">현재 매칭</h1>
-        <article className="current-matching-panel">
-          <MatchingStatusBadge status={flow.matchingFlow.matchingStatus || '진행중인 매칭 없음'} />
-          <h2>진행중인 매칭이 없어요</h2>
-          <p>AI 견적서를 선택하고 주소 정보를 연결한 뒤 매칭을 요청해보세요.</p>
-          <PrimaryButton narrow onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
-        </article>
-      </section>
+      <CustomerPage go={go} back={() => go(screens.home)} className="cds--white">
+        <div className="matching-current">
+          <h1 className="matching-current-heading">현재 매칭</h1>
+          <article className="matching-current-card matching-current-card--error">
+            <MatchingStatusBadge status={flow.matchingFlow.matchingStatus || '진행중인 매칭 없음'} />
+            <h2 className="matching-current-error-title">진행중인 매칭이 없어요</h2>
+            <p className="matching-current-error-desc">AI 견적서를 선택하고 주소 정보를 연결한 뒤 매칭을 요청해보세요.</p>
+            <PrimaryButton narrow onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
+          </article>
+        </div>
+      </CustomerPage>
     )
   }
 
   return (
-    <section className="subpage-screen current-matching-screen">
-      <CustomerTopBar go={go} />
-      <button className="inline-back-arrow" onClick={() => go(screens.home)}>‹</button>
-      <h1 className="matching-history-title">현재 매칭</h1>
-      <article className="current-matching-panel">
-        <div className="current-matching-head">
-          <div>
-            <MatchingStatusBadge status="시공 예정" />
-            <h2>{estimateTitle(estimate)}</h2>
-          </div>
-          <span>{selectedPartner.available_date}</span>
-        </div>
-
-        <div className="current-summary-grid">
-          <div>
-            <small>AI 견적</small>
-            <strong>{estimateCost(estimate)}</strong>
-          </div>
-          <div>
-            <small>확정 금액</small>
-            <strong>{formatWon(selectedPartner.total_amount)}</strong>
-          </div>
-          <div>
-            <small>예약 시간</small>
-            <strong>{schedule.preferred_time_start ? `${schedule.preferred_time_start} ~ ${schedule.preferred_time_end}` : '긴급 요청'}</strong>
-          </div>
-          <div>
-            <small>예상 소요</small>
-            <strong>{estimateMinutesLabel(selectedPartner.estimated_minutes)}</strong>
-          </div>
-        </div>
-
-        <section className="current-detail-section">
-          <h3>시공 주소</h3>
-          <p>{address?.address || address?.label || '서울특별시 강남구 테헤란로 123, 101동 202호'}</p>
-        </section>
-
-        <section className="current-detail-section">
-          <h3>선택한 파트너</h3>
-          <div className="partner-inline">
-            <Avatar tone={selectedPartner.avatar} />
+    <CustomerPage go={go} back={() => go(screens.home)} className="cds--white">
+      <div className="matching-current">
+        <h1 className="matching-current-heading">현재 매칭</h1>
+        <article className="matching-current-card">
+          <div className="matching-current-card-head">
             <div>
-              <strong>{selectedPartner.contractor.business_name}</strong>
-              <PartnerStars rating={selectedPartner.contractor.rating_avg} />
-              <p>{selectedPartner.specialty} / 경력 {selectedPartner.career}</p>
-              <p>{selectedPartner.contractor.phone}</p>
+              <MatchingStatusBadge status="시공 예정" />
+              <h2>{estimateTitle(estimate)}</h2>
+            </div>
+            <span>{selectedPartner.available_date}</span>
+          </div>
+
+          <div className="matching-current-stats">
+            <div className="matching-current-stat">
+              <span>AI 견적</span>
+              <strong>{estimateCost(estimate)}</strong>
+            </div>
+            <div className="matching-current-stat">
+              <span>확정 금액</span>
+              <strong>{formatWon(selectedPartner.total_amount)}</strong>
+            </div>
+            <div className="matching-current-stat">
+              <span>예약 시간</span>
+              <strong>{schedule.preferred_time_start ? `${schedule.preferred_time_start} ~ ${schedule.preferred_time_end}` : '긴급 요청'}</strong>
+            </div>
+            <div className="matching-current-stat">
+              <span>예상 소요</span>
+              <strong>{estimateMinutesLabel(selectedPartner.estimated_minutes)}</strong>
             </div>
           </div>
-        </section>
 
-        <section className="current-detail-section">
-          <h3>파트너 제안 내용</h3>
-          <p>{selectedPartner.work_scope}</p>
-          <p>{selectedPartner.additional_note}</p>
-        </section>
+          <div className="matching-current-section">
+            <h3>시공 주소</h3>
+            <p>{address?.address || address?.label || '서울특별시 강남구 테헤란로 123, 101동 202호'}</p>
+          </div>
 
-        <div className="button-row bottom-actions">
-          <PrimaryButton ghost onClick={() => go(screens.matchingAuction)}>견적 다시 보기</PrimaryButton>
-          <PrimaryButton onClick={() => go(screens.chatRoom)}>1:1 채팅 상담</PrimaryButton>
-        </div>
-      </article>
-    </section>
+          <div className="matching-current-section">
+            <h3>선택한 파트너</h3>
+            <div className="matching-done-partner-row">
+              <Avatar tone={selectedPartner.avatar} />
+              <div>
+                <strong>{selectedPartner.contractor.business_name}</strong>
+                <PartnerStars rating={selectedPartner.contractor.rating_avg} />
+                <p>{selectedPartner.specialty} / 경력 {selectedPartner.career}</p>
+                <p>{selectedPartner.contractor.phone}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="matching-current-section">
+            <h3>파트너 제안 내용</h3>
+            <p>{selectedPartner.work_scope}</p>
+            <p>{selectedPartner.additional_note}</p>
+          </div>
+
+          <div className="matching-current-actions">
+            <button type="button" className="matching-current-ghost" onClick={() => go(screens.matchingAuction)}>견적 다시 보기</button>
+            <PrimaryButton onClick={() => go(screens.chatRoom)}>1:1 채팅 상담</PrimaryButton>
+          </div>
+        </article>
+      </div>
+    </CustomerPage>
   )
 }
 
 export function ReviewWritePage({ go }) {
   return (
-    <section className="review-write-screen">
-      <article className="review-write-card">
-        <div className="review-write-head">
-          <div className="title-icon review" />
-          <h1>리뷰 작성</h1>
-        </div>
-        <div className="review-avatar-block">
-          <Avatar large tone="light" />
+    <section className="review-write-screen cds--white">
+      <h1 className="review-write-title">리뷰 작성</h1>
+      <div className="mypage-review-partner">
+        <Avatar large tone="light" />
+        <div>
           <strong>김도배 파트너님</strong>
           <span>★★★★☆ 4.5/5</span>
         </div>
-        <h2>이분의 시공은 어떠셨나요?</h2>
-        <div className="big-stars">☆☆☆☆☆</div>
-        <textarea className="textarea tall" placeholder="이분의 시공은 어땠는지 자세하게 알려주세요." />
-        <div className="button-row">
-          <PrimaryButton orange onClick={() => go(screens.matchHistory)}>취소</PrimaryButton>
-          <PrimaryButton onClick={() => go(screens.myReviews)}>완료</PrimaryButton>
-        </div>
-      </article>
+      </div>
+      <p className="mypage-review-question">이분의 시공은 어떠셨나요?</p>
+      <div className="mypage-review-stars" aria-hidden="true">
+        {[1, 2, 3, 4, 5].map((score) => (
+          <button key={score} type="button" disabled>☆</button>
+        ))}
+      </div>
+      <textarea className="mypage-review-textarea" placeholder="이분의 시공은 어땠는지 자세하게 알려주세요." />
+      <div className="estimate-result-actions">
+        <PrimaryButton ghost onClick={() => go(screens.matchHistory)}>취소</PrimaryButton>
+        <PrimaryButton onClick={() => go(screens.myReviews)}>완료</PrimaryButton>
+      </div>
     </section>
   )
 }
 
 export function UrgentModal({ close, confirm }) {
   return (
-    <div className="modal-overlay z-9999">
-      <div className="modal-card">
-        <div 
-          className="mx-auto w-20 h-20 flex justify-center items-center mb-4 [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: errorSvg }} 
-        />
-        <h3 className='font-bold text-lg'>긴급 수리 요청 선택 시</h3>
-        <p className='font-bold text-lg'>최대한 빠르게 시공을 받아볼 수 있으며, <br />추가 비용이 발생할 수 있어요.</p>
-        <div className='p-5'>
-          <p className='text-sm'>진행하시겠습니까?</p>
-        </div>
-        <div className="button-row">
-          <PrimaryButton orange onClick={close}>취소</PrimaryButton>
-          <PrimaryButton onClick={confirm}>확인</PrimaryButton>
+    <div className="urgent-modal-overlay">
+      <div className="urgent-modal-card">
+        <div className="urgent-modal-icon" dangerouslySetInnerHTML={{ __html: urgentAlertSvg }} />
+        <h3 className="urgent-modal-title">긴급 수리 요청 선택 시</h3>
+        <p className="urgent-modal-desc">최대한 빠르게 시공을 받아볼 수 있으며, <br />추가 비용이 발생할 수 있어요.</p>
+        <p className="urgent-modal-confirm-text">진행하시겠습니까?</p>
+        <div className="urgent-modal-actions">
+          <button type="button" className="urgent-modal-cancel" onClick={close}>취소</button>
+          <button type="button" className="urgent-modal-confirm" onClick={confirm}>확인</button>
         </div>
       </div>
     </div>

@@ -1,16 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import {
+  FaChevronLeft,
+  FaClipboardList,
+  FaFileInvoiceDollar,
+  FaMapMarkerAlt,
+  FaRegStar,
+  FaShieldAlt,
+  FaTimes,
+  FaUserCircle,
+} from 'react-icons/fa'
 import { fetchHomeAddress, saveHomeAddress } from '../../api/homeApi'
 import { fetchMatchingHistory, fetchMyProfile, updateMyProfile } from '../../api/mypageApi'
 import { HistoryCard, InfoRows, MenuTile, ReviewCard, SearchBar } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
-import { Avatar, Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { reviewCards, screens } from '../../data/customerData'
 import { useAuth } from '../../context/authContext'
+import { formatPhoneNumber } from '../../utils/phone'
 
 // 마이페이지 메인 홈: 각 마이페이지 메뉴로 이동하는 화면
-export function MyPage({ go, back }) {
+export function MyPage({ go }) {
   const [profile, setProfile] = useState({
     nickname: '사용자',
     name: '사용자',
@@ -45,26 +56,31 @@ export function MyPage({ go, back }) {
   const accountLabel = profile.email || profile.userId || '로그인 계정'
 
   return (
-    <section className="subpage-screen mypage-screen">
-      <div className="top-brand-row">
-        <Logo />
-      </div>
-      <button className="inline-back-arrow" onClick={back}>‹</button>
-      <div className="mypage-hero">
-        <img className="profile-photo-icon" src={figmaAssets.mypageProfilePhoto} alt="" />
+    <section className="subpage-screen mypage-screen cds--white">
+      <header className="mypage-list-header">
+        <span className="mypage-list-header-spacer" aria-hidden="true" />
+        <h1>마이페이지</h1>
+        <button type="button" className="mypage-list-back" onClick={() => go(screens.home)} aria-label="닫기">
+          <FaTimes />
+        </button>
+      </header>
+      <div className="mypage-hero-card">
+        <div className="mypage-hero-avatar">
+          <img className="profile-photo-icon" src={figmaAssets.mypageProfilePhoto} alt="" />
+        </div>
         <div>
-          <h1>{displayName}님,</h1>
-          <h2>안녕하세요 !</h2>
+          <p className="mypage-hero-eyebrow">MY TUKTAK</p>
+          <h2>{displayName}님, 안녕하세요!</h2>
           <p>{accountLabel}</p>
         </div>
       </div>
-      <div className="tile-grid">
-        <MenuTile image={figmaAssets.mypageMatching} label="매칭 히스토리" onClick={() => go(screens.matchHistory)} />
-        <MenuTile image={figmaAssets.mypageAiEstimate} label="내 AI 견적서" onClick={() => go(screens.myEstimateList)} />
-        <MenuTile image={figmaAssets.mypageRiskReport} label="내 리스크리포트" onClick={() => go(screens.myRiskList)} />
-        <MenuTile image={figmaAssets.mypageWrittenReview} label="내가 쓴 리뷰" onClick={() => go(screens.myReviews)} />
-        <MenuTile image={figmaAssets.mypageProfile} label="내 정보" onClick={() => go(screens.profile)} />
-      </div>
+      <nav className="mypage-menu-list">
+        <MenuTile Icon={FaClipboardList} label="매칭 히스토리" onClick={() => go(screens.matchHistory)} />
+        <MenuTile Icon={FaFileInvoiceDollar} label="내 AI 견적서" onClick={() => go(screens.myEstimateList)} />
+        <MenuTile Icon={FaShieldAlt} label="내 리스크리포트" onClick={() => go(screens.myRiskList)} />
+        <MenuTile Icon={FaRegStar} label="내가 쓴 리뷰" onClick={() => go(screens.myReviews)} />
+        <MenuTile Icon={FaUserCircle} label="내 정보" onClick={() => go(screens.profile)} />
+      </nav>
     </section>
   )
 }
@@ -74,6 +90,7 @@ export function MyReviewsPage({ back }) {
   const [myReviews, setMyReviews] = useState(reviewCards)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('latest')
+  const [reviewIdToDelete, setReviewIdToDelete] = useState(null)
   const normalizedQuery = query.trim().toLowerCase()
   const filteredReviews = myReviews
     .filter((review) => (
@@ -88,12 +105,14 @@ export function MyReviewsPage({ back }) {
     })
 
   return (
-    <section className="subpage-screen history-page reviews-list-page">
-      <div className="subpage-title-row">
-        <button className="inline-back-arrow" onClick={back}>‹</button>
-        <img className="subpage-title-icon review-title-icon" src={figmaAssets.mypageWrittenReviewTitle} alt="" />
+    <section className="subpage-screen history-page reviews-list-page cds--white">
+      <header className="mypage-list-header">
+        <button type="button" className="mypage-list-back" onClick={back} aria-label="뒤로가기">
+          <FaChevronLeft />
+        </button>
         <h1>내가 쓴 리뷰</h1>
-      </div>
+        <span className="mypage-list-header-spacer" aria-hidden="true" />
+      </header>
       <div className="history-search-row review-search-row">
         <SearchBar value={query} onChange={setQuery} />
         <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="내가 쓴 리뷰 정렬">
@@ -108,13 +127,45 @@ export function MyReviewsPage({ back }) {
             <ReviewCard
               key={review.id}
               review={review}
-              onDelete={(reviewId) => setMyReviews((reviews) => reviews.filter((item) => item.id !== reviewId))}
+              onDelete={(reviewId) => setReviewIdToDelete(reviewId)}
             />
           ))}
           {filteredReviews.length === 0 ? <p className="empty-list-message">검색 결과가 없습니다.</p> : null}
         </div>
       </div>
+      {reviewIdToDelete ? (
+        <DeleteReviewConfirmModal
+          onClose={() => setReviewIdToDelete(null)}
+          onConfirm={() => {
+            setMyReviews((reviews) => reviews.filter((item) => item.id !== reviewIdToDelete))
+            setReviewIdToDelete(null)
+          }}
+        />
+      ) : null}
     </section>
+  )
+}
+
+// 리뷰 삭제 확인 모달: 로그아웃/회원탈퇴 확인 모달(ProfileConfirmModal)과 동일한
+// Carbon 모달 셸(.estimate-result-*)을 재사용해 파괴적 액션에 확인 절차를 둔다.
+function DeleteReviewConfirmModal({ onClose, onConfirm }) {
+  return (
+    <div className="estimate-result-overlay">
+      <article className="estimate-result-modal">
+        <div className="estimate-result-head">
+          <div>
+            <span>리뷰 삭제</span>
+            <small>이 리뷰를 삭제할까요?</small>
+          </div>
+          <button type="button" onClick={onClose} aria-label="닫기"><FaTimes /></button>
+        </div>
+        <p className="mypage-readonly-note">삭제한 리뷰는 다시 되돌릴 수 없습니다.</p>
+        <div className="estimate-result-actions">
+          <PrimaryButton ghost onClick={onClose}>취소</PrimaryButton>
+          <PrimaryButton orange onClick={onConfirm}>삭제하기</PrimaryButton>
+        </div>
+      </article>
+    </div>
   )
 }
 
@@ -259,21 +310,25 @@ export function ProfilePage({ go, back }) {
   }
 
   return (
-    <section className="subpage-screen profile-screen">
-      <div className="subpage-title-row">
-        <button className="inline-back-arrow" onClick={back}>‹</button>
-        <img className="subpage-title-icon profile-title-icon" src={figmaAssets.mypageProfileTitle} alt="" />
+    <section className="subpage-screen profile-screen cds--white">
+      <header className="mypage-list-header">
+        <button type="button" className="mypage-list-back" onClick={back} aria-label="뒤로가기">
+          <FaChevronLeft />
+        </button>
         <h1>내 정보</h1>
-      </div>
-      <div className="profile-top">
-        <img className="profile-photo-icon large" src={figmaAssets.mypageProfilePhoto} alt="" />
+        <span className="mypage-list-header-spacer" aria-hidden="true" />
+      </header>
+      <div className="mypage-profile-hero">
+        <div className="mypage-hero-avatar">
+          <img className="profile-photo-icon large" src={figmaAssets.mypageProfilePhoto} alt="" />
+        </div>
         <h2>{profile.name} 님</h2>
       </div>
       <InfoRows rows={profileRowsForView} onSelect={openEditModal} />
       <div className="profile-action-row">
-        <button onClick={() => setConfirmAction('withdraw')}>회원탈퇴</button>
+        <button type="button" className="is-danger" onClick={() => setConfirmAction('withdraw')}>회원탈퇴</button>
         <span>|</span>
-        <button onClick={() => setConfirmAction('logout')}>로그아웃</button>
+        <button type="button" onClick={() => setConfirmAction('logout')}>로그아웃</button>
       </div>
       {editingField ? (
         <ProfileEditModal
@@ -335,40 +390,30 @@ function ProfileEditModal({
   const isAddressField = field.key === 'address'
 
   return (
-    <div className="estimate-result-overlay profile-modal-overlay">
-      <article className="estimate-result-modal profile-edit-modal">
+    <div className="estimate-result-overlay">
+      <article className="estimate-result-modal">
         <div className="estimate-result-head">
           <div>
             <span>내 정보 수정</span>
             <small>{field.label}</small>
           </div>
-          <button onClick={onClose} aria-label="닫기">×</button>
-        </div>
-        <div className="estimate-result-title profile-edit-title">
-          <img src={figmaAssets.mypageProfileTitle} alt="" />
-          <div>
-            <h2>{field.label}</h2>
-            <p>{field.editable ? '변경할 내용을 입력해 주세요.' : '현재는 읽기 전용 항목입니다.'}</p>
-          </div>
+          <button type="button" onClick={onClose} aria-label="닫기"><FaTimes /></button>
         </div>
         {field.editable && isAddressField ? (
-          <div className="profile-address-search">
+          <div className="mypage-address-search">
             <span>{field.label}</span>
-            <button className="home-address-search" type="button" onClick={onAddressSearch}>
-              <span aria-hidden="true" />
-              <strong>도로명, 지번 또는 건물명으로 검색</strong>
+            <button className="mypage-address-trigger" type="button" onClick={onAddressSearch}>
+              <FaMapMarkerAlt aria-hidden="true" />
+              <span>도로명, 지번 또는 건물명으로 검색</span>
             </button>
-            {addressError ? <p className="home-address-error">{addressError}</p> : null}
-            <article className="home-current-address profile-selected-address">
-              <i aria-hidden="true" />
-              <div>
-                <em>{address ? '선택된 주소' : '현재 주소'}</em>
-                <h3>{address?.title || value || '주소를 검색해 주세요'}</h3>
-                <p>{address?.detail || value || '주소찾기를 눌러 도로명주소를 선택해 주세요.'}</p>
-              </div>
-            </article>
+            {addressError ? <p className="mypage-address-error">{addressError}</p> : null}
+            <div className="mypage-address-card">
+              <em>{address ? '선택된 주소' : '현재 주소'}</em>
+              <h3>{address?.title || value || '주소를 검색해 주세요'}</h3>
+              <p>{address?.detail || value || '주소찾기를 눌러 도로명주소를 선택해 주세요.'}</p>
+            </div>
             {address ? (
-              <label className="profile-edit-field profile-address-detail-field">
+              <label className="mypage-field">
                 <span>상세 주소</span>
                 <input
                   type="text"
@@ -380,16 +425,18 @@ function ProfileEditModal({
             ) : null}
           </div>
         ) : field.editable ? (
-          <label className="profile-edit-field">
+          <label className="mypage-field">
             <span>{field.label}</span>
             <input
               type={field.type ?? 'text'}
+              inputMode={field.type === 'tel' ? 'numeric' : undefined}
+              maxLength={field.type === 'tel' ? 13 : undefined}
               value={value}
-              onChange={(event) => onChange(event.target.value)}
+              onChange={(event) => onChange(field.type === 'tel' ? formatPhoneNumber(event.target.value) : event.target.value)}
             />
           </label>
         ) : (
-          <p className="profile-readonly-message">{field.helper}</p>
+          <p className="mypage-readonly-note">{field.helper}</p>
         )}
         <div className="estimate-result-actions">
           <PrimaryButton ghost onClick={onClose}>취소</PrimaryButton>
@@ -405,16 +452,16 @@ function ProfileConfirmModal({ action, onClose, onConfirm }) {
   const isWithdraw = action === 'withdraw'
 
   return (
-    <div className="estimate-result-overlay profile-modal-overlay">
-      <article className="estimate-result-modal profile-confirm-modal">
-        <div className="estimate-result-title profile-edit-title">
-          <img src={figmaAssets.mypageProfileTitle} alt="" />
+    <div className="estimate-result-overlay">
+      <article className="estimate-result-modal">
+        <div className="estimate-result-head">
           <div>
-            <h2>{isWithdraw ? '회원탈퇴' : '로그아웃'}</h2>
-            <p>{isWithdraw ? '정말 회원탈퇴를 진행할까요?' : '현재 계정에서 로그아웃할까요?'}</p>
+            <span>{isWithdraw ? '회원탈퇴' : '로그아웃'}</span>
+            <small>{isWithdraw ? '정말 회원탈퇴를 진행할까요?' : '현재 계정에서 로그아웃할까요?'}</small>
           </div>
+          <button type="button" onClick={onClose} aria-label="닫기"><FaTimes /></button>
         </div>
-        <p className="profile-readonly-message">
+        <p className="mypage-readonly-note">
           {isWithdraw
             ? '회원탈퇴 API 연결 전이라 지금은 확인 흐름만 동작합니다.'
             : '로그아웃을 누르면 로그인 화면으로 이동합니다.'}
@@ -462,12 +509,14 @@ export function MatchHistoryPage({ go, back }) {
     .sort((a, b) => new Date(b.date) - new Date(a.date))
 
   return (
-    <section className="subpage-screen history-page">
-      <div className="subpage-title-row">
-        <button className="inline-back-arrow" onClick={back}>‹</button>
-        <img className="subpage-title-icon" src={figmaAssets.matchingHistoryTitle} alt="" />
+    <section className="subpage-screen history-page cds--white">
+      <header className="mypage-list-header">
+        <button type="button" className="mypage-list-back" onClick={back} aria-label="뒤로가기">
+          <FaChevronLeft />
+        </button>
         <h1>매칭 히스토리</h1>
-      </div>
+        <span className="mypage-list-header-spacer" aria-hidden="true" />
+      </header>
       <div className="history-search-row">
         <SearchBar value={query} onChange={setQuery} />
         <select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="매칭 히스토리 필터">
@@ -483,7 +532,7 @@ export function MatchHistoryPage({ go, back }) {
           ))}
           {filteredHistoryCards.length === 0 ? (
             <div className="history-empty-state">
-              <img src={figmaAssets.matchingHistoryEmpty} alt="" />
+              <span className="history-empty-state-icon" aria-hidden="true"><FaClipboardList /></span>
               <strong>매칭 히스토리가 없습니다</strong>
               <p>검색어나 필터 조건을 다시 확인해 주세요.</p>
             </div>
@@ -511,23 +560,27 @@ function ReviewWriteModal({ item, onClose, onSubmit }) {
   const canSubmit = rating > 0 && body.trim().length > 0
 
   return (
-    <div className="mypage-review-overlay">
-      <article className="mypage-review-modal">
-        <div className="mypage-review-head">
-          <img src={figmaAssets.mypageReview} alt="" />
-          <h1>리뷰 작성</h1>
-          <button onClick={onClose} aria-label="닫기">×</button>
+    <div className="estimate-result-overlay">
+      <article className="estimate-result-modal">
+        <div className="estimate-result-head">
+          <div>
+            <span>리뷰 작성</span>
+            <small>이분의 시공은 어떠셨나요?</small>
+          </div>
+          <button type="button" onClick={onClose} aria-label="닫기"><FaTimes /></button>
         </div>
         <div className="mypage-review-partner">
           <Avatar large tone="light" />
-          <strong>{item.partner.replace('담당 파트너 : ', '')} 파트너님</strong>
-          <span>★★★★☆ 4.5/5</span>
+          <div>
+            <strong>{item.partner.replace('담당 파트너 : ', '')} 파트너님</strong>
+            <span>★★★★☆ 4.5/5</span>
+          </div>
         </div>
-        <h2>이분의 시공은 어떠셨나요?</h2>
         <div className="mypage-review-stars" aria-label="별점 선택">
           {[1, 2, 3, 4, 5].map((score) => (
             <button
               key={score}
+              type="button"
               className={score <= rating ? 'active' : ''}
               onClick={() => setRating(score)}
               aria-label={`${score}점`}
@@ -544,8 +597,8 @@ function ReviewWriteModal({ item, onClose, onSubmit }) {
           onChange={(event) => setBody(event.target.value)}
         />
         <p className="mypage-review-helper">{body.length}/300</p>
-        <div className="mypage-review-actions">
-          <PrimaryButton orange onClick={onClose}>취소</PrimaryButton>
+        <div className="estimate-result-actions">
+          <PrimaryButton ghost onClick={onClose}>취소</PrimaryButton>
           <PrimaryButton onClick={onSubmit} disabled={!canSubmit}>완료</PrimaryButton>
         </div>
       </article>

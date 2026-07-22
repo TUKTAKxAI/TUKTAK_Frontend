@@ -1,7 +1,8 @@
 import { ChoiceCard } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
-import { BackButton, Logo, PrimaryButton } from '../../components/customer/FormControls'
+import { BackButton, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
+import confirmCarbonSvg from '../../assets/figma/confirm-carbon.svg?raw'
 import { screens, signupTerms } from '../../data/customerData'
 import { contractorScreens, partnerSignupTerms } from '../../data/contractorData'
 import { contractorScreenPaths } from '../../routes/contractorRoutes'
@@ -13,17 +14,45 @@ import {
   signupPartner,
   checkEmailAvailability,
 } from '../../services/authService'
+import {
+  fetchReferenceCodes,
+  fetchServiceTasks,
+  updateContractorServices,
+} from '../../services/contractorService'
 import { clearAuthTokens } from '../../api/client'
+import { categoryGroups, regionGroups } from '../../data/signupCategoryData'
+import { formatPhoneNumber, isValidPhoneNumber } from '../../utils/phone'
 import { FaEye, FaEyeSlash, FaCamera } from "react-icons/fa";
+
+const PREFERRED_ROLE_KEY = 'tuktak_preferred_role'
+
+function setPreferredRole(role) {
+  window.localStorage.setItem(PREFERRED_ROLE_KEY, role)
+}
+
+// ----------------------------------------------------------------------------
+// 회원가입 온보딩 단계 화면들이 공유하는 상단 헤더 (뒤로가기 + 로고 마크 + 워드마크)
+// 로그인 화면의 .login-shell-bar 와 동일한 룩을 씀
+// ----------------------------------------------------------------------------
+function AuthStepHeader({ back }) {
+  return (
+    <div className="auth-step-header">
+      <BackButton onClick={back} />
+      <img src={figmaAssets.logoMark} alt="TUKTAK" className="auth-step-header-logo" />
+      <span className="auth-step-header-wordmark">TUKTAK</span>
+    </div>
+  )
+}
 
 // ----------------------------------------------------------------------------
 // 분야 선택 / 작업지역 선택에 공용으로 쓰는 좌-우 패널 컴포넌트
 // (파트너 "전문 분야" 화면과 "작업 지역" 화면이 동일한 UI 패턴이라 재사용)
 // ----------------------------------------------------------------------------
-function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, maxCount }) {
+function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, maxCount, hideCount }) {
   const [activeGroupKey, setActiveGroupKey] = useState(groups[0]?.key)
 
   const activeGroup = groups.find((g) => g.key === activeGroupKey) || groups[0]
+  const effectiveActiveGroupKey = activeGroup?.key
 
   return (
     <div className="select-panel">
@@ -33,7 +62,7 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
             <button
               key={group.key}
               type="button"
-              className={activeGroupKey === group.key ? "active" : ""}
+              className={effectiveActiveGroupKey === group.key ? "active" : ""}
               onClick={() => setActiveGroupKey(group.key)}
             >
               {group.label}
@@ -70,10 +99,12 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
       </div>
 
       <div className="select-panel-footer">
-        <div className="footer-count-row">
-          <span>
-            {footerLabel} {selected.length} / {maxCount}
-          </span>
+        <div className={`footer-count-row ${hideCount ? "reset-only" : ""}`}>
+          {!hideCount && (
+            <span>
+              {footerLabel} {selected.length} / {maxCount}
+            </span>
+          )}
 
           <button type="button" className="reset-button" onClick={onReset}>
             ↻ 초기화
@@ -95,476 +126,104 @@ function MultiSelectPanel({ groups, selected, onToggle, onReset, footerLabel, ma
   )
 }
 
-// TODO: 실제로는 API로 받아오거나 별도 데이터 파일로 분리하세요.
-// (2026-07 데이터 수집 계획서의 object 범주를 기존 대분류에 매핑해 반영함)
-const categoryGroups = [
-  {
-    key: "appliance",
-    label: "가전",
-    items: [
-      { id: "appliance_all", label: "가전 전체" },
-      { id: "aircon", label: "에어컨" },
-      { id: "aircon_remote", label: "에어컨 리모컨" },
-      { id: "washer", label: "세탁기" },
-      { id: "fridge", label: "냉장고" },
-      { id: "tv", label: "TV" },
-      { id: "gas_range", label: "가스레인지" },
-      { id: "induction", label: "인덕션" },
-      { id: "dishwasher", label: "식기세척기" },
-      { id: "boiler", label: "보일러" },
-      { id: "water_heater", label: "온수기" },
-    ],
-  },
-  {
-    key: "plumbing",
-    label: "배관 / 누수",
-    items: [
-      { id: "plumbing_all", label: "배관/누수 전체" },
-      { id: "leak", label: "누수 탐지" },
-      { id: "pipe", label: "배관 교체" },
-      { id: "sink", label: "싱크대" },
-      { id: "faucet", label: "수전" },
-      { id: "drain", label: "배수구" },
-      { id: "sewer", label: "하수구" },
-    ],
-  },
-  {
-    key: "bathroom",
-    label: "욕실",
-    items: [
-      { id: "bathroom_all", label: "욕실 전체" },
-      { id: "wash_basin", label: "세면대" },
-      { id: "toilet", label: "변기" },
-      { id: "shower", label: "샤워기" },
-      { id: "bathtub", label: "욕조" },
-      { id: "bathroom_ceiling", label: "욕실 천장" },
-      { id: "bathroom_floor", label: "욕실 바닥" },
-    ],
-  },
-  {
-    key: "kitchen",
-    label: "주방",
-    items: [
-      { id: "kitchen_all", label: "주방 전체" },
-      { id: "kitchen_floor", label: "주방 바닥" },
-    ],
-  },
-  {
-    key: "electric",
-    label: "전기 / 조명",
-    items: [
-      { id: "electric_all", label: "전기/조명 전체" },
-      { id: "outlet", label: "콘센트" },
-      { id: "switch", label: "스위치" },
-      { id: "lighting", label: "조명" },
-      { id: "breaker", label: "차단기" },
-    ],
-  },
-  {
-    key: "wall",
-    label: "도배 / 벽면",
-    items: [
-      { id: "wall_all", label: "도배/벽면 전체" },
-      { id: "wall", label: "벽" },
-      { id: "ceiling", label: "천장" },
-      { id: "wallpaper", label: "벽지" },
-      { id: "paint", label: "페인트" },
-    ],
-  },
-  {
-    key: "tile",
-    label: "타일 / 바닥",
-    items: [
-      { id: "tile_all", label: "타일/바닥 전체" },
-      { id: "tile", label: "타일" },
-      { id: "wood_floor", label: "마루" },
-      { id: "vinyl_floor", label: "장판" },
-    ],
-  },
-  {
-    key: "door",
-    label: "창호 / 문",
-    items: [
-      { id: "door_all", label: "창호/문 전체" },
-      { id: "door", label: "문" },
-      { id: "door_knob", label: "문고리" },
-      { id: "door_lock", label: "도어락" },
-      { id: "window", label: "창문" },
-      { id: "screen_door", label: "방충망" },
-      { id: "sash", label: "샷시" },
-    ],
-  },
-  {
-    key: "furniture",
-    label: "가구 / 설치",
-    items: [
-      { id: "furniture_all", label: "가구/설치 전체" },
-      { id: "storage_cabinet", label: "수납장" },
-      { id: "built_in_closet", label: "붙박이장" },
-      { id: "curtain_blind", label: "커튼/블라인드" },
-      { id: "furniture", label: "가구" },
-    ],
-  },
-  {
-    key: "etc",
-    label: "기타",
-    items: [
-      { id: "etc_all", label: "기타 전체" },
-      { id: "unknown", label: "알 수 없음" },
-      { id: "etc_other", label: "기타" },
-    ],
-  },
-]
+// 전화번호 자릿수 부족 등, 서버 검증 에러 대신 미리 보여주는 안내 모달
+function AuthErrorModal({ message, onClose }) {
+  if (!message) return null
 
-// TODO: 실제로는 API로 받아오거나 별도 데이터 파일로 분리하고,
-// id 값은 실제 행정구역 코드(regionCodeId)로 교체하는 것을 권장합니다.
-// (대한민국 17개 광역시/도 + 시/군/구 전체 반영, 가나다순)
-const regionGroups = [
-  {
-    key: "seoul",
-    label: "서울",
-    items: [
-      { id: "seoul_all", label: "서울 전체" },
-      { id: "gangnam", label: "강남구" },
-      { id: "gangdong", label: "강동구" },
-      { id: "gangbuk", label: "강북구" },
-      { id: "gangseo", label: "강서구" },
-      { id: "gwanak", label: "관악구" },
-      { id: "gwangjin", label: "광진구" },
-      { id: "guro", label: "구로구" },
-      { id: "geumcheon", label: "금천구" },
-      { id: "nowon", label: "노원구" },
-      { id: "dobong", label: "도봉구" },
-      { id: "dongdaemun", label: "동대문구" },
-      { id: "dongjak", label: "동작구" },
-      { id: "mapo", label: "마포구" },
-      { id: "seodaemun", label: "서대문구" },
-      { id: "seocho", label: "서초구" },
-      { id: "seongdong", label: "성동구" },
-      { id: "seongbuk", label: "성북구" },
-      { id: "songpa", label: "송파구" },
-      { id: "yangcheon", label: "양천구" },
-      { id: "yeongdeungpo", label: "영등포구" },
-      { id: "yongsan", label: "용산구" },
-      { id: "eunpyeong", label: "은평구" },
-      { id: "jongno", label: "종로구" },
-      { id: "jung", label: "중구" },
-      { id: "jungnang", label: "중랑구" },
-    ],
-  },
-  {
-    key: "busan",
-    label: "부산",
-    items: [
-      { id: "busan_all", label: "부산 전체" },
-      { id: "busan_gangseo", label: "강서구" },
-      { id: "busan_geumjeong", label: "금정구" },
-      { id: "busan_gijang", label: "기장군" },
-      { id: "busan_nam", label: "남구" },
-      { id: "busan_dong", label: "동구" },
-      { id: "busan_dongnae", label: "동래구" },
-      { id: "busan_busanjin", label: "부산진구" },
-      { id: "busan_buk", label: "북구" },
-      { id: "busan_sasang", label: "사상구" },
-      { id: "busan_saha", label: "사하구" },
-      { id: "busan_seo", label: "서구" },
-      { id: "busan_suyeong", label: "수영구" },
-      { id: "busan_yeonje", label: "연제구" },
-      { id: "busan_yeongdo", label: "영도구" },
-      { id: "busan_jung", label: "중구" },
-      { id: "busan_haeundae", label: "해운대구" },
-    ],
-  },
-  {
-    key: "daegu",
-    label: "대구",
-    items: [
-      { id: "daegu_all", label: "대구 전체" },
-      { id: "daegu_gunwi", label: "군위군" },
-      { id: "daegu_nam", label: "남구" },
-      { id: "daegu_dalseo", label: "달서구" },
-      { id: "daegu_dalseong", label: "달성군" },
-      { id: "daegu_dong", label: "동구" },
-      { id: "daegu_buk", label: "북구" },
-      { id: "daegu_seo", label: "서구" },
-      { id: "daegu_suseong", label: "수성구" },
-      { id: "daegu_jung", label: "중구" },
-    ],
-  },
-  {
-    key: "incheon",
-    label: "인천",
-    items: [
-      { id: "incheon_all", label: "인천 전체" },
-      { id: "incheon_ganghwa", label: "강화군" },
-      { id: "incheon_gyeyang", label: "계양구" },
-      { id: "incheon_namdong", label: "남동구" },
-      { id: "incheon_dong", label: "동구" },
-      { id: "incheon_michuhol", label: "미추홀구" },
-      { id: "incheon_bupyeong", label: "부평구" },
-      { id: "incheon_seo", label: "서구" },
-      { id: "incheon_yeonsu", label: "연수구" },
-      { id: "incheon_ongjin", label: "옹진군" },
-      { id: "incheon_jung", label: "중구" },
-    ],
-  },
-  {
-    key: "gwangju",
-    label: "광주",
-    items: [
-      { id: "gwangju_all", label: "광주 전체" },
-      { id: "gwangju_gwangsan", label: "광산구" },
-      { id: "gwangju_nam", label: "남구" },
-      { id: "gwangju_dong", label: "동구" },
-      { id: "gwangju_buk", label: "북구" },
-      { id: "gwangju_seo", label: "서구" },
-    ],
-  },
-  {
-    key: "daejeon",
-    label: "대전",
-    items: [
-      { id: "daejeon_all", label: "대전 전체" },
-      { id: "daejeon_daedeok", label: "대덕구" },
-      { id: "daejeon_dong", label: "동구" },
-      { id: "daejeon_seo", label: "서구" },
-      { id: "daejeon_yuseong", label: "유성구" },
-      { id: "daejeon_jung", label: "중구" },
-    ],
-  },
-  {
-    key: "ulsan",
-    label: "울산",
-    items: [
-      { id: "ulsan_all", label: "울산 전체" },
-      { id: "ulsan_nam", label: "남구" },
-      { id: "ulsan_dong", label: "동구" },
-      { id: "ulsan_buk", label: "북구" },
-      { id: "ulsan_ulju", label: "울주군" },
-      { id: "ulsan_jung", label: "중구" },
-    ],
-  },
-  {
-    key: "sejong",
-    label: "세종",
-    items: [{ id: "sejong_all", label: "세종 전체" }],
-  },
-  {
-    key: "gyeonggi",
-    label: "경기",
-    items: [
-      { id: "gyeonggi_all", label: "경기 전체" },
-      { id: "gyeonggi_gapyeong", label: "가평군" },
-      { id: "gyeonggi_goyang", label: "고양시" },
-      { id: "gyeonggi_gwacheon", label: "과천시" },
-      { id: "gyeonggi_gwangmyeong", label: "광명시" },
-      { id: "gyeonggi_gwangju", label: "광주시" },
-      { id: "gyeonggi_guri", label: "구리시" },
-      { id: "gyeonggi_gunpo", label: "군포시" },
-      { id: "gyeonggi_gimpo", label: "김포시" },
-      { id: "gyeonggi_namyangju", label: "남양주시" },
-      { id: "gyeonggi_dongducheon", label: "동두천시" },
-      { id: "gyeonggi_bucheon", label: "부천시" },
-      { id: "gyeonggi_seongnam", label: "성남시" },
-      { id: "gyeonggi_suwon", label: "수원시" },
-      { id: "gyeonggi_siheung", label: "시흥시" },
-      { id: "gyeonggi_ansan", label: "안산시" },
-      { id: "gyeonggi_anseong", label: "안성시" },
-      { id: "gyeonggi_anyang", label: "안양시" },
-      { id: "gyeonggi_yangju", label: "양주시" },
-      { id: "gyeonggi_yangpyeong", label: "양평군" },
-      { id: "gyeonggi_yeoju", label: "여주시" },
-      { id: "gyeonggi_yeoncheon", label: "연천군" },
-      { id: "gyeonggi_osan", label: "오산시" },
-      { id: "gyeonggi_yongin", label: "용인시" },
-      { id: "gyeonggi_uiwang", label: "의왕시" },
-      { id: "gyeonggi_uijeongbu", label: "의정부시" },
-      { id: "gyeonggi_icheon", label: "이천시" },
-      { id: "gyeonggi_paju", label: "파주시" },
-      { id: "gyeonggi_pyeongtaek", label: "평택시" },
-      { id: "gyeonggi_pocheon", label: "포천시" },
-      { id: "gyeonggi_hanam", label: "하남시" },
-      { id: "gyeonggi_hwaseong", label: "화성시" },
-    ],
-  },
-  {
-    key: "gangwon",
-    label: "강원",
-    items: [
-      { id: "gangwon_all", label: "강원 전체" },
-      { id: "gangwon_gangneung", label: "강릉시" },
-      { id: "gangwon_goseong", label: "고성군" },
-      { id: "gangwon_donghae", label: "동해시" },
-      { id: "gangwon_samcheok", label: "삼척시" },
-      { id: "gangwon_sokcho", label: "속초시" },
-      { id: "gangwon_yanggu", label: "양구군" },
-      { id: "gangwon_yangyang", label: "양양군" },
-      { id: "gangwon_yeongwol", label: "영월군" },
-      { id: "gangwon_wonju", label: "원주시" },
-      { id: "gangwon_inje", label: "인제군" },
-      { id: "gangwon_jeongseon", label: "정선군" },
-      { id: "gangwon_cheorwon", label: "철원군" },
-      { id: "gangwon_chuncheon", label: "춘천시" },
-      { id: "gangwon_taebaek", label: "태백시" },
-      { id: "gangwon_pyeongchang", label: "평창군" },
-      { id: "gangwon_hongcheon", label: "홍천군" },
-      { id: "gangwon_hwacheon", label: "화천군" },
-      { id: "gangwon_hoengseong", label: "횡성군" },
-    ],
-  },
-  {
-    key: "chungbuk",
-    label: "충북",
-    items: [
-      { id: "chungbuk_all", label: "충북 전체" },
-      { id: "chungbuk_goesan", label: "괴산군" },
-      { id: "chungbuk_danyang", label: "단양군" },
-      { id: "chungbuk_boeun", label: "보은군" },
-      { id: "chungbuk_yeongdong", label: "영동군" },
-      { id: "chungbuk_okcheon", label: "옥천군" },
-      { id: "chungbuk_eumseong", label: "음성군" },
-      { id: "chungbuk_jecheon", label: "제천시" },
-      { id: "chungbuk_jeungpyeong", label: "증평군" },
-      { id: "chungbuk_jincheon", label: "진천군" },
-      { id: "chungbuk_cheongju", label: "청주시" },
-      { id: "chungbuk_chungju", label: "충주시" },
-    ],
-  },
-  {
-    key: "chungnam",
-    label: "충남",
-    items: [
-      { id: "chungnam_all", label: "충남 전체" },
-      { id: "chungnam_gyeryong", label: "계룡시" },
-      { id: "chungnam_gongju", label: "공주시" },
-      { id: "chungnam_geumsan", label: "금산군" },
-      { id: "chungnam_nonsan", label: "논산시" },
-      { id: "chungnam_dangjin", label: "당진시" },
-      { id: "chungnam_boryeong", label: "보령시" },
-      { id: "chungnam_buyeo", label: "부여군" },
-      { id: "chungnam_seosan", label: "서산시" },
-      { id: "chungnam_seocheon", label: "서천군" },
-      { id: "chungnam_asan", label: "아산시" },
-      { id: "chungnam_yesan", label: "예산군" },
-      { id: "chungnam_cheonan", label: "천안시" },
-      { id: "chungnam_cheongyang", label: "청양군" },
-      { id: "chungnam_taean", label: "태안군" },
-      { id: "chungnam_hongseong", label: "홍성군" },
-    ],
-  },
-  {
-    key: "jeonbuk",
-    label: "전북",
-    items: [
-      { id: "jeonbuk_all", label: "전북 전체" },
-      { id: "jeonbuk_gochang", label: "고창군" },
-      { id: "jeonbuk_gunsan", label: "군산시" },
-      { id: "jeonbuk_gimje", label: "김제시" },
-      { id: "jeonbuk_namwon", label: "남원시" },
-      { id: "jeonbuk_muju", label: "무주군" },
-      { id: "jeonbuk_buan", label: "부안군" },
-      { id: "jeonbuk_sunchang", label: "순창군" },
-      { id: "jeonbuk_wanju", label: "완주군" },
-      { id: "jeonbuk_iksan", label: "익산시" },
-      { id: "jeonbuk_imsil", label: "임실군" },
-      { id: "jeonbuk_jangsu", label: "장수군" },
-      { id: "jeonbuk_jeonju", label: "전주시" },
-      { id: "jeonbuk_jeongeup", label: "정읍시" },
-      { id: "jeonbuk_jinan", label: "진안군" },
-    ],
-  },
-  {
-    key: "jeonnam",
-    label: "전남",
-    items: [
-      { id: "jeonnam_all", label: "전남 전체" },
-      { id: "jeonnam_gangjin", label: "강진군" },
-      { id: "jeonnam_goheung", label: "고흥군" },
-      { id: "jeonnam_gokseong", label: "곡성군" },
-      { id: "jeonnam_gwangyang", label: "광양시" },
-      { id: "jeonnam_gurye", label: "구례군" },
-      { id: "jeonnam_naju", label: "나주시" },
-      { id: "jeonnam_damyang", label: "담양군" },
-      { id: "jeonnam_mokpo", label: "목포시" },
-      { id: "jeonnam_muan", label: "무안군" },
-      { id: "jeonnam_boseong", label: "보성군" },
-      { id: "jeonnam_suncheon", label: "순천시" },
-      { id: "jeonnam_sinan", label: "신안군" },
-      { id: "jeonnam_yeosu", label: "여수시" },
-      { id: "jeonnam_yeonggwang", label: "영광군" },
-      { id: "jeonnam_yeongam", label: "영암군" },
-      { id: "jeonnam_wando", label: "완도군" },
-      { id: "jeonnam_jangseong", label: "장성군" },
-      { id: "jeonnam_jangheung", label: "장흥군" },
-      { id: "jeonnam_jindo", label: "진도군" },
-      { id: "jeonnam_hampyeong", label: "함평군" },
-      { id: "jeonnam_haenam", label: "해남군" },
-      { id: "jeonnam_hwasun", label: "화순군" },
-    ],
-  },
-  {
-    key: "gyeongbuk",
-    label: "경북",
-    items: [
-      { id: "gyeongbuk_all", label: "경북 전체" },
-      { id: "gyeongbuk_gyeongsan", label: "경산시" },
-      { id: "gyeongbuk_gyeongju", label: "경주시" },
-      { id: "gyeongbuk_goryeong", label: "고령군" },
-      { id: "gyeongbuk_gumi", label: "구미시" },
-      { id: "gyeongbuk_gimcheon", label: "김천시" },
-      { id: "gyeongbuk_mungyeong", label: "문경시" },
-      { id: "gyeongbuk_bonghwa", label: "봉화군" },
-      { id: "gyeongbuk_sangju", label: "상주시" },
-      { id: "gyeongbuk_seongju", label: "성주군" },
-      { id: "gyeongbuk_andong", label: "안동시" },
-      { id: "gyeongbuk_yeongdeok", label: "영덕군" },
-      { id: "gyeongbuk_yeongyang", label: "영양군" },
-      { id: "gyeongbuk_yeongju", label: "영주시" },
-      { id: "gyeongbuk_yeongcheon", label: "영천시" },
-      { id: "gyeongbuk_yecheon", label: "예천군" },
-      { id: "gyeongbuk_ulleung", label: "울릉군" },
-      { id: "gyeongbuk_uljin", label: "울진군" },
-      { id: "gyeongbuk_uiseong", label: "의성군" },
-      { id: "gyeongbuk_cheongdo", label: "청도군" },
-      { id: "gyeongbuk_cheongsong", label: "청송군" },
-      { id: "gyeongbuk_chilgok", label: "칠곡군" },
-      { id: "gyeongbuk_pohang", label: "포항시" },
-    ],
-  },
-  {
-    key: "gyeongnam",
-    label: "경남",
-    items: [
-      { id: "gyeongnam_all", label: "경남 전체" },
-      { id: "gyeongnam_geoje", label: "거제시" },
-      { id: "gyeongnam_geochang", label: "거창군" },
-      { id: "gyeongnam_gimhae", label: "김해시" },
-      { id: "gyeongnam_namhae", label: "남해군" },
-      { id: "gyeongnam_miryang", label: "밀양시" },
-      { id: "gyeongnam_sacheon", label: "사천시" },
-      { id: "gyeongnam_sancheong", label: "산청군" },
-      { id: "gyeongnam_yangsan", label: "양산시" },
-      { id: "gyeongnam_uiryeong", label: "의령군" },
-      { id: "gyeongnam_jinju", label: "진주시" },
-      { id: "gyeongnam_changnyeong", label: "창녕군" },
-      { id: "gyeongnam_changwon", label: "창원시" },
-      { id: "gyeongnam_tongyeong", label: "통영시" },
-      { id: "gyeongnam_hadong", label: "하동군" },
-      { id: "gyeongnam_haman", label: "함안군" },
-      { id: "gyeongnam_hamyang", label: "함양군" },
-      { id: "gyeongnam_hapcheon", label: "합천군" },
-    ],
-  },
-  {
-    key: "jeju",
-    label: "제주",
-    items: [
-      { id: "jeju_all", label: "제주 전체" },
-      { id: "jeju_jejusi", label: "제주시" },
-      { id: "jeju_seogwipo", label: "서귀포시" },
-    ],
-  },
-]
+  return (
+    <div className="auth-terms-modal-overlay" onClick={onClose}>
+      <div className="auth-error-modal" onClick={(e) => e.stopPropagation()}>
+        <h3 className="auth-error-modal-title">입력을 확인해주세요</h3>
+        <p className="auth-error-modal-body">{message}</p>
+        <button className="auth-error-modal-close" onClick={onClose}>
+          확인
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function getUserRole(user) {
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  return String(currentUser?.user_type || currentUser?.userType || currentUser?.role || currentUser?.type || '').toUpperCase()
+}
+
+const normalizeSignupId = (value) => (value === undefined || value === null ? '' : String(value))
+const uniqueSignupIds = (values = []) => [...new Set(values.map(normalizeSignupId).filter(Boolean))]
+const numericSignupIds = (values = []) => uniqueSignupIds(values).filter((value) => /^\d+$/.test(value))
+
+function buildSignupServiceGroups(tasks = []) {
+  const groups = tasks.reduce((acc, task) => {
+    const key = task.main_category || '기타'
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        label: key,
+        items: [],
+      }
+    }
+    acc[key].items.push({
+      id: normalizeSignupId(task.service_task_id),
+      label: task.task_name,
+    })
+    return acc
+  }, {})
+
+  return Object.values(groups)
+}
+
+function buildSignupRegionGroups(codes = []) {
+  const parents = codes.filter((code) => !code.parent_code_id)
+  const children = codes.filter((code) => code.parent_code_id)
+
+  if (parents.length === 0) {
+    return codes.length > 0
+      ? [{
+          key: 'region',
+          label: '지역',
+          items: codes.map((code) => ({
+            id: normalizeSignupId(code.code_id),
+            label: code.code_name,
+          })),
+        }]
+      : []
+  }
+
+  return parents.map((parent) => ({
+    key: normalizeSignupId(parent.code_id),
+    label: parent.code_name,
+    items: children
+      .filter((child) => normalizeSignupId(child.parent_code_id) === normalizeSignupId(parent.code_id))
+      .map((child) => ({
+        id: normalizeSignupId(child.code_id),
+        label: child.code_name,
+      })),
+  })).filter((group) => group.items.length > 0)
+}
+
+function hasContractorAccess(user) {
+  const role = getUserRole(user)
+  if (role === 'CONTRACTOR' || role === 'BOTH' || role === 'PARTNER') return true
+
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles : []
+  return roles.some((item) => {
+    const normalized = String(item?.role || item?.name || item).toUpperCase()
+    return normalized === 'CONTRACTOR' || normalized === 'BOTH' || normalized === 'PARTNER'
+  })
+}
+
+function hasCustomerAccess(user) {
+  const role = getUserRole(user)
+  if (!role || role === 'CUSTOMER' || role === 'BOTH' || role === 'USER') return true
+
+  const currentUser = user?.data?.user ?? user?.data ?? user?.user ?? user
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles : []
+  return roles.some((item) => {
+    const normalized = String(item?.role || item?.name || item).toUpperCase()
+    return normalized === 'CUSTOMER' || normalized === 'BOTH' || normalized === 'USER'
+  })
+}
 
 // 약관 유형 코드 - 백엔드 app/core/agreements.py 의 get_agreement_catalog() 기준.
 // 고객/파트너 구분 없이 이 4개만 존재하며, 전부 필수(is_required=True)입니다.
@@ -635,19 +294,47 @@ export function AuthPages({
     companyRegionCodeId: null,
     workRegions: [],          // [{id, label, groupKey, groupLabel}]
   })
+  const [partnerServiceGroups, setPartnerServiceGroups] = useState(categoryGroups)
+  const [partnerRegionGroups, setPartnerRegionGroups] = useState(regionGroups)
+
+  useEffect(() => {
+    let ignore = false
+
+    Promise.all([
+      fetchServiceTasks().catch(() => []),
+      fetchReferenceCodes({ code_group: 'REGION' }).catch(() => []),
+    ]).then(([tasks, codes]) => {
+      if (ignore) return
+
+      const nextServiceGroups = buildSignupServiceGroups(tasks)
+      const nextRegionGroups = buildSignupRegionGroups(codes)
+
+      if (nextServiceGroups.length > 0) {
+        setPartnerServiceGroups(nextServiceGroups)
+      }
+
+      if (nextRegionGroups.length > 0) {
+        setPartnerRegionGroups(nextRegionGroups)
+      }
+    })
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
 
   const handleLogin = async () => {
     try {
-      const loginResult = await login(
+      await login(
         loginData.email,
         loginData.password
       );
 
-      const role = loginResult.user?.user_type;
+      const currentUser = await authLogin();
       if (selectedRole === "partner") {
-        if (role === "CONTRACTOR" || role === "BOTH") {
-          await authLogin();
+        if (hasContractorAccess(currentUser)) {
+          setPreferredRole("partner");
           go(contractorScreenPaths[contractorScreens.home]);
           return;
         }
@@ -667,7 +354,7 @@ export function AuthPages({
         return;
       }
 
-      if (role === "CONTRACTOR") {
+      if (!hasCustomerAccess(currentUser)) {
         alert("고객 서비스 등록이 필요합니다. 기존 계정 정보로 고객 등록을 이어갑니다.");
         clearAuthTokens();
         setUserType("customer");
@@ -683,7 +370,7 @@ export function AuthPages({
         return;
       }
 
-      await authLogin();
+      setPreferredRole("customer");
       go(screens.home);
 
     } catch (err) {
@@ -872,6 +559,8 @@ export function AuthPages({
       return
     }
 
+    const selectedServiceTaskIds = numericSignupIds(partnerSignupData.categories.map((category) => category.id))
+
     if (!partnerSignupData.businessRegFile) {
       alert("사업자등록증을 업로드해주세요.")
       return
@@ -902,6 +591,8 @@ export function AuthPages({
       return
     }
 
+    const selectedRegionCodeIds = numericSignupIds(partnerSignupData.workRegions.map((region) => region.id))
+
     const agreements = buildAgreementsPayload()
 
     try {
@@ -927,12 +618,24 @@ export function AuthPages({
           zip_no: partnerSignupData.companyZipNo,
           region_code_id: partnerSignupData.companyRegionCodeId,
         },
-        category_ids: partnerSignupData.categories.map((c) => c.id),
-        work_region_ids: partnerSignupData.workRegions.map((r) => r.id),
+        category_ids: selectedServiceTaskIds.map(Number),
+        work_region_ids: selectedRegionCodeIds.map(Number),
         agreements,
       })
 
       await login(signupData.email, signupData.password);
+      await updateContractorServices(
+        selectedServiceTaskIds.flatMap((serviceTaskId) => (
+          selectedRegionCodeIds.map((regionCodeId) => ({
+            service_task_id: Number(serviceTaskId),
+            region_code_id: Number(regionCodeId),
+            experience_years: null,
+            minimum_visit_fee: null,
+            service_radius_km: null,
+            is_active: true,
+          }))
+        ))
+      )
       go(screens.welcome)
       await authLogin();
     } catch (err) {
@@ -959,6 +662,9 @@ export function AuthPages({
   const isRequiredTermsChecked = terms.slice(0, 4).every(Boolean);
 
   const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // 전화번호 자릿수가 부족할 때 alert 대신 보여줄 안내 모달 메시지
+  const [phoneErrorMessage, setPhoneErrorMessage] = useState('');
 
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCompanyAddressModal, setShowCompanyAddressModal] = useState(false);
@@ -1014,6 +720,7 @@ export function AuthPages({
 
     setEmailCheckResult(null);
     setCheckedEmail("");
+    setPhoneErrorMessage("");
 
     setShowSignupPassword(false);
     setShowSignupPasswordConfirm(false);
@@ -1029,13 +736,16 @@ export function AuthPages({
 
   if (screen === screens.login) {
     return (
-      <section className="auth-screen login-screen">
-        <Logo size="large" />
+      <section className="login-screen cds--white">
+        <header className="login-shell-bar">
+          <img src={figmaAssets.logoMark} alt="TUKTAK" className="login-shell-logo" />
+          <span className="login-shell-wordmark">TUKTAK</span>
+        </header>
 
-        <div className="login-row">
-          <h1>로그인</h1>
+        <div className="login-body">
+          <h1 className="login-heading">로그인</h1>
 
-          <div className="role-toggle">
+          <div className="login-role-switcher" role="group" aria-label="로그인 유형">
             <button
               type="button"
               className={selectedRole === "customer" ? "active" : ""}
@@ -1052,297 +762,337 @@ export function AuthPages({
               파트너
             </button>
           </div>
-        </div>
 
-        <label className="field">
-          <input
-            type="email"
-            placeholder="아이디"
-            value={loginData.email}
-            onChange={(e) =>
-              setLoginData({
-                ...loginData,
-                email: e.target.value,
-              })
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleLogin();
-            }}
-          />
-        </label>
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="login-email">아이디</label>
+            <div className="carbon-field-control">
+              <input
+                id="login-email"
+                type="email"
+                placeholder="아이디"
+                value={loginData.email}
+                onChange={(e) =>
+                  setLoginData({
+                    ...loginData,
+                    email: e.target.value,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLogin();
+                }}
+              />
+            </div>
+          </div>
 
-        <label className="field">
-          <input
-            type={showLoginPassword ? "text" : "password"}
-            placeholder="비밀번호"
-            value={loginData.password}
-            onChange={(e) =>
-              setLoginData({
-                ...loginData,
-                password: e.target.value,
-              })
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleLogin();
-            }}
-          />
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="login-password">비밀번호</label>
+            <div className="carbon-field-control">
+              <input
+                id="login-password"
+                type={showLoginPassword ? "text" : "password"}
+                placeholder="비밀번호"
+                value={loginData.password}
+                onChange={(e) =>
+                  setLoginData({
+                    ...loginData,
+                    password: e.target.value,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLogin();
+                }}
+              />
+
+              <button
+                type="button"
+                className="carbon-password-toggle"
+                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                aria-label={showLoginPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+              >
+                {showLoginPassword ? (
+                  <FaEye size={18} />
+                ) : (
+                  <FaEyeSlash size={18} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <PrimaryButton onClick={handleLogin}>
+            로그인
+          </PrimaryButton>
+
+          {selectedRole === "customer" && (
+            <>
+              <div className="carbon-divider">또는</div>
+
+              <p className="carbon-sns-label">SNS로 로그인</p>
+
+              <div className="carbon-sns-row">
+                <button type="button">
+                  <img src={figmaAssets.kakao} alt="카카오" />
+                </button>
+                <button type="button">
+                  <img src={figmaAssets.google} alt="구글" />
+                </button>
+                <button type="button">
+                  <img src={figmaAssets.naver} alt="네이버" />
+                </button>
+              </div>
+            </>
+          )}
 
           <button
             type="button"
-            className="password-toggle"
-            onClick={() => setShowLoginPassword(!showLoginPassword)}
+            className={`carbon-link-row ${selectedRole === "partner" ? "carbon-link-row-spaced" : ""}`}
+            onClick={() => {
+              resetSignupForm();
+              go(screens.signup);
+            }}
           >
-            {showLoginPassword ? (
-              <FaEyeSlash size={20} />
-            ) : (
-              <FaEye size={20} />
-            )}
-          </button>
-        </label>
-
-        <PrimaryButton onClick={handleLogin}>
-          로그인
-        </PrimaryButton>
-
-        <div className="divider">- 혹은 -</div>
-
-        <p className="muted center">SNS로 로그인</p>
-
-        <div className="sns-row">
-          <button>
-            <img src={figmaAssets.kakao} alt="카카오" />
-          </button>
-          <span />
-          <button>
-            <img src={figmaAssets.google} alt="구글" />
-          </button>
-          <span />
-          <button>
-            <img src={figmaAssets.naver} alt="네이버" />
+            회원가입 | 아이디 찾기 | 비밀번호 찾기
           </button>
         </div>
-
-        <button
-          className="link-row"
-          onClick={() => {
-            resetSignupForm();
-            go(screens.signup);
-          }}
-        >
-          회원가입 | 아이디 찾기 | 비밀번호 찾기
-        </button>
       </section>
     )
   }
 
   if (screen === screens.signup) {
     return (
-      <section className="auth-screen signup-screen">
-        <Logo />
-        <h2 className="hero-copy">
-          회원가입을 통해<br />
-          수리 관련 서비스를<br />
-          경험하세요
-        </h2>
+      <section className="signup-screen cds--white">
+        <header className="signup-shell-bar">
+          <img src={figmaAssets.logoMark} alt="TUKTAK" className="signup-shell-logo" />
+          <span className="signup-shell-wordmark">TUKTAK</span>
+        </header>
 
-        <label className="field">
-          <input
-            placeholder="이름"
-            value={signupData.name}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                name: e.target.value,
-              })
-            }
-          />
-        </label>
+        <div className="signup-body">
+          <h1 className="signup-heading">회원가입</h1>
+          <p className="signup-subheading">
+            회원가입을 통해 수리 관련 서비스를 경험하세요
+          </p>
 
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-name">이름</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-name"
+                placeholder="이름"
+                value={signupData.name}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    name: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
 
-        <label className="field">
-          <input
-            type="email"
-            placeholder="이메일"
-            value={signupData.email}
-            onChange={(e) => {
-              setSignupData({
-                ...signupData,
-                email: e.target.value,
-              });
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-email">이메일</label>
+            <div className="carbon-field-control carbon-field-control-action">
+              <input
+                id="signup-email"
+                type="email"
+                placeholder="이메일"
+                value={signupData.email}
+                onChange={(e) => {
+                  setSignupData({
+                    ...signupData,
+                    email: e.target.value,
+                  });
 
-              setEmailCheckResult(null);
-              setCheckedEmail("");
+                  setEmailCheckResult(null);
+                  setCheckedEmail("");
+                }}
+              />
+              <button
+                type="button"
+                className="signup-inline-action"
+                onClick={handleCheckEmail}
+              >
+                중복확인
+              </button>
+            </div>
+          </div>
+
+          {emailCheckResult === true && (
+            <p className="signup-helper-text success">
+              사용 가능한 이메일입니다.
+            </p>
+          )}
+
+          {emailCheckResult === false && (
+            <p className="signup-helper-text error">
+              이미 가입된 이메일입니다. 기존 계정 비밀번호가 맞으면 선택한 역할을 추가로 등록할 수 있어요.
+            </p>
+          )}
+
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-password">비밀번호</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-password"
+                type={showSignupPassword ? "text" : "password"}
+                placeholder="비밀번호"
+                value={signupData.password}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    password: e.target.value,
+                  })
+                }
+              />
+
+              <button
+                type="button"
+                className="carbon-password-toggle"
+                onClick={() => setShowSignupPassword(!showSignupPassword)}
+                aria-label={showSignupPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+              >
+                {showSignupPassword ? (
+                  <FaEye size={18} />
+                ) : (
+                  <FaEyeSlash size={18} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <p
+            className={`signup-helper-text ${signupData.password &&
+              !isValidPassword(signupData.password)
+              ? "error"
+              : ""
+              }`}
+          >
+            영문, 숫자, 특수문자를 포함한 8~20자
+          </p>
+
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-password-confirm">비밀번호 확인</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-password-confirm"
+                type={showSignupPasswordConfirm ? "text" : "password"}
+                placeholder="비밀번호 확인"
+                value={signupData.passwordConfirm}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    passwordConfirm: e.target.value,
+                  })
+                }
+              />
+
+              <button
+                type="button"
+                className="carbon-password-toggle"
+                onClick={() =>
+                  setShowSignupPasswordConfirm(!showSignupPasswordConfirm)
+                }
+                aria-label={showSignupPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 표시"}
+              >
+                {showSignupPasswordConfirm ? (
+                  <FaEye size={18} />
+                ) : (
+                  <FaEyeSlash size={18} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="carbon-field">
+            <label className="carbon-field-label" htmlFor="signup-nickname">닉네임</label>
+            <div className="carbon-field-control">
+              <input
+                id="signup-nickname"
+                placeholder="닉네임"
+                value={signupData.nickname}
+                onChange={(e) =>
+                  setSignupData({
+                    ...signupData,
+                    nickname: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <p
+            className={`signup-helper-text ${signupData.nickname &&
+              !isValidNickname(signupData.nickname)
+              ? "error"
+              : ""
+              }`}
+          >
+            닉네임은 2글자 이상 입력해주세요.
+          </p>
+
+          <PrimaryButton
+            onClick={() => {
+              if (!signupData.name.trim()) {
+                alert("이름을 입력해주세요.")
+                return
+              }
+
+              if (!signupData.email.trim()) {
+                alert("이메일을 입력해주세요.")
+                return
+              }
+
+              if (
+                emailCheckResult === null ||
+                checkedEmail !== signupData.email
+              ) {
+                alert("이메일 중복확인을 진행해주세요.");
+                return
+              }
+
+              if (!signupData.password) {
+                alert("비밀번호를 입력해주세요.")
+                return
+              }
+
+              if (!isValidPassword(signupData.password)) {
+                alert(
+                  "비밀번호는 8~20자의 영문, 숫자, 특수문자를 모두 포함해야 합니다."
+                );
+                return
+              }
+
+              if (signupData.password !== signupData.passwordConfirm) {
+                alert("비밀번호가 일치하지 않습니다.")
+                return
+              }
+
+              if (!signupData.nickname.trim()) {
+                alert("닉네임을 입력해주세요.")
+                return
+              }
+
+              if (!isValidNickname(signupData.nickname)) {
+                alert("닉네임은 2글자 이상 입력해주세요.");
+                return;
+              }
+
+              go(screens.userType)
             }}
-          />
-          <button
-            type="button"
-            onClick={handleCheckEmail}
           >
-            중복확인
-          </button>
-        </label>
-
-        {emailCheckResult === true && (
-          <p className="email-guide success">
-            사용 가능한 이메일입니다.
-          </p>
-        )}
-
-        {emailCheckResult === false && (
-          <p className="email-guide invalid">
-            이미 가입된 이메일입니다. 기존 계정 비밀번호가 맞으면 선택한 역할을 추가로 등록할 수 있어요.
-          </p>
-        )}
-
-        <label className="field">
-          <input
-            type={showSignupPassword ? "text" : "password"}
-            placeholder="비밀번호"
-            value={signupData.password}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                password: e.target.value,
-              })
-            }
-          />
+            회원가입 하기
+          </PrimaryButton>
 
           <button
             type="button"
-            className="password-toggle"
-            onClick={() => setShowSignupPassword(!showSignupPassword)}
+            className="carbon-link-row"
+            onClick={() => {
+              resetSignupForm();
+              setScreen(screens.login);
+            }}
           >
-            {showSignupPassword ? (
-              <FaEyeSlash size={20} />
-            ) : (
-              <FaEye size={20} />
-            )}
+            이미 아이디가 있어요
           </button>
-        </label>
-
-        <p
-          className={`password-guide ${signupData.password &&
-            !isValidPassword(signupData.password)
-            ? "invalid"
-            : ""
-            }`}
-        >
-          영문, 숫자, 특수문자를 포함한 8~20자
-        </p>
-
-        <label className="field">
-          <input
-            type={showSignupPasswordConfirm ? "text" : "password"}
-            placeholder="비밀번호 확인"
-            value={signupData.passwordConfirm}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                passwordConfirm: e.target.value,
-              })
-            }
-          />
-
-          <button
-            type="button"
-            className="password-toggle"
-            onClick={() =>
-              setShowSignupPasswordConfirm(!showSignupPasswordConfirm)
-            }
-          >
-            {showSignupPasswordConfirm ? (
-              <FaEyeSlash size={20} />
-            ) : (
-              <FaEye size={20} />
-            )}
-          </button>
-        </label>
-
-        <label className="field">
-          <input
-            placeholder="닉네임"
-            value={signupData.nickname}
-            onChange={(e) =>
-              setSignupData({
-                ...signupData,
-                nickname: e.target.value,
-              })
-            }
-          />
-        </label>
-
-        <p
-          className={`password-guide ${signupData.nickname &&
-            !isValidNickname(signupData.nickname)
-            ? "invalid"
-            : ""
-            }`}
-        >
-          닉네임은 2글자 이상 입력해주세요.
-        </p>
-
-        <PrimaryButton
-          onClick={() => {
-            if (!signupData.name.trim()) {
-              alert("이름을 입력해주세요.")
-              return
-            }
-
-            if (!signupData.email.trim()) {
-              alert("이메일을 입력해주세요.")
-              return
-            }
-
-            if (
-              emailCheckResult === null ||
-              checkedEmail !== signupData.email
-            ) {
-              alert("이메일 중복확인을 진행해주세요.");
-              return
-            }
-
-            if (!signupData.password) {
-              alert("비밀번호를 입력해주세요.")
-              return
-            }
-
-            if (!isValidPassword(signupData.password)) {
-              alert(
-                "비밀번호는 8~20자의 영문, 숫자, 특수문자를 모두 포함해야 합니다."
-              );
-              return
-            }
-
-            if (signupData.password !== signupData.passwordConfirm) {
-              alert("비밀번호가 일치하지 않습니다.")
-              return
-            }
-
-            if (!signupData.nickname.trim()) {
-              alert("닉네임을 입력해주세요.")
-              return
-            }
-
-            if (!isValidNickname(signupData.nickname)) {
-              alert("닉네임은 2글자 이상 입력해주세요.");
-              return;
-            }
-
-            go(screens.userType)
-          }}
-        >
-          회원가입 하기
-        </PrimaryButton>
-
-        <button
-          className="link-row"
-          onClick={() => {
-            resetSignupForm();
-            setScreen(screens.login);
-          }}
-        >
-          이미 아이디가 있어요
-        </button>
+        </div>
       </section>
     )
   }
@@ -1351,13 +1101,18 @@ export function AuthPages({
   // (terms 화면 안에서 userType 에 따라 문구/약관/다음 이동지가 분기됩니다)
   if (screen === screens.userType) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">어떤 사용자신가요?</h2>
-        <ChoiceCard active={userType === 'customer'} onClick={() => setUserType('customer')} title="고객" text="시공자에게 수리를 맡겨보세요" />
-        <ChoiceCard active={userType === 'partner'} onClick={() => setUserType('partner')} title="파트너" text="시공이 필요한 고객을 만나보세요" />
-        <PrimaryButton narrow onClick={() => go(screens.terms)}>다음</PrimaryButton>
+      <section className="auth-screen auth-step-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">어떤 사용자신가요?</h2>
+
+        <div className="auth-usertype-cards">
+          <ChoiceCard active={userType === 'customer'} onClick={() => setUserType('customer')} title="고객" text="시공자에게 수리를 맡겨보세요" />
+          <ChoiceCard active={userType === 'partner'} onClick={() => setUserType('partner')} title="파트너" text="시공이 필요한 고객을 만나보세요" />
+        </div>
+
+        <div className="auth-step-actions">
+          <PrimaryButton narrow onClick={() => go(screens.terms)}>다음</PrimaryButton>
+        </div>
       </section>
     )
   }
@@ -1365,70 +1120,87 @@ export function AuthPages({
   // 약관 동의 - 고객/파트너 공용 화면, 문구/약관목록/다음 이동지만 분기
   if (screen === screens.terms) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
+      <section className="auth-screen auth-step-screen">
+        <AuthStepHeader back={back} />
 
-        <h2 className="hero-copy huge">
+        <h2 className="auth-step-title">
           <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 가입을 위해 약관에 동의해주세요
         </h2>
 
-        <div className="terms-panel docked">
+        <div className="auth-terms-panel">
+          <div className="auth-terms-list">
+            {currentSignupTerms.map((item, index) => (
+              <label className="auth-terms-check-line" key={item}>
+                <input
+                  type="checkbox"
+                  checked={terms[index]}
+                  onChange={() =>
+                    setTerms((current) =>
+                      current.map((value, valueIndex) =>
+                        valueIndex === index ? !value : value
+                      )
+                    )
+                  }
+                />
+                <span>{item}</span>
+              </label>
+            ))}
+
+            <label className="auth-terms-check-line auth-terms-check-all">
+              <input
+                type="checkbox"
+                checked={currentSignupTerms.every((_, index) => terms[index])}
+                onChange={() => {
+                  const allChecked = currentSignupTerms.every((_, index) => terms[index])
+                  setTerms((current) =>
+                    current.map((value, valueIndex) =>
+                      valueIndex < currentSignupTerms.length ? !allChecked : value
+                    )
+                  )
+                }}
+              />
+              <span>모두 선택</span>
+            </label>
+          </div>
+
           <button
-            className="small-outline"
+            className="auth-outline-button"
             onClick={() => setShowTermsModal(true)}
           >
             약관 자세히보기
           </button>
+        </div>
 
-          {currentSignupTerms.map((item, index) => (
-            <label className="check-line" key={item}>
-              <input
-                type="checkbox"
-                checked={terms[index]}
-                onChange={() =>
-                  setTerms((current) =>
-                    current.map((value, valueIndex) =>
-                      valueIndex === index ? !value : value
-                    )
-                  )
-                }
-              />
-              <span>{item}</span>
-            </label>
-          ))}
+        <div className="auth-step-actions">
+          <PrimaryButton
+            orange
+            onClick={back}
+          >
+            취소
+          </PrimaryButton>
 
-          <div className="button-row sticky-row">
-            <PrimaryButton
-              orange
-              onClick={back}
-            >
-              취소
-            </PrimaryButton>
-
-            <PrimaryButton
-              onClick={() =>
-                go(userType === 'partner' ? screens.category : screens.phone)
-              }
-              disabled={!isRequiredTermsChecked}
-            >
-              동의 및 진행
-            </PrimaryButton>
-          </div>
+          <PrimaryButton
+            onClick={() =>
+              go(userType === 'partner' ? screens.category : screens.phone)
+            }
+            disabled={!isRequiredTermsChecked}
+          >
+            동의 및 진행
+          </PrimaryButton>
         </div>
 
         {showTermsModal && (
           <div
-            className="terms-modal-overlay"
+            className="auth-terms-modal-overlay"
             onClick={() => setShowTermsModal(false)}
           >
             <div
-              className="terms-modal"
+              className="auth-terms-modal"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3>서비스 이용약관</h3>
+              <h3 className="auth-terms-modal-title">서비스 이용약관</h3>
 
-              <div className="terms-modal-content">
+              <div className="auth-terms-modal-body">
                 <p>
                   여기는 임시 약관 내용입니다.
                 </p>
@@ -1439,7 +1211,7 @@ export function AuthPages({
                 </p>
 
                 {userType !== 'partner' && (
-                  <div className="terms-modal-content">
+                  <div>
                     <h4>1. [필수] 개인정보 수집 및 이용 동의</h4>
 
                     <p><strong>1) 수집 항목</strong></p>
@@ -1548,7 +1320,7 @@ export function AuthPages({
                 )}
 
                 {userType === 'partner' && (
-                  <div className="terms-modal-content">
+                  <div>
                     <p>
                       {/* TODO: 파트너용 약관 상세 내용으로 교체 */}
                       파트너 서비스 이용약관 / 시공 표준(시방서) 준수 및
@@ -1560,7 +1332,7 @@ export function AuthPages({
               </div>
 
               <button
-                className="primary-button narrow"
+                className="auth-terms-modal-close"
                 onClick={() => setShowTermsModal(false)}
               >
                 닫기
@@ -1577,29 +1349,31 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.category) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의 전문 분야를<br />알려주세요
+      <section className="auth-screen auth-step-screen auth-select-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 전문 분야를 알려주세요
         </h2>
 
         <MultiSelectPanel
-          groups={categoryGroups}
+          groups={partnerServiceGroups}
           selected={partnerSignupData.categories}
           onToggle={(item) => togglePartnerSelection('categories', item, 999)}
           onReset={() => setPartnerSignupData((prev) => ({ ...prev, categories: [] }))}
           footerLabel="선택한 분야"
           maxCount={999}
+          hideCount
         />
 
-        <PrimaryButton
-          narrow
-          onClick={() => go(screens.bizReg)}
-          disabled={partnerSignupData.categories.length === 0}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() => go(screens.bizReg)}
+            disabled={partnerSignupData.categories.length === 0}
+          >
+            다음
+          </PrimaryButton>
+        </div>
       </section>
     )
   }
@@ -1609,11 +1383,10 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.bizReg) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의<br />사업자등록증을<br />업로드해주세요
+      <section className="auth-screen auth-step-screen auth-bizreg-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 사업자등록증을 업로드해주세요
         </h2>
 
         <label className="upload-box">
@@ -1644,7 +1417,7 @@ export function AuthPages({
           )}
         </label>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             inputMode="numeric"
             maxLength={12}
@@ -1667,18 +1440,20 @@ export function AuthPages({
               }))
             }}
           />
-        </label>
+        </div>
 
-        <PrimaryButton
-          narrow
-          onClick={() => go(screens.companyInfo)}
-          disabled={
-            !partnerSignupData.businessRegFile ||
-            !partnerSignupData.businessNumber.trim()
-          }
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() => go(screens.companyInfo)}
+            disabled={
+              !partnerSignupData.businessRegFile ||
+              !partnerSignupData.businessNumber.trim()
+            }
+          >
+            다음
+          </PrimaryButton>
+        </div>
       </section>
     )
   }
@@ -1688,14 +1463,13 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.companyInfo) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의<br />업체 정보를<br />입력해주세요
+      <section className="auth-screen auth-step-screen auth-companyinfo-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 업체 정보를 입력해주세요
         </h2>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             placeholder="업체명"
             value={partnerSignupData.companyName}
@@ -1703,9 +1477,9 @@ export function AuthPages({
               setPartnerSignupData({ ...partnerSignupData, companyName: e.target.value })
             }
           />
-        </label>
+        </div>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             placeholder="업체 대표 이름"
             value={partnerSignupData.ownerName}
@@ -1713,9 +1487,9 @@ export function AuthPages({
               setPartnerSignupData({ ...partnerSignupData, ownerName: e.target.value })
             }
           />
-        </label>
+        </div>
 
-        <label className="field">
+        <div className="carbon-field-control">
           <input
             type="tel"
             inputMode="numeric"
@@ -1723,53 +1497,42 @@ export function AuthPages({
             placeholder="업체 전화번호"
             value={partnerSignupData.companyPhone}
             onChange={(e) => {
-              const phone = e.target.value.replace(/\D/g, "");
-
-              let formatted = phone;
-
-              if (phone.length > 3 && phone.length <= 7) {
-                formatted = `${phone.slice(0, 3)}-${phone.slice(3)}`;
-              } else if (phone.length > 7) {
-                formatted = `${phone.slice(0, 3)}-${phone.slice(3, 7)}-${phone.slice(7, 11)}`;
-              }
-
-              setPartnerSignupData({ ...partnerSignupData, companyPhone: formatted });
+              setPartnerSignupData({ ...partnerSignupData, companyPhone: formatPhoneNumber(e.target.value) });
             }}
           />
-        </label>
+        </div>
 
         {/* TODO: 실제 백엔드가 허용하는 business_status 값 목록으로 옵션을 맞춰주세요 */}
-        <label className="field">
+        <div className="carbon-field-control">
           <select
             value={partnerSignupData.businessStatus}
             onChange={(e) =>
               setPartnerSignupData({ ...partnerSignupData, businessStatus: e.target.value })
             }
-            style={{ width: '100%', border: 0, background: 'transparent' }}
           >
             <option value="">사업자 구분 선택</option>
             <option value="INDIVIDUAL">개인사업자</option>
             <option value="CORPORATE">법인사업자</option>
           </select>
-        </label>
+        </div>
 
         <button
-          className="input-like"
+          className="auth-outline-button"
           type="button"
           onClick={() => setShowCompanyAddressModal(true)}
         >
           주소 검색
         </button>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             value={partnerSignupData.companyAddress}
             placeholder="검색한 주소가 표시됩니다."
             readOnly
           />
-        </label>
+        </div>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             placeholder="업체 상세 주소"
             value={partnerSignupData.companyDetailAddress}
@@ -1780,19 +1543,29 @@ export function AuthPages({
               })
             }
           />
-        </label>
+        </div>
 
-        <PrimaryButton
-          narrow
-          onClick={() => go(screens.phone)}
-          disabled={
-            !partnerSignupData.companyName.trim() ||
-            !partnerSignupData.businessStatus ||
-            !partnerSignupData.companyAddress.trim()
-          }
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() => {
+              if (!isValidPhoneNumber(partnerSignupData.companyPhone)) {
+                setPhoneErrorMessage('업체 전화번호를 정확히 입력해주세요. (숫자 9자리 이상)')
+                return
+              }
+
+              go(screens.phone)
+            }}
+            disabled={
+              !partnerSignupData.companyName.trim() ||
+              !partnerSignupData.businessStatus ||
+              !partnerSignupData.companyAddress.trim() ||
+              !partnerSignupData.companyPhone.trim()
+            }
+          >
+            다음
+          </PrimaryButton>
+        </div>
 
         {showCompanyAddressModal ? (
           <JusoSearchModal
@@ -1808,6 +1581,11 @@ export function AuthPages({
             }}
           />
         ) : null}
+
+        <AuthErrorModal
+          message={phoneErrorMessage}
+          onClose={() => setPhoneErrorMessage('')}
+        />
       </section>
     )
   }
@@ -1815,15 +1593,15 @@ export function AuthPages({
   // 전화번호 - 고객/파트너 공용 (문구, 다음 이동지, 건너뛰기 노출 여부만 분기)
   if (screen === screens.phone) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 전화번호를 <br />알려주세요
+      <section className="auth-screen auth-step-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>{userType === 'partner' ? '파트너' : '고객'}</strong>님의 전화번호를 알려주세요
         </h2>
 
-        <div className="phone-row">
+        <div className="auth-phone-row">
           <select
+            className="auth-phone-carrier"
             value={signupData.phoneCarrier}
             onChange={(e) =>
               setSignupData({
@@ -1837,7 +1615,7 @@ export function AuthPages({
             <option value="LG U+">LG U+</option>
           </select>
 
-          <label className="field compact">
+          <div className="carbon-field-control">
             <input
               type="tel"
               inputMode="numeric"
@@ -1845,44 +1623,46 @@ export function AuthPages({
               placeholder="XXX-XXXX-XXXX"
               value={signupData.phone}
               onChange={(e) => {
-                const phone = e.target.value.replace(/\D/g, "");
-
-                let formatted = phone;
-
-                if (phone.length > 3 && phone.length <= 7) {
-                  formatted = `${phone.slice(0, 3)}-${phone.slice(3)}`;
-                } else if (phone.length > 7) {
-                  formatted = `${phone.slice(0, 3)}-${phone.slice(3, 7)}-${phone.slice(7, 11)}`;
-                }
-
                 setSignupData({
                   ...signupData,
-                  phone: formatted,
+                  phone: formatPhoneNumber(e.target.value),
                 });
               }}
             />
-          </label>
+          </div>
         </div>
 
-        <PrimaryButton
-          narrow
-          onClick={() =>
-            go(userType === 'partner' ? screens.region : screens.address)
-          }
-          disabled={!signupData.phone.trim()}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={() => {
+              if (!isValidPhoneNumber(signupData.phone)) {
+                setPhoneErrorMessage('휴대폰 번호를 정확히 입력해주세요. (숫자 9자리 이상)')
+                return
+              }
+
+              go(userType === 'partner' ? screens.region : screens.address)
+            }}
+            disabled={!signupData.phone.trim()}
+          >
+            다음
+          </PrimaryButton>
+        </div>
 
         {/* 파트너는 시안상 건너뛰기 노출 안 됨 (필수 단계) */}
         {userType !== 'partner' && (
           <button
-            className="link-row"
+            className="auth-step-skip"
             onClick={() => go(screens.address)}
           >
             건너뛰기
           </button>
         )}
+
+        <AuthErrorModal
+          message={phoneErrorMessage}
+          onClose={() => setPhoneErrorMessage('')}
+        />
       </section>
     )
   }
@@ -1890,31 +1670,30 @@ export function AuthPages({
   // 고객 전용: 주소 입력
   if (screen === screens.address) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
+      <section className="auth-screen auth-step-screen auth-address-screen">
+        <AuthStepHeader back={back} />
 
-        <h2 className="hero-copy compact">
-          고객님의 주소를 <br />알려주세요
+        <h2 className="auth-step-title">
+          고객님의 주소를 알려주세요
         </h2>
 
         <button
-          className="input-like"
+          className="auth-outline-button"
           type="button"
           onClick={() => setShowAddressModal(true)}
         >
           주소 검색
         </button>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             value={signupData.address}
             placeholder="검색한 주소가 표시됩니다."
             readOnly
           />
-        </label>
+        </div>
 
-        <label className="field compact">
+        <div className="carbon-field-control">
           <input
             placeholder="상세 주소 입력 (ex : 202동 301호)"
             value={signupData.detailAddress}
@@ -1925,18 +1704,20 @@ export function AuthPages({
               })
             }
           />
-        </label>
+        </div>
 
-        <PrimaryButton
-          narrow
-          onClick={handleSignup}
-          disabled={!signupData.address.trim()}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={handleSignup}
+            disabled={!signupData.address.trim()}
+          >
+            다음
+          </PrimaryButton>
+        </div>
 
         <button
-          className="link-row"
+          className="auth-step-skip"
           onClick={handleSignup}
         >
           건너뛰기
@@ -1967,15 +1748,14 @@ export function AuthPages({
   // ---------------------------------------------------------------
   if (screen === screens.region) {
     return (
-      <section className="auth-screen">
-        <BackButton onClick={back} />
-        <Logo />
-        <h2 className="hero-copy compact">
-          <strong>파트너</strong>님의 작업 지역을<br />선택하세요
+      <section className="auth-screen auth-step-screen auth-select-screen">
+        <AuthStepHeader back={back} />
+        <h2 className="auth-step-title">
+          <strong>파트너</strong>님의 작업 지역을 선택하세요
         </h2>
 
         <MultiSelectPanel
-          groups={regionGroups}
+          groups={partnerRegionGroups}
           selected={partnerSignupData.workRegions}
           onToggle={(item) => togglePartnerSelection('workRegions', item, 10)}
           onReset={() => setPartnerSignupData((prev) => ({ ...prev, workRegions: [] }))}
@@ -1983,36 +1763,39 @@ export function AuthPages({
           maxCount={10}
         />
 
-        <PrimaryButton
-          narrow
-          onClick={handlePartnerSignup}
-          disabled={partnerSignupData.workRegions.length === 0}
-        >
-          다음
-        </PrimaryButton>
+        <div className="auth-step-actions">
+          <PrimaryButton
+            narrow
+            onClick={handlePartnerSignup}
+            disabled={partnerSignupData.workRegions.length === 0}
+          >
+            다음
+          </PrimaryButton>
+        </div>
       </section>
     )
   }
 
   // 완료 화면 - 고객/파트너 공용, 문구만 분기
+  // EstimateDonePage 와 동일한 "처리 완료" 포맷(.estimate-done-*)을 그대로 재사용
   return (
-    <section className="auth-screen complete-screen">
-      <Logo />
-      <div className="complete-copy">
-        <h2>{userType === 'partner' ? '파트너' : '고객'}님, 환영합니다 !</h2>
-        <p>회원가입이 완료되었어요</p>
+    <section className="estimate-done">
+      <img src={figmaAssets.logoMark} alt="" className="estimate-status-logo" />
+      <div className="estimate-done-icon" dangerouslySetInnerHTML={{ __html: confirmCarbonSvg }} />
+      <h2 className="estimate-done-title">{userType === 'partner' ? '파트너' : '고객'}님, 환영합니다!</h2>
+      <p className="estimate-done-desc">회원가입이 완료되었어요</p>
+      <div className="estimate-done-actions">
+        <PrimaryButton
+          narrow
+          onClick={() =>
+            userType === 'partner'
+              ? go(contractorScreenPaths[contractorScreens.home])
+              : go(screens.home)
+          }
+        >
+          완료
+        </PrimaryButton>
       </div>
-      <div className="status-ring success">✓</div>
-      <PrimaryButton
-        narrow
-        onClick={() =>
-          userType === 'partner'
-            ? go(contractorScreenPaths[contractorScreens.home])
-            : go(screens.home)
-        }
-      >
-        완료
-      </PrimaryButton>
     </section>
   )
 }

@@ -86,7 +86,3 @@ export function submitContractorQuote(matchingRequestId, payload) {
     body: payload,
   })
 }
-
-export function uploadBusinessLicenseMock(file) {
-  return Promise.resolve({ fileName: file?.name ?? '', status: 'ready' })
-}

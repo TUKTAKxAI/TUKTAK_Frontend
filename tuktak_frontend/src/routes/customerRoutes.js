@@ -16,6 +16,7 @@ export const screenPaths = {
   [screens.estimateHome]: '/customer/estimate',
   [screens.estimateStart]: '/customer/estimate/start',
   [screens.estimateLoading]: '/customer/estimate/loading',
+  [screens.estimateMoreInfo]: '/customer/estimate/more-info',
   [screens.estimateDone]: '/customer/estimate/done',
   [screens.estimateOutput]: '/customer/estimate/output',
   [screens.myEstimateList]: '/customer/mypage/estimates',
