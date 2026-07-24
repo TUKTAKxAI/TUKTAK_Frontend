@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FaChevronRight, FaSearch, FaTimes } from 'react-icons/fa'
+import { FaChevronRight, FaComments, FaSearch, FaTimes } from 'react-icons/fa'
 import { Avatar } from './FormControls'
 
 export function ChoiceCard({ title, text, active, onClick }) {
@@ -22,7 +22,11 @@ export function SearchBar({ placeholder = '검색', value = '', onChange }) {
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
       />
-      {value ? <button type="button" onClick={() => onChange?.('')} aria-label="검색어 지우기"><FaTimes /></button> : null}
+      {value ? (
+        <button type="button" onClick={() => onChange?.('')} aria-label="검색어 지우기">
+          <FaTimes />
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -47,9 +51,9 @@ export function EstimateCard({ item, onClick, actionLabel }) {
   )
 }
 
-export function HistoryCard({ item, onClickReview }) {
+export function HistoryCard({ item, onClickReview, onClickChat }) {
   const [expanded, setExpanded] = useState(false)
-  const isComplete = item.status === '완료됨'
+  const isComplete = item.status === '완료됨' || item.status === '완료'
 
   return (
     <article className="record-card">
@@ -62,14 +66,22 @@ export function HistoryCard({ item, onClickReview }) {
       </div>
       <div className="record-rows">
         <p className="record-detail"><span>비용</span>{item.cost.replace('확정 시공 비용 : ', '')}</p>
-        <p className="record-detail"><span>파트너</span>{item.partner.replace('담당 파트너 : ', '')}</p>
+        <p className="record-detail"><span>파트너</span>{item.partner.replace('해당 파트너 : ', '')}</p>
         <p className="record-detail"><span>예정일</span>{item.schedule.replace('시공 예정일 : ', '')}</p>
       </div>
-      <div className="record-footer">
-        <button className="detail-toggle" onClick={() => setExpanded((value) => !value)}>
+      <div className="record-footer history-card-actions">
+        <button className="detail-toggle" type="button" onClick={() => setExpanded((value) => !value)}>
           {expanded ? '자세히 접기' : '자세히 보기'}
         </button>
-        {item.reviewable ? <button className="mini-primary side-review-button" onClick={onClickReview}>리뷰 작성</button> : null}
+        <button className="history-chat-link" type="button" onClick={() => onClickChat?.(item)}>
+          <FaComments aria-hidden="true" />
+          <span>1:1 채팅</span>
+        </button>
+        {item.reviewable ? (
+          <button className="mini-primary side-review-button" type="button" onClick={onClickReview}>
+            리뷰 작성
+          </button>
+        ) : null}
       </div>
       {expanded ? <HistoryDetailPanel details={item.details} /> : null}
     </article>
@@ -169,11 +181,11 @@ export function InfoRows({ rows, onSelect }) {
         const value = Array.isArray(row) ? row[1] : row.value
 
         return (
-        <button className="info-row" key={label} onClick={() => onSelect?.(row)}>
-          <span>{label}</span>
-          <strong>{value}</strong>
-          <i aria-hidden="true"><FaChevronRight /></i>
-        </button>
+          <button className="info-row" key={label} onClick={() => onSelect?.(row)}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <i aria-hidden="true"><FaChevronRight /></i>
+          </button>
         )
       })}
     </div>

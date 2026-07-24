@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   FaChevronLeft,
   FaClipboardList,
@@ -11,6 +11,7 @@ import {
   FaUserCircle,
 } from 'react-icons/fa'
 import { fetchHomeAddress, saveHomeAddress } from '../../api/homeApi'
+import { fetchChatRooms } from '../../api/chatApi'
 import { fetchMatchingHistory, fetchMyProfile, updateMyProfile } from '../../api/mypageApi'
 import { HistoryCard, InfoRows, MenuTile, ReviewCard, SearchBar } from '../../components/customer/Cards'
 import { figmaAssets } from '../../components/customer/figmaAssets'
@@ -18,6 +19,7 @@ import { Avatar, PrimaryButton } from '../../components/customer/FormControls'
 import { JusoSearchModal } from '../../components/customer/JusoSearchModal'
 import { reviewCards, screens } from '../../data/customerData'
 import { useAuth } from '../../context/authContext'
+import { screenPaths } from '../../routes/customerRoutes'
 import { formatPhoneNumber } from '../../utils/phone'
 
 // 마이페이지 메인 홈: 각 마이페이지 메뉴로 이동하는 화면
@@ -480,16 +482,26 @@ function ProfileConfirmModal({ action, onClose, onConfirm }) {
 // 매칭 히스토리: work-orders 기반 목록, 검색, 필터, 리뷰 작성 모달을 담당
 export function MatchHistoryPage({ go, back }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const [reviewTarget, setReviewTarget] = useState(null)
   const [historyList, setHistoryList] = useState([])
+  const [chatRoomsByWorkOrder, setChatRoomsByWorkOrder] = useState({})
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState(location.state?.statusFilter || 'latest')
 
   useEffect(() => {
     let isMounted = true
 
-    fetchMatchingHistory().then((data) => {
-      if (isMounted) setHistoryList(data)
+    Promise.all([
+      fetchMatchingHistory(),
+      fetchChatRooms().catch(() => ({ items: [] })),
+    ]).then(([historyData, chatData]) => {
+      if (!isMounted) return
+
+      setHistoryList(historyData)
+      setChatRoomsByWorkOrder(
+        Object.fromEntries((chatData.items || []).map((room) => [room.work_order_id, room])),
+      )
     })
 
     return () => {
@@ -507,6 +519,22 @@ export function MatchHistoryPage({ go, back }) {
         .includes(normalizedQuery)
     ))
     .sort((a, b) => new Date(b.date) - new Date(a.date))
+
+  const openChatRoom = (item) => {
+    const room = chatRoomsByWorkOrder[item.id]
+    if (!room) {
+      go(screens.chatList)
+      return
+    }
+
+    navigate(screenPaths[screens.chatRoom], {
+      state: {
+        chatRoomId: room.chat_room_id,
+        partnerName: room.partner_name,
+        room,
+      },
+    })
+  }
 
   return (
     <section className="subpage-screen history-page cds--white">
@@ -528,7 +556,12 @@ export function MatchHistoryPage({ go, back }) {
       <div className="history-scroll-area">
         <div className="list-stack">
           {filteredHistoryCards.map((item) => (
-            <HistoryCard key={item.id} item={item} onClickReview={() => setReviewTarget(item)} />
+            <HistoryCard
+              key={item.id}
+              item={item}
+              onClickReview={() => setReviewTarget(item)}
+              onClickChat={openChatRoom}
+            />
           ))}
           {filteredHistoryCards.length === 0 ? (
             <div className="history-empty-state">
