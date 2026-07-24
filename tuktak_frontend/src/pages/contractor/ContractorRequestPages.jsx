@@ -25,8 +25,47 @@ function formatTimeRange(start, end) {
   return '시간 협의'
 }
 
+function formatMinutes(min, max) {
+  if (min && max && min !== max) return `${min}~${max}분`
+  if (max || min) return `${max || min}분`
+  return '협의'
+}
+
+function formatConfidence(value) {
+  if (value === undefined || value === null || value === '') return '미정'
+  return `${Math.round(Number(value) * 100)}%`
+}
+
+function resolveAssetUrl(url) {
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081')
+    .replace(/\/api\/v1\/?$/, '')
+    .replace(/\/$/, '')
+  return url.startsWith('/') ? `${apiBase}${url}` : url
+}
+
+function mapAiEstimate(item) {
+  return {
+    id: item.estimate_id,
+    title: item.estimate_repair_task_name || item.title || item.matching_request_title || 'AI 시공 견적',
+    summary: item.estimate_ai_summary || 'AI 견적 요약 정보가 없습니다.',
+    originalDescription: item.estimate_description || item.request_message || '',
+    priceRange: formatBudget(item.estimate_min_price ?? item.budget_min, item.estimate_max_price ?? item.budget_max),
+    expectedTime: formatMinutes(item.estimate_minutes_min, item.estimate_minutes_max),
+    category: item.estimate_main_category || '미정',
+    objectLabel: item.estimate_object_label || '미정',
+    problemLabel: item.estimate_problem_label || '미정',
+    severity: item.estimate_severity || '미정',
+    confidence: formatConfidence(item.estimate_confidence_score),
+    note: item.request_message || `매칭 상태: ${item.matching_status}`,
+    imageUrls: (item.estimate_image_urls || []).map(resolveAssetUrl).filter(Boolean),
+  }
+}
+
 function mapRequest(item) {
   const regionName = item.region_name || (item.region_code_id ? `지역 코드 ${item.region_code_id}` : '지역 미정')
+  const aiEstimate = mapAiEstimate(item)
   return {
     id: String(item.matching_request_id),
     matchingRequestId: item.matching_request_id,
@@ -41,18 +80,14 @@ function mapRequest(item) {
     desiredDate: formatDate(item.preferred_date),
     time: formatTimeRange(item.preferred_time_start, item.preferred_time_end),
     status: item.target_status || item.matching_status,
-    aiEstimate: {
-      summary: '고객의 AI 견적 기반 매칭 요청입니다.',
-      priceRange: formatBudget(item.budget_min, item.budget_max),
-      expectedTime: '상세 협의',
-      note: item.request_message || `매칭 상태: ${item.matching_status}`,
-    },
-    photos: ['고객 첨부 사진', 'AI 견적 이미지'],
+    aiEstimate,
+    photos: aiEstimate.imageUrls,
   }
 }
 
 function mapQuoteRequest(item) {
   const regionName = item.region_name || (item.region_code_id ? `지역 코드 ${item.region_code_id}` : '지역 미정')
+  const aiEstimate = mapAiEstimate(item)
   return {
     id: String(item.matching_request_id),
     matchingRequestId: item.matching_request_id,
@@ -67,13 +102,8 @@ function mapQuoteRequest(item) {
     desiredDate: formatDate(item.preferred_date),
     time: formatTimeRange(item.preferred_time_start, item.preferred_time_end),
     status: item.quote_status || item.matching_status,
-    aiEstimate: {
-      summary: '고객의 AI 견적 기반 매칭 요청입니다.',
-      priceRange: formatBudget(item.budget_min, item.budget_max),
-      expectedTime: '상세 협의',
-      note: item.request_message || `매칭 상태: ${item.matching_status}`,
-    },
-    photos: ['고객 첨부 사진', 'AI 견적 이미지'],
+    aiEstimate,
+    photos: aiEstimate.imageUrls,
   }
 }
 
@@ -101,22 +131,34 @@ function RequestEstimatePreview({ item }) {
         <div><dt>고객 예산</dt><dd>{item.budget}</dd></div>
         <div><dt>AI 예상 비용</dt><dd>{item.aiEstimate.priceRange}</dd></div>
         <div><dt>예상 소요시간</dt><dd>{item.aiEstimate.expectedTime}</dd></div>
+        <div><dt>진단 대상</dt><dd>{item.aiEstimate.objectLabel}</dd></div>
+        <div><dt>증상</dt><dd>{item.aiEstimate.problemLabel}</dd></div>
+        <div><dt>심각도</dt><dd>{item.aiEstimate.severity}</dd></div>
+        <div><dt>신뢰도</dt><dd>{item.aiEstimate.confidence}</dd></div>
       </dl>
       <div className="contractor-ai-summary">
         <span className="contractor-ai-summary-icon" aria-hidden="true"><FaFileInvoice /></span>
         <div>
-          <strong>AI 견적 요약</strong>
+          <strong>{item.aiEstimate.title}</strong>
           <p>{item.aiEstimate.summary}</p>
           <small>{item.aiEstimate.note}</small>
         </div>
       </div>
+      <section className="contractor-original-request">
+        <h3>고객 원본 설명</h3>
+        <p>{item.aiEstimate.originalDescription || '고객이 입력한 원본 설명이 없습니다.'}</p>
+      </section>
       <div className="contractor-photo-grid">
-        {item.photos.map((photo) => (
-          <div className="contractor-photo-mock" key={photo}>
+        {item.photos.length ? item.photos.map((photo, index) => (
+          <a className="contractor-photo-thumb" key={photo} href={photo} target="_blank" rel="noreferrer">
+            <img src={photo} alt={`고객 첨부 사진 ${index + 1}`} loading="lazy" />
+          </a>
+        )) : (
+          <div className="contractor-photo-mock">
             <FaCamera />
-            <span>{photo}</span>
+            <span>첨부 사진 없음</span>
           </div>
-        ))}
+        )}
       </div>
     </article>
   )
