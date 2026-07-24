@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createMatchingRequest } from '../api/matchingApi'
 import { CustomerFlowContext } from './CustomerFlowContext'
-import { chatThreads, initialMessages, screens } from '../data/customerData'
+import { initialMessages, screens } from '../data/customerData'
 import { mockMatchingRequest, useMatchingMocks } from '../data/matchingMockData'
 import { screenPaths } from '../routes/customerRoutes'
 import { buildMatchingRequestBody } from '../utils/matchingRequest'
@@ -9,7 +9,7 @@ import { buildMatchingRequestBody } from '../utils/matchingRequest'
 export function CustomerFlowProvider({ children }) {
   const [userType, setUserType] = useState('customer')
   const [terms, setTerms] = useState([true, true, true, true, false])
-  const [activeThread, setActiveThread] = useState(chatThreads[0].id)
+  const [activeThread, setActiveThread] = useState('')
   const [chatText, setChatText] = useState('')
   const [messagesByThread, setMessagesByThread] = useState(initialMessages)
   const [showUrgentModal, setShowUrgentModal] = useState(false)
@@ -35,8 +35,8 @@ export function CustomerFlowProvider({ children }) {
     [messagesByThread, activeThread],
   )
   const activePartner = useMemo(
-    () => chatThreads.find((thread) => thread.id === activeThread)?.name || '홍길동 파트너님',
-    [activeThread],
+    () => '1:1 채팅',
+    [],
   )
 
   // 아래 두 ref는 sendMessage/submitMatchingRequest가 매 렌더 새로 만들어지지 않도록

@@ -7146,6 +7146,16 @@ button {
   white-space: nowrap;
 }
 
+.chat-inbox-item-title {
+  color: var(--cds-text-placeholder, #6f6f6f);
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chat-inbox-item.is-unread .chat-inbox-item-name {
   font-weight: 700;
 }
@@ -7208,6 +7218,7 @@ button {
 
 .chat-thread-view-title {
   flex: 1;
+  min-width: 0;
   text-align: center;
 }
 
@@ -7216,6 +7227,21 @@ button {
   font-size: 15px;
   font-weight: 600;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-thread-view-title span {
+  color: var(--cds-text-secondary, #525252);
+  display: inline-flex;
+  font-size: 11px;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.chat-connection.is-online {
+  color: var(--cds-support-success, #24a148);
 }
 
 .chat-thread-view-actions {
@@ -7243,8 +7269,9 @@ button {
 .chat-thread-search {
   align-items: center;
   display: flex;
-  flex: 1;
+  flex-shrink: 0;
   gap: 8px;
+  padding: 10px 12px;
 }
 
 .chat-thread-search-input {
@@ -7289,22 +7316,53 @@ button {
 }
 
 .chat-thread-message {
-  align-self: flex-start;
   background: var(--cds-background, #ffffff);
   border: 1px solid var(--cds-border-subtle, #e0e0e0);
   border-radius: 4px;
   color: var(--cds-text-primary, #161616);
+  display: flex;
+  flex-direction: column;
   font-size: 14px;
   line-height: 1.5;
   max-width: 78%;
   padding: 10px 14px;
 }
 
+.chat-message-row {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.chat-message-row.is-mine {
+  justify-content: flex-end;
+}
+
 .chat-thread-message.is-mine {
-  align-self: flex-end;
   background: var(--cds-background-brand, #0f62fe);
   border-color: var(--cds-background-brand, #0f62fe);
   color: #ffffff;
+}
+
+.chat-thread-message.is-pending {
+  opacity: 0.72;
+}
+
+.chat-thread-message time {
+  color: var(--cds-text-placeholder, #8d8d8d);
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.chat-thread-message.is-mine time {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.chat-thread-empty {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 13px;
+  padding: 32px 12px;
+  text-align: center;
 }
 
 .search-highlight {
@@ -7393,6 +7451,11 @@ button {
 
 .chat-thread-compose-send:hover {
   background: var(--cds-background-brand-hover, #0353e9);
+}
+
+.chat-thread-compose-send:disabled {
+  background: var(--cds-button-disabled, #c6c6c6);
+  cursor: not-allowed;
 }
 
 .chat-thread-menu {

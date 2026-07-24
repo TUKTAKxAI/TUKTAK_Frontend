@@ -55,6 +55,15 @@ function getBaseURL() {
   return baseURL.endsWith(API_PREFIX) ? baseURL : `${baseURL}${API_PREFIX}`
 }
 
+export function getApiBaseURL() {
+  return getBaseURL()
+}
+
+export function getWebSocketBaseURL() {
+  const baseURL = getBaseURL()
+  return baseURL.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
+}
+
 function normalizeBaseURLProtocol(rawBaseURL) {
   if (typeof window === 'undefined' || window.location.protocol !== 'https:') {
     return rawBaseURL

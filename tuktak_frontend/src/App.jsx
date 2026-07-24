@@ -1,10 +1,9 @@
-import { useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { BottomNav } from './components/customer/BottomNav'
 import { useAuth } from './context/authContext'
 import { useCustomerFlow } from './context/CustomerFlowContext'
 import { CustomerNotificationProvider } from './context/CustomerNotificationProvider'
-import { chatThreads, publicScreens, screens } from './data/customerData'
+import { publicScreens, screens } from './data/customerData'
 import { contractorScreens } from './data/contractorData'
 import {
   ContractorActiveWorkPage,
@@ -165,7 +164,7 @@ function ContractorRoute({ screen }) {
     [contractorScreens.records]: <ContractorRecordsPage go={go} />,
     [contractorScreens.recordDetail]: <ContractorRecordDetailPage go={go} routeState={routeState} />,
     [contractorScreens.chats]: <ContractorChatsPage go={go} />,
-    [contractorScreens.chatRoom]: <ContractorChatRoomPage go={go} />,
+    [contractorScreens.chatRoom]: <ContractorChatRoomPage go={go} routeState={routeState} />,
     [contractorScreens.reviews]: <ContractorReviewsPage go={go} />,
     [contractorScreens.mypage]: <ContractorMypagePage go={go} />,
     [contractorScreens.myInfo]: <ContractorMyInfoPage go={go} />,
@@ -250,24 +249,11 @@ function CustomerRoute({ screen }) {
   const flow = useCustomerFlow()
   const { isLogin, loading } = useAuth()
   const { navigate, go, back } = useScreenNavigator()
-
-  const [threadList, setThreadList] = useState(chatThreads)
+  const location = useLocation()
+  const routeState = location.state || {}
 
   if (loading) return null
   if (!isLogin) return <Navigate to={screenPaths[screens.login]} replace />
-
-  const clearUnread = (threadId) => {
-    setThreadList((prev) =>
-      prev.map((thread) =>
-        thread.id === threadId
-          ? {
-            ...thread,
-            unread: 0,
-          }
-          : thread
-      )
-    )
-  }
 
   const pages = {
     [screens.home]: <HomePage go={go} />,
@@ -297,22 +283,22 @@ function CustomerRoute({ screen }) {
     /* 수정 */
     [screens.chatList]: (
       <ChatListPage
-        threads={threadList}
-        messagesByThread={flow.messagesByThread}
         go={go}
-        clearUnread={clearUnread}
-        goToRoom={(threadId) =>
-          flow.openThread(threadId, navigate)
-        }
+        goToRoom={(threadId, room) => {
+          flow.setActiveThread(threadId)
+          navigate(screenPaths[screens.chatRoom], {
+            state: {
+              chatRoomId: threadId,
+              partnerName: room?.partner_name,
+            },
+          })
+        }}
       />
     ),
     [screens.chatRoom]: (
       <ChatRoomPage
-        partnerName={flow.activePartner}
-        messages={flow.activeMessages}
-        chatText={flow.chatText}
-        setChatText={flow.setChatText}
-        sendMessage={flow.sendMessage}
+        chatRoomId={routeState.chatRoomId || flow.activeThread}
+        partnerName={routeState.partnerName || flow.activePartner}
         back={back}
       />
     ),

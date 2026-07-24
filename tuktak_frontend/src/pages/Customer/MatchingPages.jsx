@@ -1300,7 +1300,7 @@ export function MatchingDonePage({ go }) {
 
           <div className="matching-current-actions">
             <button type="button" className="matching-current-ghost" onClick={() => go(screens.matchingAuction)}>견적 다시 보기</button>
-            <PrimaryButton onClick={() => go(screens.chatRoom)}>1:1 채팅 상담</PrimaryButton>
+            <PrimaryButton onClick={() => go(screens.chatList)}>1:1 채팅 상담</PrimaryButton>
           </div>
         </article>
       </div>
