@@ -81,7 +81,7 @@ export function ChatListPage({ goToRoom, go, clearUnread, back }) {
 
   const filteredRooms = useMemo(() => {
     if (filter === 'unread') return rooms.filter((room) => room.unread_count > 0)
-    if (filter === 'open') return rooms.filter((room) => room.room_status === 'OPEN')
+    if (filter === 'open') return rooms.filter((room) => room.can_send_messages)
     return rooms
   }, [rooms, filter])
 
@@ -141,6 +141,9 @@ export function ChatListPage({ goToRoom, go, clearUnread, back }) {
                       <time className="chat-inbox-item-time">{formatRoomTime(time)}</time>
                     </div>
                     <span className="chat-inbox-item-title">{room.matching_request_title}</span>
+                    {!room.can_send_messages && (
+                      <span className="chat-inbox-item-locked">시공 진행 중이 아니어서 읽기만 가능합니다.</span>
+                    )}
                     <span className="chat-inbox-item-preview">{preview}</span>
                   </div>
 
@@ -157,12 +160,14 @@ export function ChatListPage({ goToRoom, go, clearUnread, back }) {
   )
 }
 
-export function ChatRoomPage({ chatRoomId, partnerName, back }) {
+export function ChatRoomPage({ chatRoomId, partnerName, initialRoom, back }) {
   const [messages, setMessages] = useState([])
   const [chatText, setChatText] = useState('')
   const [loading, setLoading] = useState(Boolean(chatRoomId))
   const [error, setError] = useState('')
+  const [sendError, setSendError] = useState('')
   const [connectionStatus, setConnectionStatus] = useState('연결 준비')
+  const [roomState, setRoomState] = useState(initialRoom || null)
   const [showSearch, setShowSearch] = useState(false)
   const [searchText, setSearchText] = useState('')
   const socketRef = useRef(null)
@@ -178,6 +183,14 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
 
     let ignore = false
     setLoading(true)
+    fetchChatRooms()
+      .then((data) => {
+        if (ignore) return
+        const foundRoom = (data.items || []).find((room) => room.chat_room_id === Number(chatRoomId))
+        if (foundRoom) setRoomState(foundRoom)
+      })
+      .catch(() => {})
+
     fetchChatMessages(chatRoomId)
       .then((data) => {
         if (!ignore) {
@@ -198,6 +211,10 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
       ignore = true
     }
   }, [chatRoomId])
+
+  useEffect(() => {
+    setRoomState(initialRoom || null)
+  }, [initialRoom])
 
   useEffect(() => {
     if (!chatRoomId) return undefined
@@ -226,6 +243,10 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
+      if (data.type === 'error') {
+        setSendError(typeof data.detail === 'string' ? data.detail : '메시지를 보낼 수 없습니다.')
+        return
+      }
       if (data.type !== 'message.created' || !data.message) return
 
       const nextMessage = normalizeMessage(data.message)
@@ -254,9 +275,10 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
   const sendMessage = () => {
     const text = chatText.trim()
     const socket = socketRef.current
-    if (!text || !socket || socket.readyState !== WebSocket.OPEN) return
+    if (!roomState?.can_send_messages || !text || !socket || socket.readyState !== WebSocket.OPEN) return
 
     const clientId = createClientMessageId()
+    setSendError('')
     setMessages((current) => [
       ...current,
       { id: `pending-${clientId}`, clientId, from: 'me', text, createdAt: new Date().toISOString(), pending: true },
@@ -289,7 +311,7 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
         </button>
 
         <div className="chat-thread-view-title">
-          <h1>{partnerName || '1:1 채팅'}</h1>
+          <h1>{partnerName || roomState?.partner_name || '1:1 채팅'}</h1>
           <span className={`chat-connection ${connectionStatus === '연결됨' ? 'is-online' : ''}`}>
             <FaWifi aria-hidden="true" />
             {connectionStatus}
@@ -305,6 +327,14 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
           {showSearch ? <FaTimes /> : <FaSearch />}
         </button>
       </header>
+
+      {roomState && !roomState.can_send_messages && (
+        <div className="chat-thread-locked">
+          현재 시공이 진행 중이 아니어서 채팅을 보낼 수 없습니다. 이전 대화는 그대로 확인할 수 있습니다.
+        </div>
+      )}
+
+      {sendError && <div className="chat-thread-locked">{sendError}</div>}
 
       {showSearch && (
         <div className="chat-thread-search">
@@ -341,6 +371,7 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
           className="chat-thread-compose-input"
           value={chatText}
           placeholder="메시지를 입력하세요"
+          disabled={!roomState?.can_send_messages}
           onChange={(event) => setChatText(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.nativeEvent.isComposing) sendMessage()
@@ -351,7 +382,7 @@ export function ChatRoomPage({ chatRoomId, partnerName, back }) {
           type="button"
           className="chat-thread-compose-send"
           onClick={sendMessage}
-          disabled={!chatText.trim() || connectionStatus !== '연결됨'}
+          disabled={!roomState?.can_send_messages || !chatText.trim() || connectionStatus !== '연결됨'}
           aria-label="전송"
         >
           <FaPaperPlane />

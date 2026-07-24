@@ -290,6 +290,7 @@ function CustomerRoute({ screen }) {
             state: {
               chatRoomId: threadId,
               partnerName: room?.partner_name,
+              room,
             },
           })
         }}
@@ -299,6 +300,7 @@ function CustomerRoute({ screen }) {
       <ChatRoomPage
         chatRoomId={routeState.chatRoomId || flow.activeThread}
         partnerName={routeState.partnerName || flow.activePartner}
+        initialRoom={routeState.room}
         back={back}
       />
     ),

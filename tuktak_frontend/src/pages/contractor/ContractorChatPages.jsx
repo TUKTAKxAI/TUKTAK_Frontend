@@ -8,6 +8,7 @@ export function ContractorChatsPage({ go }) {
         go(contractorScreens.chatRoom, {
           chatRoomId: id,
           partnerName: room?.partner_name,
+          room,
         })
       }
       go={go}
@@ -21,6 +22,7 @@ export function ContractorChatRoomPage({ go, routeState = {} }) {
     <ChatRoomPage
       chatRoomId={routeState.chatRoomId}
       partnerName={routeState.partnerName || '고객'}
+      initialRoom={routeState.room}
       back={() => go(contractorScreens.chats)}
     />
   )
