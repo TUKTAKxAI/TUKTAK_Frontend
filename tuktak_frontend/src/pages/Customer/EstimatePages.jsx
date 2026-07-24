@@ -5,6 +5,7 @@ import { EstimateCard, SearchBar } from '../../components/customer/Cards'
 import { CustomerPage } from './CustomerPageShared'
 import { figmaAssets } from '../../components/customer/figmaAssets'
 import { PrimaryButton } from '../../components/customer/FormControls'
+import { useCustomerFlow } from '../../context/CustomerFlowContext'
 import { FaCloudUploadAlt, FaChevronLeft, FaExclamationTriangle, FaTimes } from 'react-icons/fa'
 import { screens } from '../../data/customerData'
 import { screenPaths } from '../../routes/customerRoutes'
@@ -615,6 +616,7 @@ export function EstimateDonePage() {
 
 export function EstimateOutputPage({ go }) {
   const location = useLocation();
+  const flow = useCustomerFlow();
   // EstimateLoadingPage 또는 다른 곳에서 state로 넘겨받은 AI 견적 데이터
   // EstimateLoadingPage 또는 다른 곳에서 state로 넘겨받은 AI 견적 데이터
   const resultData = location.state?.resultData;
@@ -628,6 +630,11 @@ export function EstimateOutputPage({ go }) {
       </section>
     );
   }
+
+  const startMatchingWithCurrentEstimate = () => {
+    flow.updateMatchingFlow({ selectedEstimate: resultData });
+    go(screens.matchingAddressList);
+  };
 
   return (
     <section className="estimate-output">
@@ -695,7 +702,7 @@ export function EstimateOutputPage({ go }) {
 
       <div className="estimate-output-actions">
         <button type="button" className="estimate-output-ghost-button" onClick={() => go(screens.estimateHome)}>확인</button>
-        <PrimaryButton onClick={() => go(screens.matchingEstimateSelect)}>매칭 시작하기</PrimaryButton>
+        <PrimaryButton onClick={startMatchingWithCurrentEstimate}>매칭 시작하기</PrimaryButton>
       </div>
     </section>
   )
@@ -716,7 +723,9 @@ export function MyEstimateListPage({ go }) {
     const fetchEstimates = async () => {
       try {
         // 💡 백엔드 엔드포인트에서 데이터 호출
-        const data = await api.get('/api/v1/users/me/ai-estimates/');
+        const data = await api.get('/api/v1/users/me/ai-estimates', {
+          params: { status: 'COMPLETED', page: 1, size: 20 },
+        });
         
         if (isMounted && data && data.items) {
           // 💡 화면 컴포넌트(<EstimateCard>)가 에러를 뿜지 않도록 프론트엔드 양식에 맞게 매핑(Mapping)합니다.

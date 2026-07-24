@@ -533,8 +533,10 @@ export function MatchingEstimateSelectPage({ go }) {
   useEffect(() => {
     let ignore = false
 
-    // 💡 1. 견적서 목록 가져오기 주소 수정 완료! 앞에 /api/v1/ 명시 및 후행 슬래시 추가
-    api.get('/api/v1/users/me/ai-estimates/?status=COMPLETED&page=1&size=20')
+    // 완료된 AI 견적서만 매칭 요청 후보로 보여준다.
+    api.get('/api/v1/users/me/ai-estimates', {
+      params: { status: 'COMPLETED', page: 1, size: 20 },
+    })
       .then((data) => {
         if (ignore) return
         if (data?.items?.length) {

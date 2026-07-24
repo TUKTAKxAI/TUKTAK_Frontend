@@ -135,7 +135,9 @@ export function RiskSelectPage({ go }) {
   useEffect(() => {
     const fetchMyEstimates = async () => {
       try {
-        const data = await api.get('/api/v1/users/me/ai-estimates');
+        const data = await api.get('/api/v1/users/me/ai-estimates', {
+          params: { status: 'COMPLETED', page: 1, size: 20 },
+        });
         
         if (data && data.items) {
           setEstimates(data.items);
