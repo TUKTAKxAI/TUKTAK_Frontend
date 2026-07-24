@@ -17,6 +17,7 @@ import urgentAlertSvg from '../../assets/figma/urgent-alert.svg?raw'
 import { FaMapMarkerAlt, FaChevronDown, FaRegCalendarAlt, FaRegClock, FaExclamationTriangle, FaTimes } from 'react-icons/fa'
 
 const previewImages = [preview9, preview10, preview11, preview12];
+const ACTIVE_MATCHING_STATUSES = ['REQUESTED', 'RECEIVING_QUOTES']
 
 const timeSlots = [
   { start: '09:00', end: '12:00' },
@@ -329,19 +330,25 @@ export function MatchingHomePage({ go }) {
   const [loadStatus, setLoadStatus] = useState('loading')
   const [cancelStatus, setCancelStatus] = useState('')
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [activeRequestIds, setActiveRequestIds] = useState([])
 
   const loadCurrentMatching = async () => {
     setLoadStatus('loading')
     try {
-      const data = await api.get('/api/v1/matching-requests?page=1&size=20')
+      const data = await api.get('/api/v1/matching-requests', {
+        params: { page: 1, size: 20 },
+      })
 
-      const activeRequest = (data.items || []).find((item) => (
-        ['REQUESTED', 'RECEIVING_QUOTES'].includes(item.matching_status)
+      const activeRequests = (data.items || []).filter((item) => (
+        ACTIVE_MATCHING_STATUSES.includes(item.matching_status)
       ))
+      const activeRequest = activeRequests[0]
+      setActiveRequestIds(activeRequests.map((item) => item.matching_request_id))
 
       if (!activeRequest) {
         setMatchingRequest(null)
         setQuotes([])
+        setActiveRequestIds([])
         setLoadStatus('empty')
         return
       }
@@ -390,19 +397,32 @@ export function MatchingHomePage({ go }) {
     setCancelStatus('submitting')
 
     try {
-      await api.patch(`/api/v1/matching-requests/${matchingRequest.matching_request_id}/cancel`, {
-        cancel_reason: 'CUSTOMER_CANCELLED',
-      })
+      const requestIds = activeRequestIds.length ? activeRequestIds : [matchingRequest.matching_request_id]
+      const results = await Promise.allSettled(
+        requestIds.map((matchingRequestId) => (
+          api.patch(`/api/v1/matching-requests/${matchingRequestId}/cancel`, {
+            cancel_reason: 'CUSTOMER_CANCELLED',
+          })
+        )),
+      )
+      if (results.every((result) => result.status === 'rejected')) {
+        throw new Error('Matching cancellation failed')
+      }
       setShowCancelModal(false)
       setCancelStatus('')
       setMatchingRequest(null)
       setQuotes([])
+      setActiveRequestIds([])
       flow.updateMatchingFlow({
+        selectedEstimate: null,
+        selectedAddress: null,
         matchingRequestId: null,
         matchingStatus: '매칭 취소됨',
         selectedQuoteId: null,
         selectedQuote: null,
         selectedPartner: null,
+        matchedContractorCount: null,
+        matchingExpiresAt: null,
       })
       setLoadStatus('empty')
     } catch {
