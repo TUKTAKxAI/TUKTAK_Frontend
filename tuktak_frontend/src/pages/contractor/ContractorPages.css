@@ -441,6 +441,45 @@
   color: var(--cds-text-placeholder, #a8a8a8);
 }
 
+.contractor-photo-thumb {
+  display: block;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  background: var(--cds-layer, #f4f4f4);
+  overflow: hidden;
+}
+
+.contractor-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.contractor-original-request {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  background: var(--cds-background, #ffffff);
+}
+
+.contractor-original-request h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.contractor-original-request p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--cds-text-secondary, #525252);
+}
+
 .contractor-form {
   display: grid;
   gap: 20px;
